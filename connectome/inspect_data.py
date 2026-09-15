@@ -24,9 +24,9 @@ def main():
         print(f"\nMetadata rows: {len(df_meta):,}")
         print("Columns:", df_meta.columns.tolist())
         
-        if 'nt_type' in df_meta.columns:
+        if 'top_nt' in df_meta.columns:
             print("\nNeurotransmitter distribution:")
-            print(df_meta['nt_type'].value_counts(dropna=False))
+            print(df_meta['top_nt'].value_counts(dropna=False))
         
         if 'flow' in df_meta.columns:
             print("\nFlow distribution:")
