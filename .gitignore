@@ -1,0 +1,19 @@
+# Data files (Very large, do not commit)
+data/raw/
+data/metadata/
+data/manifest.json
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Project files
+*.egg-info/
+build/
+dist/

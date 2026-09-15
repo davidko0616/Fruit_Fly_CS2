@@ -1,0 +1,11 @@
+torch>=2.0.0
+numpy
+scipy
+pandas
+pyarrow
+matplotlib
+networkx
+tqdm
+pyyaml
+requests
+
