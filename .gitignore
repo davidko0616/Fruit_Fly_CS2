@@ -18,3 +18,8 @@ env/
 build/
 dist/
 
+# Isolated ZLUDA experiment (downloaded binaries, environments, and results)
+.venv-zluda/
+.local-zluda/
+artifacts/zluda/
+artifacts/synthetic/

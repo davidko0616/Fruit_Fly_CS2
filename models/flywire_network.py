@@ -3,7 +3,8 @@ import torch.nn as nn
 from .sparse_layer import ConnectomeSparseLinear
 
 class FlyWireNetwork(nn.Module):
-    def __init__(self, adjacency_csr, nt_signs, input_idx, output_idx, input_dim, output_dim, num_steps=3):
+    def __init__(self, adjacency_csr, nt_signs, input_idx, output_idx, input_dim, output_dim,
+                 num_steps=3, weight_init='random'):
         """
         adjacency_csr: Scipy CSR matrix of the brain subgraph
         nt_signs: Numpy array of +1/-1 for excitatory/inhibitory
@@ -14,6 +15,8 @@ class FlyWireNetwork(nn.Module):
         num_steps: Number of recurrent message-passing steps
         """
         super().__init__()
+        if num_steps < 1 or len(input_idx) == 0 or len(output_idx) == 0:
+            raise ValueError('Positive num_steps and nonempty input/output groups are required')
         self.num_neurons = adjacency_csr.shape[0]
         self.num_steps = num_steps
         self.input_idx = input_idx
@@ -23,7 +26,7 @@ class FlyWireNetwork(nn.Module):
         self.input_proj = nn.Linear(input_dim, len(input_idx))
         
         # The biological brain core (recurrent)
-        self.connectome_layer = ConnectomeSparseLinear(adjacency_csr, nt_signs)
+        self.connectome_layer = ConnectomeSparseLinear(adjacency_csr, nt_signs, weight_init=weight_init)
         self.activation = nn.ReLU()
         
         # Project motor neurons to environment action

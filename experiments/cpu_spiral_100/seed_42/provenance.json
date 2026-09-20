@@ -1,0 +1,34 @@
+{
+  "dataset_version": "783",
+  "files_sha256": {
+    "data\\raw\\proofread_connections_783.feather": "24f960ae3e7d4f8cd30db3b62e99fb5179cc3d1e76d8c155bfb441e9737d3faf",
+    "data\\raw\\proofread_root_ids_783.npy": "7c7b7e818e9232e5ab64793d52ba20574dbe9da3a6509fbc74193b0f259a01be",
+    "data\\metadata\\neuron_annotations.tsv": "9a4f8b2f843196074431ebd7cd883536afa1be86c8a4ce90970441e8be81d1be"
+  },
+  "source_code_sha256": {
+    "connectome\\graph.py": "dac750688a5333c1746cf3c536584649253c1a3cad0ea4aec85aead882ec8252",
+    "models\\sparse_layer.py": "39bff51957f086d31801d43c4c0c962826e5d71e70ab8cfc7c8a0968cba062b8",
+    "models\\flywire_network.py": "9d40150c437ca0e1ef596ec1f6e4685b4703a6e5b7c88678537db3eb98ff3ac9",
+    "training\\train_synthetic.py": "2240cd6b34edacba99ebb43aef5408ae1171efc6dd24c80f418bdfbef0f77c03",
+    "training\\synthetic.py": "2b6e51aabb83e0dae40914809fc88e98f9ef94664d71e2a8eb72259f72d15e09"
+  },
+  "git_commit": "b7a4120a5a1471ac5188d8a9ff24320175fa7725",
+  "git_dirty": true,
+  "python": "3.13.0 (tags/v3.13.0:60403a5, Oct  7 2024, 09:38:07) [MSC v.1941 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "processor": "AMD64 Family 25 Model 97 Stepping 2, AuthenticAMD",
+  "device": "cpu",
+  "threads": 4,
+  "packages": {
+    "torch": "2.7.1+cu118",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1",
+    "pandas": "3.0.5",
+    "pyarrow": "25.0.1",
+    "matplotlib": "3.11.2",
+    "pyyaml": "6.0.3"
+  },
+  "sign_assumption": "GABA/glutamate negative; others and missing predictions positive",
+  "selection": "Top degree within neuropil; ties broken by ascending root ID",
+  "weight_init": "normalized_synapse_count"
+}

@@ -1,21 +1,38 @@
 import torch
 import torch.nn as nn
+import numpy as np
 
 class ConnectomeSparseLinear(nn.Module):
-    def __init__(self, adjacency_csr, nt_signs):
+    def __init__(self, adjacency_csr, nt_signs, weight_init='random'):
         super().__init__()
+        if adjacency_csr.shape[0] != adjacency_csr.shape[1] or adjacency_csr.shape[0] < 1:
+            raise ValueError('Connectome adjacency must be nonempty and square')
+        if len(nt_signs) != adjacency_csr.shape[0] or not np.isin(nt_signs, [-1, 1]).all():
+            raise ValueError('Each neuron must have a sign of +1 or -1')
         
         # Convert CSR to COO for PyTorch sparse tensors
         coo = adjacency_csr.tocoo()
         
         # Indices of biological connections: shape (2, num_edges)
         # Note: transposed because PyTorch sparse.mm expects (out, in) matrix
-        indices = torch.tensor([coo.col, coo.row], dtype=torch.long)
+        indices = torch.from_numpy(np.stack([coo.col, coo.row]).astype(np.int64))
         self.register_buffer('indices', indices)
         
         # Initial learnable weight magnitudes
         # We initialize randomly, but the topology is strictly fixed by `indices`
-        magnitudes = torch.randn(coo.nnz) * 0.1
+        if weight_init == 'random':
+            magnitudes = torch.randn(coo.nnz) * 0.1
+        elif weight_init == 'normalized_synapse_count':
+            counts = np.asarray(coo.data, dtype=np.float32)
+            if not np.isfinite(counts).all() or (counts <= 0).any():
+                raise ValueError('Synapse counts must be finite and positive')
+            # Normalize incoming absolute weights to sum to 1 per target.
+            # This preserves within-target count ratios without amplifying
+            # activations purely because a target has a large in-degree.
+            incoming = np.bincount(coo.col, weights=counts, minlength=coo.shape[0])
+            magnitudes = torch.from_numpy((counts / incoming[coo.col]).astype(np.float32))
+        else:
+            raise ValueError(f'Unknown weight initialization: {weight_init}')
         self.weight_magnitudes = nn.Parameter(magnitudes)
         
         # Neurotransmitter constraints

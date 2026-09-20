@@ -1,4 +1,5 @@
 import os
+import warnings
 import pandas as pd
 import numpy as np
 import scipy.sparse as sp
@@ -16,21 +17,29 @@ class ConnectomeGraph:
         
         print("Loading connections...")
         conn_path = os.path.join(self.raw_dir, "proofread_connections_783.feather")
-        self.df_conn = pd.read_feather(conn_path)
+        self.df_conn = pd.read_feather(conn_path, columns=[
+            'pre_pt_root_id', 'post_pt_root_id', 'neuropil', 'syn_count'
+        ])
         
     def extract_subgraph_by_neuropil(self, neuropil_name, max_neurons=None):
+        if max_neurons is not None and (not isinstance(max_neurons, int) or max_neurons < 2):
+            raise ValueError('max_neurons must be an integer of at least 2')
         print(f"Extracting subgraph for neuropil: {neuropil_name}...")
         # Filter connections happening in this neuropil
         sub_conn = self.df_conn[self.df_conn['neuropil'] == neuropil_name].copy()
         
         # Identify all unique neurons involved in this neuropil
         unique_neurons = set(sub_conn['pre_pt_root_id']).union(set(sub_conn['post_pt_root_id']))
-        unique_neurons = list(unique_neurons)
+        unique_neurons = sorted(unique_neurons)
+        if not unique_neurons:
+            raise ValueError(f'No connections found for neuropil {neuropil_name!r}')
         
         if max_neurons and len(unique_neurons) > max_neurons:
             print(f"Limiting to top {max_neurons} neurons by degree...")
             degree_counts = pd.concat([sub_conn['pre_pt_root_id'], sub_conn['post_pt_root_id']]).value_counts()
-            unique_neurons = degree_counts.head(max_neurons).index.tolist()
+            ranked = degree_counts.rename('degree').rename_axis('root_id').reset_index()
+            ranked = ranked.sort_values(['degree', 'root_id'], ascending=[False, True])
+            unique_neurons = ranked.head(max_neurons)['root_id'].tolist()
             
             # Filter connections again to only include these neurons
             sub_conn = sub_conn[
@@ -52,7 +61,8 @@ class ConnectomeGraph:
         # Extract metadata for these specific neurons
         meta_subset = self.df_meta.reindex(unique_neurons)
         
-        # Map neurotransmitters to weight signs
+        # Modeling assumption: predicted neurotransmitters set source weight signs.
+        # This does not capture receptor-specific or modulatory biological effects.
         # GABA / Glutamate -> Inhibitory (-1)
         # Acetylcholine / others -> Excitatory (+1)
         def get_nt_sign(nt):
@@ -71,20 +81,31 @@ class ConnectomeGraph:
             'nt_signs': nt_signs
         }
         
-    def assign_io_neurons(self, metadata):
-        """Assign matrix indices based on biological flow (sensory, motor, interneuron)"""
+    def assign_io_neurons(self, metadata, allow_fallback=True):
+        """Assign disjoint IO groups, with explicit computational fallbacks if needed."""
+        if len(metadata) < 2:
+            raise ValueError('At least two neurons are needed for disjoint inputs and outputs')
         flows = metadata['flow'].fillna('intrinsic').astype(str).str.lower()
         
-        inputs = np.where(flows.str.contains('afferent'))[0]
-        outputs = np.where(flows.str.contains('efferent'))[0]
-        hidden = np.where(~flows.str.contains('afferent|efferent'))[0]
-        
-        # Fallback if no afferent/efferent found (happens in small isolated subgraphs)
+        inputs = np.where(flows == 'afferent')[0]
+        outputs = np.where(flows == 'efferent')[0]
+        if len(inputs) == 0 or len(outputs) == 0:
+            if not allow_fallback:
+                raise ValueError('Selected graph lacks afferent or efferent neurons')
+            warnings.warn('Missing afferent/efferent neurons: using computational IO '
+                          'assignments, not a biological sensory/motor mapping.', UserWarning)
+        available = np.setdiff1d(np.arange(len(metadata)), np.r_[inputs, outputs])
         if len(inputs) == 0:
-            inputs = hidden[:max(1, len(hidden)//10)]
+            count = min(max(1, len(metadata) // 10), len(available) - int(len(outputs) == 0))
+            if count < 1:
+                raise ValueError('Not enough unassigned neurons for input fallback')
+            inputs = available[:count]
+            available = available[count:]
         if len(outputs) == 0:
-            outputs = hidden[-max(1, len(hidden)//10):]
-            
+            if len(available) == 0:
+                raise ValueError('Not enough unassigned neurons for output fallback')
+            outputs = available[-max(1, len(metadata) // 10):]
+        hidden = np.setdiff1d(np.arange(len(metadata)), np.r_[inputs, outputs])
         return inputs, outputs, hidden
 
 if __name__ == "__main__":

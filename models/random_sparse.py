@@ -26,3 +26,4 @@ def create_random_sparse_network(num_neurons, num_edges, input_idx, output_idx, 
         output_dim=output_dim,
         num_steps=num_steps
     )
+

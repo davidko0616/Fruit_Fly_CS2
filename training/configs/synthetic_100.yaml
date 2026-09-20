@@ -1,0 +1,35 @@
+experiment:
+  name: synthetic_spiral_100
+  seed: 42
+  output_dir: artifacts/synthetic
+
+data:
+  task: spiral
+  n_classes: 3
+  n_samples: 1000
+  noise: 0.15
+  validation_fraction: 0.15
+  test_fraction: 0.15
+
+connectome:
+  version: '783'
+  subgraph:
+    region: AL_R
+    max_neurons: 100
+  io_strategy: flow_with_computational_fallback
+  weight_init: normalized_synapse_count
+
+model:
+  num_steps: 3
+
+training:
+  device: cpu
+  epochs: 200
+  batch_size: 64
+  learning_rate: 0.001
+  optimizer: adam
+  cpu_threads: 4
+
+evaluation:
+  minimum_validation_accuracy: 0.80
+  minimum_test_accuracy: 0.80

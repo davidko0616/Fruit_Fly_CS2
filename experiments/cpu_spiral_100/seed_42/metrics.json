@@ -1,0 +1,42 @@
+{
+  "milestone_passed": true,
+  "seed": 42,
+  "best_epoch": 200,
+  "checkpoint_selection": "minimum validation cross-entropy; test evaluated once afterward",
+  "initial_train_loss": 1.107020616531372,
+  "initial_train_accuracy": 0.3338068127632141,
+  "train_loss": 0.000639666395727545,
+  "train_accuracy": 1.0,
+  "validation_loss": 0.0009780358523130417,
+  "validation_accuracy": 1.0,
+  "test_loss": 0.061047136783599854,
+  "test_accuracy": 0.9932432174682617,
+  "chance_accuracy": 0.3333333333333333,
+  "parameters": 7778,
+  "split_sizes": {
+    "train": 704,
+    "validation": 148,
+    "test": 148
+  },
+  "core_received_nonzero_gradients": true,
+  "topology_and_signs_preserved": true,
+  "training_seconds": 20.19305809999787,
+  "graph": {
+    "neurons": 100,
+    "edges": 7615,
+    "density_including_self_pairs": 0.7615,
+    "weak_components": 1,
+    "inputs": 10,
+    "outputs": 10,
+    "hidden": 80,
+    "flow_counts": {
+      "intrinsic": 100
+    },
+    "computational_input_fallback": true,
+    "computational_output_fallback": true,
+    "all_outputs_reachable_at_num_steps": true,
+    "excitatory_neurons": 62,
+    "inhibitory_neurons": 38
+  },
+  "total_seconds": 26.539159899999504
+}
