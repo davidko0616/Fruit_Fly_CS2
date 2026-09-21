@@ -1,0 +1,71 @@
+{
+  "metrics": {
+    "initial_train": {
+      "loss": 1.107020616531372,
+      "accuracy": 0.3338068127632141
+    },
+    "train": {
+      "loss": 0.0005926118465140462,
+      "accuracy": 1.0
+    },
+    "validation": {
+      "loss": 0.0008757488103583455,
+      "accuracy": 1.0
+    },
+    "test": {
+      "loss": 0.05911813676357269,
+      "accuracy": 0.9932432174682617
+    },
+    "best_epoch": 200,
+    "best_version": 2200,
+    "training_seconds_including_recording": 85.489617299987,
+    "core_received_nonzero_gradients": true,
+    "topology_and_signs_preserved": true,
+    "expected_sample_forwards": 312904,
+    "recorded_sample_forwards": 312904,
+    "peak_cuda_allocated_mib": null
+  },
+  "recording": {
+    "schema_version": 1,
+    "run_id": "9c517c96-33f3-4c48-81c0-31588f073f20",
+    "status": "complete",
+    "config": {
+      "epochs": 200,
+      "model_seed": 42,
+      "data_seed": 42,
+      "batch_seed": 44,
+      "batch_size": 64,
+      "learning_rate": 0.001,
+      "optimizer": "Adam",
+      "cpu_threads": 4,
+      "num_steps": 3,
+      "weight_init": "normalized_synapse_count",
+      "dataset": "archived seed_42 spiral, fixed splits",
+      "checkpoint_selection": "minimum validation loss; test once afterward"
+    },
+    "events": 2604,
+    "samples": 312904,
+    "committed_chunks": 402,
+    "bytes_on_disk_before_final_manifest": 747008828
+  },
+  "source_sha256": {
+    "training\\train_recorded.py": "933fb64af345e7ff48812da1e669897ae6fc50ffb05426c0d6688112394b654b",
+    "training\\recording.py": "891000692483154e9c2ceba56516a3808c7738a1eeeb704e92e7d09c77e50417",
+    "models\\flywire_network.py": "de320df079631cd6a0dee7b1728bc71b81495b561867f3da8acaedc8f54730aa",
+    "models\\sparse_layer.py": "c68ff282ad44d052c26f33bfc7770a5407230e822f904a096f041bf8c57e0279",
+    "experiments\\cpu_spiral_100\\seed_42\\graph.npz": "8fb773256e04d32f26365e83c95760b93fa106e3121d6eaf7b79e21c2c4a4a31",
+    "experiments\\cpu_spiral_100\\seed_42\\adjacency.npz": "f632c1e2bcc4d0fd96f03714b2962b026c7c0faba99ddf0b8eaae7b18c01b6dd",
+    "experiments\\cpu_spiral_100\\seed_42\\dataset.npz": "6016a014469324e0647f1ba75e461c2d2270a42464fe619c6958d2970c5bc007"
+  },
+  "verification": {
+    "tests_passed": 17,
+    "cpu_cuda_equivalence": true,
+    "separate_process_audit_passed": true,
+    "reproduced_event_ids": [
+      0,
+      1302,
+      2603
+    ]
+  },
+  "raw_traces_in_git": false
+}

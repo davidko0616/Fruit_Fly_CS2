@@ -1,4 +1,14 @@
-# Original Antigravity planning archive
+# Project plans
+
+## Active plan additions
+
+- [Model activity recording, replay, and brain visualization](activity_recording_and_visualization.md)
+  — added September 21, 2026. Requires detailed model traces and complete
+  observation/action/outcome recording to support analysis and optimization.
+
+See [current project status](../STATUS.md) for completed work and next steps.
+
+## Original Antigravity planning archive
 
 These documents were authored during the September 15, 2026 Antigravity session
 and are preserved unchanged as historical context:
