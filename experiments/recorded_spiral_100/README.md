@@ -1,5 +1,9 @@
 # First complete activity recording
 
+The [first activity-analysis report](activity_analysis/README.md) now includes
+training/validation learning curves, inactivity measurements, class-associated
+responses, and reproducible numerical summaries from this recording.
+
 The September 21, 2026 CPU run captured every sample processed during 200
 epochs of the existing 100-neuron spiral experiment. Test accuracy remained
 99.324% (147/148), matching the unrecorded CPU run.

@@ -1,0 +1,227 @@
+{
+  "run_id": "9c517c96-33f3-4c48-81c0-31588f073f20",
+  "scope": "Train and validation evaluations only; no test analysis",
+  "definitions": {
+    "inactive": "Exactly zero for every sample in this split at this step; not proof of causal irrelevance",
+    "eta_squared": "Between-class sum of squares / total sum of squares, final-step activation; descriptive, no significance test"
+  },
+  "splits": {
+    "train": {
+      "first": {
+        "split": "train",
+        "epoch": 0,
+        "version": 0,
+        "samples": 704,
+        "accuracy": 0.3338068181818182,
+        "loss": 1.107020616531372,
+        "step1_mean": 0.028317635878920555,
+        "step1_zero_fraction": 0.24785511363636364,
+        "step1_inactive_neurons": 1,
+        "step2_mean": 0.007473487872630358,
+        "step2_zero_fraction": 0.3130113636363636,
+        "step2_inactive_neurons": 15,
+        "step3_mean": 0.0039912378415465355,
+        "step3_zero_fraction": 0.12451704545454545,
+        "step3_inactive_neurons": 0
+      },
+      "last": {
+        "split": "train",
+        "epoch": 200,
+        "version": 2200,
+        "samples": 704,
+        "accuracy": 1.0,
+        "loss": 0.0005926117883063853,
+        "step1_mean": 0.39712077379226685,
+        "step1_zero_fraction": 0.2184943181818182,
+        "step1_inactive_neurons": 0,
+        "step2_mean": 1.3600152730941772,
+        "step2_zero_fraction": 0.3548863636363636,
+        "step2_inactive_neurons": 0,
+        "step3_mean": 6.298247337341309,
+        "step3_zero_fraction": 0.10116477272727273,
+        "step3_inactive_neurons": 2
+      },
+      "first_epoch_95_percent": 27,
+      "first_epoch_perfect": 46,
+      "inactive_by_step_final": [
+        [],
+        [],
+        [
+          36,
+          37
+        ]
+      ],
+      "inactive_all_processing_steps_final": [],
+      "top_class_associated_neurons": [
+        {
+          "index": 99,
+          "role": "output",
+          "eta_squared": 0.6149797342155939
+        },
+        {
+          "index": 94,
+          "role": "output",
+          "eta_squared": 0.5523057891766735
+        },
+        {
+          "index": 96,
+          "role": "output",
+          "eta_squared": 0.527766851476959
+        },
+        {
+          "index": 98,
+          "role": "output",
+          "eta_squared": 0.5156717466454149
+        },
+        {
+          "index": 91,
+          "role": "output",
+          "eta_squared": 0.5063991971543991
+        },
+        {
+          "index": 93,
+          "role": "output",
+          "eta_squared": 0.5022565074152403
+        },
+        {
+          "index": 97,
+          "role": "output",
+          "eta_squared": 0.45328812539220176
+        },
+        {
+          "index": 90,
+          "role": "output",
+          "eta_squared": 0.4400558649750271
+        },
+        {
+          "index": 82,
+          "role": "internal",
+          "eta_squared": 0.4172778537367952
+        },
+        {
+          "index": 8,
+          "role": "input",
+          "eta_squared": 0.4018767543100095
+        }
+      ],
+      "mistakes_at_snapshots": {
+        "0": 469,
+        "1": 469,
+        "10": 266,
+        "50": 0,
+        "100": 0,
+        "200": 0
+      }
+    },
+    "validation": {
+      "first": {
+        "split": "validation",
+        "epoch": 1,
+        "version": 11,
+        "samples": 148,
+        "accuracy": 0.3310810810810811,
+        "loss": 1.0992443561553955,
+        "step1_mean": 0.03424549475312233,
+        "step1_zero_fraction": 0.2745945945945946,
+        "step1_inactive_neurons": 1,
+        "step2_mean": 0.028482509776949883,
+        "step2_zero_fraction": 0.1945945945945946,
+        "step2_inactive_neurons": 3,
+        "step3_mean": 0.029019614681601524,
+        "step3_zero_fraction": 0.09101351351351351,
+        "step3_inactive_neurons": 2
+      },
+      "last": {
+        "split": "validation",
+        "epoch": 200,
+        "version": 2200,
+        "samples": 148,
+        "accuracy": 1.0,
+        "loss": 0.0008757486939430237,
+        "step1_mean": 0.4064108431339264,
+        "step1_zero_fraction": 0.21013513513513513,
+        "step1_inactive_neurons": 0,
+        "step2_mean": 1.3493002653121948,
+        "step2_zero_fraction": 0.3923648648648649,
+        "step2_inactive_neurons": 0,
+        "step3_mean": 6.03232479095459,
+        "step3_zero_fraction": 0.105,
+        "step3_inactive_neurons": 2
+      },
+      "first_epoch_95_percent": 27,
+      "first_epoch_perfect": 35,
+      "inactive_by_step_final": [
+        [],
+        [],
+        [
+          36,
+          37
+        ]
+      ],
+      "inactive_all_processing_steps_final": [],
+      "top_class_associated_neurons": [
+        {
+          "index": 99,
+          "role": "output",
+          "eta_squared": 0.5920434815466556
+        },
+        {
+          "index": 94,
+          "role": "output",
+          "eta_squared": 0.5654825412273993
+        },
+        {
+          "index": 93,
+          "role": "output",
+          "eta_squared": 0.5347840837920317
+        },
+        {
+          "index": 96,
+          "role": "output",
+          "eta_squared": 0.5334665118780311
+        },
+        {
+          "index": 98,
+          "role": "output",
+          "eta_squared": 0.5226775321465863
+        },
+        {
+          "index": 91,
+          "role": "output",
+          "eta_squared": 0.4826680565766822
+        },
+        {
+          "index": 82,
+          "role": "internal",
+          "eta_squared": 0.48176457924276644
+        },
+        {
+          "index": 8,
+          "role": "input",
+          "eta_squared": 0.4808605614950386
+        },
+        {
+          "index": 63,
+          "role": "internal",
+          "eta_squared": 0.4746203416139859
+        },
+        {
+          "index": 80,
+          "role": "internal",
+          "eta_squared": 0.46965759928741996
+        }
+      ],
+      "mistakes_at_snapshots": {
+        "1": 99,
+        "10": 53,
+        "50": 0,
+        "100": 0,
+        "200": 0
+      }
+    }
+  },
+  "same_training_inputs": {
+    "count": 704,
+    "mean_absolute_final_step_change": 6.294984817504883
+  }
+}

@@ -1,5 +1,40 @@
 # Activity recording and offline replay
 
+## Baseline comparison recordings
+
+`training.train_recorded` also accepts `--architecture random` or
+`--architecture mlp` (default: `flywire`). Random graphs use the same recurrent
+schema and viewer. Each run saves its actual randomized adjacency, with source
+signs and IO roles preserved. See the
+[fixed comparison protocol](../experiments/baseline_comparison_100/PROTOCOL.md).
+
+MLPs use schema 2: `hidden_preactivations` and `hidden_activations` contain all
+hidden-layer values concatenated along the feature axis, with layer offsets and
+widths in `manifest.json`. Inputs, logits, predictions, probabilities, losses,
+sample IDs, every parameter version, update diagnostics and checkpoints are
+retained with the same durability policy. `architecture.json` identifies the
+feedforward architecture. Copied `graph.npz` and `adjacency.npz` are reference
+budget artifacts for MLP runs, not its computation graph. MLP weights have no
+sign constraints; `topology_and_signs_preserved` is null rather than true.
+
+`tools/verify_recording.py` audits both schemas. The existing offline recurrent
+viewer accepts schema 1 only; use numerical analysis for MLP traces. No hidden
+layers are mislabeled as biological neurons or recurrent time steps.
+
+Run the full sequential CPU comparison with a fresh output directory:
+
+```powershell
+.\.venv\Scripts\python.exe tools/run_comparison.py --output artifacts/synthetic/baseline_comparison_100 --results experiments/baseline_comparison_100/results
+.\.venv\Scripts\python.exe tools/check_comparison_matching.py
+.\.venv\Scripts\python.exe tools/summarize_comparison.py
+```
+
+The default schedule is seeds 42-46, 200 epochs each, rotating architecture order
+between seeds. Full traces remain ignored by Git. Compact per-run results retain
+configuration, source hashes, histories and audit results. The matching audit
+also checks actual graph budgets, initial recurrent IO weights, paired minibatch
+orders, and one final test evaluation per run.
+
 Use the recorded runner for new inspectable experiments. It trains the existing
 100-neuron FlyWire model with the archived graph and spiral dataset; no large raw
 connectome download is needed. CPU is the default; CUDA is also supported.

@@ -155,28 +155,34 @@ class ActivityRecorder:
             'preactivations': np.stack(pre, axis=1), 'logits': array(logits),
             'probabilities': probabilities, 'predictions': probabilities.argmax(axis=1), 'losses': losses,
         }
+        self._append_event(values, split, phase, epoch, version, started, forward_finished,
+                           values['states'], values['states'][:, 1:])
+        return logits
+
+    def _append_event(self, values, split, phase, epoch, version, started, forward_finished,
+                      activity, post_activity):
+        """Shared bounded storage for recurrent and feedforward activity schemas."""
         if not all(np.isfinite(v).all() for v in values.values()):
             raise RuntimeError('Nonfinite recorded values')
         event = {'event_id': self.event_count, 'split': split, 'phase': phase,
-                 'epoch': int(epoch), 'version': int(version), 'count': len(x),
+                 'epoch': int(epoch), 'version': int(version), 'count': len(values['inputs']),
                  'training_mode': self.model.training, 'grad_enabled': torch.is_grad_enabled(),
                  'monotonic_seconds': started - self.started,
                  'forward_with_capture_seconds': forward_finished - started,
-                 'mean_loss': float(losses.mean()),
+                 'mean_loss': float(values['losses'].mean()),
                  'accuracy': float((values['predictions'] == values['labels']).mean()),
-                 'activation_min': float(values['states'].min()),
-                 'activation_max': float(values['states'].max()),
-                 'activation_mean': float(values['states'].mean()),
-                 'inactive_fraction': float((values['states'][:, 1:] == 0).mean())}
+                 'activation_min': float(activity.min()),
+                 'activation_max': float(activity.max()),
+                 'activation_mean': float(activity.mean()),
+                 'inactive_fraction': float((post_activity == 0).mean())}
         self.pending.append((event, values))
-        self.pending_samples += len(x)
+        self.pending_samples += len(values['inputs'])
         self.event_count += 1
-        self.sample_count += len(x)
+        self.sample_count += len(values['inputs'])
         # Capture time is included in the forward measurement; this is post-forward I/O preparation.
         self.seconds += time.monotonic() - forward_finished
         if self.pending_samples >= self.limit:
             self.flush()
-        return logits
 
     def flush(self):
         if not self.pending:
@@ -200,15 +206,19 @@ class ActivityRecorder:
         destination = self.directory / 'weights' / f'{version:07d}.npz'
         if destination.exists():
             raise FileExistsError(destination)
-        core = self.model.connectome_layer
-        if not np.array_equal(array(core.indices), self.fixed_indices) or not np.array_equal(array(core.edge_signs), self.fixed_signs):
-            raise RuntimeError('Topology or edge signs changed')
+        self._check_constraints()
         values = {f'p{i}': array(p) for i, p in enumerate(self.model.parameters())}
         if not all(np.isfinite(v).all() for v in values.values()):
             raise RuntimeError('Nonfinite parameters')
         atomic_npz(destination, metadata=np.asarray(json.dumps({
-            'version': version, 'topology_and_signs_preserved': True, **(diagnostics or {})})), **values)
+            'version': version, 'topology_and_signs_preserved': True if hasattr(self.model, 'connectome_layer') else None,
+            **(diagnostics or {})})), **values)
         self.seconds += time.monotonic() - started
+
+    def _check_constraints(self):
+        core = self.model.connectome_layer
+        if not np.array_equal(array(core.indices), self.fixed_indices) or not np.array_equal(array(core.edge_signs), self.fixed_signs):
+            raise RuntimeError('Topology or edge signs changed')
 
     def checkpoint(self, name, optimizer, generator, progress):
         """Full continuation state; parameter versions are separately stored for every update."""

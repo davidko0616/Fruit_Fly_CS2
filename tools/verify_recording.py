@@ -11,6 +11,7 @@ import torch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from models.flywire_network import FlyWireNetwork
+from models.mlp_baseline import MLPBaseline
 from training.recording import read_events
 from training.train_recorded import load_version
 from visualization.serve import Recording
@@ -18,7 +19,8 @@ from visualization.serve import Recording
 
 def verify(directory):
     directory = Path(directory)
-    reader = Recording(directory)
+    manifest = json.loads((directory / 'manifest.json').read_text())
+    reader = Recording(directory) if manifest['schema_version'] == 1 else None
     events = read_events(directory)
     if not events:
         raise ValueError('No committed events')
@@ -48,29 +50,37 @@ def verify(directory):
                     raise ValueError('Missing parameter version')
                 offset += event['count']
             samples += count
-    manifest = reader.manifest
     if manifest['status'] == 'complete' and (samples != manifest['samples'] or len(events) != manifest['events']):
         raise ValueError('Final manifest disagrees with committed data')
     for epoch in range(1, manifest['config']['epochs'] + 1):
         selected = [e for e in events if e['epoch'] == epoch and e['phase'] == 'optimization']
         if not selected:
             continue
-        ids = np.concatenate([reader.chunk(e['chunk'])['sample_ids'][e['offset']:e['offset']+e['count']]
-                              for e in selected])
+        id_parts = []
+        for e in selected:
+            with np.load(directory / 'chunks' / e['chunk'], allow_pickle=False) as c:
+                id_parts.append(c['sample_ids'][e['offset']:e['offset']+e['count']])
+        ids = np.concatenate(id_parts)
         if manifest['status'] == 'complete':
             np.testing.assert_array_equal(np.sort(ids), np.sort(dataset['train']))
         elif len(np.unique(ids)) != len(ids):
             raise ValueError('Duplicate optimization samples in interrupted epoch')
-    with np.load(directory / 'graph.npz') as graph:
-        model = FlyWireNetwork(sp.load_npz(directory / 'adjacency.npz'), graph['signs'],
-                               graph['inputs'], graph['outputs'], 2, 3, manifest['num_steps'],
-                               'normalized_synapse_count')
+    if manifest['schema_version'] == 2 and manifest.get('architecture') == 'mlp':
+        model = MLPBaseline(2, 3, manifest['hidden_sizes'])
+    elif manifest['schema_version'] == 1:
+        with np.load(directory / 'graph.npz') as graph:
+            model = FlyWireNetwork(sp.load_npz(directory / 'adjacency.npz'), graph['signs'],
+                                   graph['inputs'], graph['outputs'], 2, 3, manifest['num_steps'],
+                                   'normalized_synapse_count')
+    else:
+        raise ValueError('Unsupported recording schema')
     torch.set_num_threads(4)
     # Preserve original batch size: sparse kernels can round differently across sizes.
     checked = sorted({0, len(events) // 2, len(events) - 1})
     for index in checked:
         event = events[index]
-        chunk = reader.chunk(event['chunk'])
+        with np.load(directory / 'chunks' / event['chunk'], allow_pickle=False) as file:
+            chunk = {key: file[key] for key in file.files if key != 'events'}
         section = slice(event['offset'], event['offset'] + event['count'])
         load_version(model, directory, event['version'])
         with torch.no_grad():

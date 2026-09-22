@@ -1,9 +1,21 @@
-# Project handoff — updated September 21, 2026
+# Project handoff — updated September 22, 2026
 
-## Current laptop: NVIDIA CUDA validated
+## Current PC: CPU baseline comparison complete
+
+The current machine is the Ryzen 5 7600 desktop, using Python 3.12 and
+PyTorch 2.7.1+cpu in `.venv`. All 15 recorded runs (FlyWire, matched random
+destinations and matched MLP; seeds 42-46; 200 epochs) completed and passed
+independent audits. Mean test accuracy is 99.46% for FlyWire and 99.32% for both
+baselines. MLP reaches 95% validation accuracy sooner in all five paired seeds.
+This does not establish a biological wiring advantage. See the
+[comparison report, protocol and per-seed results](../experiments/baseline_comparison_100/README.md).
+Full traces total 8.78 GiB locally; 4,693,560 sample-forwards were retained.
+The original laptop recording and the first activity analysis are also local.
+
+## Previous laptop: NVIDIA CUDA validated
 
 The project moved to a Windows laptop with an NVIDIA GeForce MX570 A (4 GB).
-An isolated `.venv` now has PyTorch 2.7.1+cu126. The archived 100-neuron model
+That laptop's isolated `.venv` had PyTorch 2.7.1+cu126. The archived 100-neuron model
 completed 200 training epochs on CUDA with 99.324% test accuracy in 63.73 s;
 the same laptop's four-thread CPU run achieved 99.324% in 39.65 s. CUDA sparse
 forward/backward and invariant checks passed. Peak PyTorch allocated GPU memory
@@ -16,6 +28,14 @@ limitations below describe the previous computer. The original trainer remains
 CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device.
 
 ## Completed
+
+- First descriptive activity analysis of recorded seed 42 on the Ryzen PC:
+  both splits reach 95% accuracy at epoch 27; neurons 36/37 are silent only at
+  the final processing step, and class-associated responses appear in output
+  neurons. No causal or biological-advantage claim follows. See
+  [report and plots](../experiments/recorded_spiral_100/activity_analysis/README.md).
+  A CPU-only `.venv` with PyTorch 2.7.1+cpu is installed here; the copied full
+  recording passed audit, and 16 CPU-compatible tests passed (CUDA test skipped).
 
 - Full classifier activity recorder and local offline network viewer. The
   recorded 200-epoch CPU run saved all 312,904 sample-forwards and 2,201 parameter
@@ -51,16 +71,16 @@ live display and anatomical layouts remain planned. Every future environment
 decision must retain synchronized observations, activity, actions, rewards and
 outcomes. Older experiments cannot retroactively supply full activity traces.
 
-1. Run seeds 43–46 and aggregate variability. These runs were proposed but did
-   not complete before the session was interrupted; only seed 42 is archived.
-2. Verify reloading the original CPU checkpoint in a separate evaluation process
-   (the new NVIDIA run's checkpoint has now passed this check).
-3. Fix the random sparse baseline's duplicate-edge sampling and unmatched sign
-   distribution; match the MLP parameter budget before controlled comparisons.
-4. Compare architectures under equivalent data, seeds, initialization policies,
-   training budgets, and evaluation conditions.
-5. Continue to the toy combat environment after synthetic validation. Revisit
-   larger CUDA models on the current NVIDIA laptop when GPU scaling is needed.
+1. Develop a minimal toy combat environment with synchronized observations,
+   actions, rewards, outcomes and model activity; retain the matched baselines.
+2. For stronger scientific conclusions, predeclare harder synthetic tasks,
+   independent dataset splits, or less dense circuits. The first comparison
+   is close to the accuracy ceiling and uses a single fixed split.
+3. Extend replay to feedforward MLP schema-2 recordings if visual comparison
+   is needed. They are fully recorded and numerically audited, but the current
+   recurrent viewer intentionally accepts schema 1 only.
+4. Benchmark larger models only when needed. Current experiments run on CPU;
+   NVIDIA laptop results remain historical evidence for a CUDA option.
 
 Do not claim biological advantages from the first classification run. The current
 100-neuron circuit is dense, and its IO roles are computational fallbacks.

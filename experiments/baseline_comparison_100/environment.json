@@ -1,0 +1,12 @@
+{
+  "cpu": "AMD Ryzen 5 7600 6-Core Processor",
+  "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "torch": "2.7.1+cpu",
+  "numpy": "2.5.3",
+  "scipy": "1.18.1",
+  "matplotlib": "3.11.2",
+  "cpu_threads_per_run": 4,
+  "cuda_used": false,
+  "post_run_code_change": "Final CLI message now explicitly says MLP traces require numerical analysis instead of offering an unsupported recurrent-viewer command; numerical training code unchanged."
+}

@@ -1,0 +1,37 @@
+[
+  {
+    "seed": 42,
+    "matching_passed": true,
+    "negative_edges": 2596,
+    "edge_overlap_fraction": 0.8153644123440578,
+    "batch_order_sha256": "a8f33f7beddc12713c0381efbd07ce4a7b60831a540772c9d00d11ee5f34fc1a"
+  },
+  {
+    "seed": 43,
+    "matching_passed": true,
+    "negative_edges": 2596,
+    "edge_overlap_fraction": 0.8165462902166776,
+    "batch_order_sha256": "13818ef3fa21f606bf7024b8205220c3eba8cc4c6be2c27ac0a2cb11a76dc83b"
+  },
+  {
+    "seed": 44,
+    "matching_passed": true,
+    "negative_edges": 2596,
+    "edge_overlap_fraction": 0.8199606040709126,
+    "batch_order_sha256": "7a32a1f560b1fc1d85763300a8af8e0ccc6c312b196ad76c936cf0e66eb94104"
+  },
+  {
+    "seed": 45,
+    "matching_passed": true,
+    "negative_edges": 2596,
+    "edge_overlap_fraction": 0.8186474064346684,
+    "batch_order_sha256": "a68eab2a14cd093313039efe584488e38e8984af16bda20e7e8d6adb7b067732"
+  },
+  {
+    "seed": 46,
+    "matching_passed": true,
+    "negative_edges": 2596,
+    "edge_overlap_fraction": 0.8156270518713067,
+    "batch_order_sha256": "39ecebcca6582f251a7514e18d85e7e799f904b4b93bf7eac6ffda170dce2b4c"
+  }
+]

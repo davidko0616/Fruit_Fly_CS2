@@ -49,8 +49,12 @@ validation passes, but GPU sparse execution is blocked by an unsupported
 The 100-neuron AL_R network trained on a three-class spiral dataset and achieved
 **99.3% held-out test accuracy** for seed 42 (148 test examples; chance is 33.3%).
 The model has 7,615 fixed directed connections and 7,778 trainable parameters.
-This demonstrates learning on a synthetic task; comparisons against baselines
-and additional seeds remain pending.
+This demonstrates learning on a synthetic task. The
+[five-seed matched comparison](experiments/baseline_comparison_100/README.md)
+is complete: FlyWire averages 99.46% test accuracy, versus 99.32% for matched
+random and MLP baselines. The MLP reaches 95% validation accuracy sooner in all
+five paired seeds. These near-ceiling results do not establish a biological
+advantage. All 15 runs retain full activity traces and passed recording audits.
 
 ```bash
 python -m unittest discover -s tests -v

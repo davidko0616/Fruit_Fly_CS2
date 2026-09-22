@@ -17,10 +17,34 @@ import torch
 import torch.nn.functional as F
 
 from models.flywire_network import FlyWireNetwork
+from models.random_sparse import randomize_destinations
+from models.mlp_baseline import MLPBaseline, matched_hidden_sizes
 from training.recording import ActivityRecorder, atomic_json
+from training.mlp_recording import MLPActivityRecorder
 
 ROOT = Path(__file__).resolve().parents[1]
 ARCHIVE = ROOT / 'experiments/cpu_spiral_100/seed_42'
+
+
+def peak_working_set_mib():
+    """Windows process peak resident working set, including runtime and recorder."""
+    if sys.platform != 'win32':
+        return None
+    import ctypes
+    from ctypes import wintypes
+    class Counters(ctypes.Structure):
+        _fields_ = [('cb', wintypes.DWORD), ('PageFaultCount', wintypes.DWORD),
+                    *[(name, ctypes.c_size_t) for name in ('PeakWorkingSetSize', 'WorkingSetSize',
+                      'QuotaPeakPagedPoolUsage', 'QuotaPagedPoolUsage', 'QuotaPeakNonPagedPoolUsage',
+                      'QuotaNonPagedPoolUsage', 'PagefileUsage', 'PeakPagefileUsage')]]
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    psapi = ctypes.WinDLL('psapi', use_last_error=True)
+    kernel.GetCurrentProcess.restype = wintypes.HANDLE
+    psapi.GetProcessMemoryInfo.argtypes = [wintypes.HANDLE, ctypes.POINTER(Counters), wintypes.DWORD]
+    counters = Counters(); counters.cb = ctypes.sizeof(counters)
+    if not psapi.GetProcessMemoryInfo(kernel.GetCurrentProcess(), ctypes.byref(counters), counters.cb):
+        raise ctypes.WinError(ctypes.get_last_error())
+    return counters.PeakWorkingSetSize / 2**20
 
 
 def load_version(model, directory, version):
@@ -30,7 +54,7 @@ def load_version(model, directory, version):
                 parameter.copy_(torch.from_numpy(weights[f'p{i}']).to(parameter.device))
 
 
-def train(output, device='cpu', epochs=200, seed=42):
+def train(output, device='cpu', epochs=200, seed=42, architecture='flywire'):
     if epochs < 1:
         raise ValueError('epochs must be positive')
     device = torch.device(device)
@@ -44,8 +68,17 @@ def train(output, device='cpu', epochs=200, seed=42):
     with np.load(ARCHIVE / 'dataset.npz', allow_pickle=False) as file:
         dataset = dict(file)
     adjacency = sp.load_npz(ARCHIVE / 'adjacency.npz')
+    if architecture not in ('flywire', 'random', 'mlp'):
+        raise ValueError('Unknown architecture')
+    if architecture == 'random':
+        adjacency = randomize_destinations(adjacency, seed)
     model = FlyWireNetwork(adjacency, graph['signs'], graph['inputs'], graph['outputs'],
                            2, 3, 3, 'normalized_synapse_count').to(device)
+    parameter_budget = sum(p.numel() for p in model.parameters())
+    hidden_sizes = matched_hidden_sizes(parameter_budget)
+    if architecture == 'mlp':
+        torch.manual_seed(seed)
+        model = MLPBaseline(2, 3, hidden_sizes).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, foreach=False)
     generator = torch.Generator().manual_seed(seed + 2)
     tensors = {s: (torch.from_numpy(dataset['x'][dataset[s]]).to(device),
@@ -53,24 +86,34 @@ def train(output, device='cpu', epochs=200, seed=42):
                for s in ('train', 'validation', 'test')}
     config = {'epochs': epochs, 'model_seed': seed, 'data_seed': 42, 'batch_seed': seed + 2,
               'batch_size': 64, 'learning_rate': 0.001, 'optimizer': 'Adam', 'cpu_threads': 4,
-              'num_steps': 3, 'weight_init': 'normalized_synapse_count',
+              'num_steps': 3 if architecture != 'mlp' else None,
+              'weight_init': 'normalized_synapse_count' if architecture != 'mlp' else 'pytorch_linear_default',
+              'architecture': architecture, 'hidden_sizes': list(hidden_sizes) if architecture == 'mlp' else None,
+              'parameter_budget': parameter_budget, 'parameters': sum(p.numel() for p in model.parameters()),
+              'topology_seed': seed if architecture == 'random' else None,
+              'random_control': 'source degree, self-loops, source sign, per-source count multiset preserved' if architecture == 'random' else None,
               'dataset': 'archived seed_42 spiral, fixed splits',
               'checkpoint_selection': 'minimum validation loss; test once afterward'}
     expected_samples = 704 + epochs * (704 + 704 + 148) + 1000
+    activity_values = 700 if architecture != 'mlp' else 2 * sum(hidden_sizes)
     print(f'Full capture: {expected_samples:,} sample-forwards; approximately '
-          f'{expected_samples * 700 * 4 / 2**20:.0f} MiB uncompressed state/preactivation arrays, '
+          f'{expected_samples * activity_values * 4 / 2**20:.0f} MiB uncompressed activity arrays, '
           'plus inputs, outputs and parameter snapshots.', flush=True)
     if device.type == 'cuda':
         torch.cuda.reset_peak_memory_stats()
     version = epoch = 0
     history, best_loss, best_version, best_epoch = [], float('inf'), 0, 0
     core_received_gradients = False
-    with ActivityRecorder(output, model, graph['root_ids'], config) as recorder:
+    recorder_type = MLPActivityRecorder if architecture == 'mlp' else ActivityRecorder
+    with recorder_type(output, model, graph['root_ids'], config) as recorder:
         for name in ('graph.npz', 'adjacency.npz', 'dataset.npz'):
             shutil.copyfile(ARCHIVE / name, Path(output) / name)
+        if architecture == 'random':
+            sp.save_npz(Path(output) / 'adjacency.npz', adjacency)
         sources = [Path(__file__), ROOT / 'training/recording.py', ROOT / 'models/flywire_network.py',
                    ROOT / 'models/sparse_layer.py', ARCHIVE / 'graph.npz',
-                   ARCHIVE / 'adjacency.npz', ARCHIVE / 'dataset.npz']
+                   ARCHIVE / 'adjacency.npz', ARCHIVE / 'dataset.npz', ROOT / 'models/random_sparse.py',
+                   ROOT / 'models/mlp_baseline.py', ROOT / 'training/mlp_recording.py']
         atomic_json(Path(output) / 'provenance.json', {
             'python': sys.version, 'torch': torch.__version__, 'numpy': np.__version__,
             'platform': platform.platform(), 'device': str(device),
@@ -78,7 +121,9 @@ def train(output, device='cpu', epochs=200, seed=42):
             'cuda_runtime': torch.version.cuda, 'deterministic_algorithms': True,
             'source_sha256': {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
                               for p in sources},
-            'biological_caveats': 'AL_R; computational IO fallbacks; sign assumptions; dense small circuit'})
+            'biological_caveats': 'AL_R; computational IO fallbacks; sign assumptions; dense small circuit',
+            'architecture': architecture,
+            'run_adjacency_sha256': hashlib.sha256((Path(output) / 'adjacency.npz').read_bytes()).hexdigest()})
         recorder.save_weights(0)
         recorder.checkpoint('initial', optimizer, generator, {'epoch': 0, 'version': 0})
 
@@ -115,7 +160,8 @@ def train(output, device='cpu', epochs=200, seed=42):
                             raise RuntimeError('Missing or nonfinite gradient')
                         diagnostics[name] = {'gradient_norm': parameter.grad.norm().item()}
                         before.append(parameter.detach().clone())
-                    core_received_gradients |= bool(model.connectome_layer.weight_magnitudes.grad.abs().sum() > 0)
+                    if architecture != 'mlp':
+                        core_received_gradients |= bool(model.connectome_layer.weight_magnitudes.grad.abs().sum() > 0)
                     optimizer.step()
                     version += 1
                     for (name, parameter), old in zip(model.named_parameters(), before):
@@ -128,7 +174,8 @@ def train(output, device='cpu', epochs=200, seed=42):
                         'finite_gradients': True, 'backward_seconds': backward_seconds,
                         'parameters': diagnostics})
                 train_metrics, validation = evaluate('train', 'epoch'), evaluate('validation', 'epoch')
-                history.append({'epoch': epoch, 'version': version, 'train': train_metrics, 'validation': validation})
+                history.append({'epoch': epoch, 'version': version, 'train': train_metrics, 'validation': validation,
+                                'elapsed_seconds_including_recording': time.perf_counter() - start})
                 if validation['loss'] < best_loss:
                     best_loss, best_version, best_epoch = validation['loss'], version, epoch
                 if epoch % 25 == 0 or epoch == epochs:
@@ -157,14 +204,21 @@ def train(output, device='cpu', epochs=200, seed=42):
                     'best_epoch': best_epoch, 'config': config}, Path(output) / 'model.pt')
         metrics = {'initial_train': initial, **selected, 'best_epoch': best_epoch,
                    'best_version': best_version, 'training_seconds_including_recording': seconds,
-                   'core_received_nonzero_gradients': core_received_gradients,
-                   'topology_and_signs_preserved': True, 'expected_sample_forwards': expected_samples,
+                   'architecture': architecture, 'seed': seed, 'parameters': config['parameters'],
+                   'first_validation_95_epoch': next((r['epoch'] for r in history if r['validation']['accuracy'] >= .95), None),
+                   'first_validation_95_seconds_including_recording': next((r['elapsed_seconds_including_recording'] for r in history if r['validation']['accuracy'] >= .95), None),
+                   'core_received_nonzero_gradients': core_received_gradients if architecture != 'mlp' else None,
+                   'topology_and_signs_preserved': True if architecture != 'mlp' else None, 'expected_sample_forwards': expected_samples,
                    'recorded_sample_forwards': recorder.sample_count,
+                   'peak_process_working_set_mib': peak_working_set_mib(),
                    'peak_cuda_allocated_mib': torch.cuda.max_memory_allocated() / 2**20 if device.type == 'cuda' else None}
         atomic_json(Path(output) / 'history.json', history)
         atomic_json(Path(output) / 'metrics.json', metrics)
     print(json.dumps(metrics, indent=2), flush=True)
-    print(f'Viewer: python -m visualization.serve --run "{Path(output).resolve()}"', flush=True)
+    if architecture == 'mlp':
+        print(f'MLP schema 2 recording: {Path(output).resolve()} (numerical audit supported; recurrent viewer not applicable)', flush=True)
+    else:
+        print(f'Viewer: python -m visualization.serve --run "{Path(output).resolve()}"', flush=True)
     return metrics
 
 
@@ -174,8 +228,9 @@ def main():
     parser.add_argument('--device', choices=['cpu', 'cuda'], default='cpu')
     parser.add_argument('--epochs', type=int, default=200)
     parser.add_argument('--seed', type=int, default=42, help='Model seed; archived dataset remains fixed')
+    parser.add_argument('--architecture', choices=['flywire', 'random', 'mlp'], default='flywire')
     args = parser.parse_args()
-    train(args.output, args.device, args.epochs, args.seed)
+    train(args.output, args.device, args.epochs, args.seed, args.architecture)
 
 
 if __name__ == '__main__':
