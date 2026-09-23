@@ -1,4 +1,4 @@
-# Project handoff — updated September 22, 2026
+# Project handoff — updated September 23, 2026
 
 ## Current PC: CPU baseline comparison complete
 
@@ -28,6 +28,13 @@ limitations below describe the previous computer. The original trainer remains
 CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device.
 
 ## Completed
+
+- Five-seed toy-combat aiming comparison: all 15 matched CPU runs and all
+  768,000 rollout decisions passed replay. Final stochastic hit rate was
+  90.7 ± 4.1% for FlyWire, 96.1 ± 3.3% for randomized wiring, and 100.0 ± 0.0%
+  for the parameter-matched MLP. FlyWire trailed both controls on primary
+  endpoints in all five paired seeds. See the
+  [full comparison](../experiments/toy_combat_baseline_comparison/README.md).
 
 - First toy-combat aiming milestone: the recorded FlyWire PPO policy improved
   from 35.2% to 95.3% stochastic hit rate on 256 held-out episodes; mean return
@@ -71,15 +78,18 @@ See [reproduction and diagnostics](../tools/ZLUDA.md).
 ## Next work
 
 The [activity recording and visualization plan](planning/activity_recording_and_visualization.md)
-now has a working classifier recorder and offline viewer. Use
-`training.train_recorded` for new inspectable runs. Environment-action recording,
-live display and anatomical layouts remain planned. Every future environment
-decision must retain synchronized observations, activity, actions, rewards and
-outcomes. Older experiments cannot retroactively supply full activity traces.
+now has a working classifier recorder, offline viewer, and audited environment
+action recorder. Use `training.train_recorded` for new inspectable classifiers
+and `training.train_toy_combat` for recorded aiming policies. Live environment
+display and anatomical layouts remain planned. Every future environment decision
+must retain synchronized observations, activity, actions, rewards and outcomes.
+Older experiments cannot retroactively supply full activity traces.
 
-1. Run matched random-connectivity and MLP policies across multiple seeds under
-   the fixed aiming protocol. This first RL result uses one FlyWire seed only.
-2. Enable movement and add navigation after the aiming baseline comparison.
+1. Enable movement and add navigation under a fixed protocol, retaining all
+   three matched actors, synchronized activity recording, stochastic evaluation,
+   and multiple training seeds.
+2. Add occlusion or partial observability and longer credit assignment so the
+   task no longer reduces to a direct feedforward aiming map.
 3. For stronger scientific conclusions, predeclare harder synthetic tasks,
    independent dataset splits, or less dense circuits. The first comparison
    is close to the accuracy ceiling and uses a single fixed split.

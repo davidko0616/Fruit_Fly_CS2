@@ -1,0 +1,27 @@
+{
+  "status": "complete",
+  "architectures": [
+    "flywire",
+    "random",
+    "mlp"
+  ],
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "runs": 15,
+  "recorded_decisions": 768000,
+  "completed_training_episodes": 47880,
+  "training_hits": 40705,
+  "all_manifests_complete": true,
+  "all_replay_audits_passed": true,
+  "runs_passing_original_model_atol_1e-6": 8,
+  "runs_passing_amended_model_atol_5e-6": 7,
+  "environment_atol": 1e-7,
+  "reward_atol": 1e-6,
+  "recorded_training_seconds_total": 471.0192771000002,
+  "local_artifact_bytes": 1417284396
+}

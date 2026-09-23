@@ -60,10 +60,11 @@ at exactly 11.25 degrees fell just below the mathematical boundary.
 
 This result comes from one training seed and one architecture. It answers the
 engineering question—our connectome model, environment, PPO loop, and recorder
-work together—but not the scientific comparison question. The next controlled
-experiment is to train the matched random-connectivity and MLP policies across
-multiple seeds under this exact aiming protocol. After that, enable movement and
-introduce navigation objectives without changing the eight-action interface.
+work together—but not the scientific comparison question. The subsequent
+[five-seed matched comparison](../toy_combat_baseline_comparison/README.md) is
+complete: random wiring and the MLP outperform FlyWire on this aiming task.
+The next stage is movement and navigation without changing the eight-action
+interface.
 
 ## Reproduce
 

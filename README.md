@@ -75,3 +75,9 @@ The first recorded PPO run in the deterministic toy-combat environment improves
 held-out stochastic hit rate from 35.2% to 95.3% on CPU. Every rollout decision,
 reward component, outcome, and internal connectome activation is replayable from
 the saved policy version. See the [protocol and results](experiments/toy_combat_aiming/README.md).
+
+The subsequent [five-seed matched comparison](experiments/toy_combat_baseline_comparison/README.md)
+uses exactly 7,913 actor parameters for FlyWire, randomized wiring, and an MLP.
+Final stochastic hit rates are 90.7%, 96.1%, and 100.0%, respectively. FlyWire
+trails both controls on hit rate, return, and learning-curve area in every paired
+seed, so this task provides no evidence of a connectome-wiring advantage.

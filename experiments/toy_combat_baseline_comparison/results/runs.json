@@ -1,0 +1,107 @@
+[
+  {
+    "name": "flywire_seed_42",
+    "architecture": "flywire",
+    "seed": 42,
+    "final_stochastic_hit_rate": 0.890625,
+    "training_seconds": 31.432617700000264
+  },
+  {
+    "name": "random_seed_42",
+    "architecture": "random",
+    "seed": 42,
+    "final_stochastic_hit_rate": 0.99609375,
+    "training_seconds": 38.45314409999992
+  },
+  {
+    "name": "mlp_seed_42",
+    "architecture": "mlp",
+    "seed": 42,
+    "final_stochastic_hit_rate": 1.0,
+    "training_seconds": 19.878912300000593
+  },
+  {
+    "name": "random_seed_43",
+    "architecture": "random",
+    "seed": 43,
+    "final_stochastic_hit_rate": 0.91015625,
+    "training_seconds": 37.87584430000061
+  },
+  {
+    "name": "mlp_seed_43",
+    "architecture": "mlp",
+    "seed": 43,
+    "final_stochastic_hit_rate": 1.0,
+    "training_seconds": 20.263554099999965
+  },
+  {
+    "name": "flywire_seed_43",
+    "architecture": "flywire",
+    "seed": 43,
+    "final_stochastic_hit_rate": 0.84375,
+    "training_seconds": 40.14669390000017
+  },
+  {
+    "name": "mlp_seed_44",
+    "architecture": "mlp",
+    "seed": 44,
+    "final_stochastic_hit_rate": 1.0,
+    "training_seconds": 20.30012919999899
+  },
+  {
+    "name": "flywire_seed_44",
+    "architecture": "flywire",
+    "seed": 44,
+    "final_stochastic_hit_rate": 0.9375,
+    "training_seconds": 37.89392439999938
+  },
+  {
+    "name": "random_seed_44",
+    "architecture": "random",
+    "seed": 44,
+    "final_stochastic_hit_rate": 0.94921875,
+    "training_seconds": 38.48120840000047
+  },
+  {
+    "name": "flywire_seed_45",
+    "architecture": "flywire",
+    "seed": 45,
+    "final_stochastic_hit_rate": 0.9453125,
+    "training_seconds": 36.831959900000584
+  },
+  {
+    "name": "random_seed_45",
+    "architecture": "random",
+    "seed": 45,
+    "final_stochastic_hit_rate": 0.97265625,
+    "training_seconds": 37.227070200000526
+  },
+  {
+    "name": "mlp_seed_45",
+    "architecture": "mlp",
+    "seed": 45,
+    "final_stochastic_hit_rate": 1.0,
+    "training_seconds": 19.264419199998883
+  },
+  {
+    "name": "random_seed_46",
+    "architecture": "random",
+    "seed": 46,
+    "final_stochastic_hit_rate": 0.9765625,
+    "training_seconds": 36.575936700000966
+  },
+  {
+    "name": "mlp_seed_46",
+    "architecture": "mlp",
+    "seed": 46,
+    "final_stochastic_hit_rate": 1.0,
+    "training_seconds": 19.950210299999526
+  },
+  {
+    "name": "flywire_seed_46",
+    "architecture": "flywire",
+    "seed": 46,
+    "final_stochastic_hit_rate": 0.91796875,
+    "training_seconds": 36.44365239999934
+  }
+]
