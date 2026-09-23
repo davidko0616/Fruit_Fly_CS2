@@ -41,28 +41,41 @@ def run(output, results, seeds):
                 print(f'SKIP {name}: compact result already exists', flush=True)
                 continue
             directory = output / name
+            recover_complete_run = False
             if directory.exists():
-                raise RuntimeError(f'Incomplete or unaudited run directory already exists: {directory}')
+                manifest_path = directory / 'manifest.json'
+                if manifest_path.is_file():
+                    existing_manifest = json.loads(manifest_path.read_text())
+                    recover_complete_run = (existing_manifest.get('status') == 'complete' and
+                                            existing_manifest.get('decisions') == 51_200)
+                if not recover_complete_run:
+                    raise RuntimeError(f'Incomplete run directory already exists: {directory}')
             log_path = output / f'{name}.log'
-            print(f'START {name}', flush=True)
-            with log_path.open('w', encoding='utf-8') as log:
-                subprocess.run([sys.executable, '-u', '-m', 'training.train_toy_combat',
-                                '--output', str(directory), '--architecture', architecture,
-                                '--seed', str(seed), '--updates', '100', '--workers', '8',
-                                '--horizon', '64', '--action-repeat', '2'], cwd=ROOT,
-                               stdout=log, stderr=subprocess.STDOUT, check=True)
+            print(f'{"RECOVER" if recover_complete_run else "START"} {name}', flush=True)
+            with log_path.open('a' if recover_complete_run else 'w', encoding='utf-8') as log:
+                if not recover_complete_run:
+                    subprocess.run([sys.executable, '-u', '-m', 'training.train_toy_combat',
+                                    '--output', str(directory), '--architecture', architecture,
+                                    '--seed', str(seed), '--updates', '100', '--workers', '8',
+                                    '--horizon', '64', '--action-repeat', '2'], cwd=ROOT,
+                                   stdout=log, stderr=subprocess.STDOUT, check=True)
                 audit_process = subprocess.run([sys.executable, 'tools/verify_combat_recording.py',
                                                 '--run', str(directory)], cwd=ROOT,
-                                               capture_output=True, text=True, check=True)
+                                               capture_output=True, text=True)
+                log.write(audit_process.stdout); log.write(audit_process.stderr)
+                if audit_process.returncode:
+                    raise RuntimeError(f'Audit failed for {name}: {audit_process.stderr[-2000:]}')
                 audit = json.loads(audit_process.stdout)
-                log.write(audit_process.stdout)
                 atomic_json(directory / 'audit.json', audit)
                 evaluation_directory = directory / 'evaluation'
                 evaluation_process = subprocess.run([sys.executable, 'tools/evaluate_toy_combat.py',
                                                       '--run', str(directory), '--output',
                                                       str(evaluation_directory), '--episodes', '256'],
-                                                     cwd=ROOT, capture_output=True, text=True, check=True)
-                log.write(evaluation_process.stdout)
+                                                     cwd=ROOT, capture_output=True, text=True)
+                log.write(evaluation_process.stdout); log.write(evaluation_process.stderr)
+                if evaluation_process.returncode:
+                    raise RuntimeError(f'Evaluation failed for {name}: '
+                                       f'{evaluation_process.stderr[-2000:]}')
             manifest = json.loads((directory / 'manifest.json').read_text())
             metrics = json.loads((directory / 'metrics.json').read_text())
             if manifest['status'] != 'complete' or manifest['decisions'] != 51_200:

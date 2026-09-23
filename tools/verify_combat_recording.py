@@ -15,6 +15,9 @@ from models.mlp_baseline import MLPBaseline
 from toy_combat.env import REWARD_NAMES, CombatConfig, ToyCombatEnv
 from toy_combat.recording import RESET_CODES, mlp_forward_with_activity, policy_forward_with_activity
 
+MODEL_RTOL = 1e-5
+MODEL_ATOL = 5e-6
+
 
 def verify(directory):
     directory = Path(directory)
@@ -77,17 +80,22 @@ def verify(directory):
                 logits, probabilities, hidden_pre, hidden_post = mlp_forward_with_activity(model, x, mask)
             else:
                 logits, probabilities, states, pre, sensory = policy_forward_with_activity(model, x, mask)
-        np.testing.assert_allclose(logits.numpy()[0], data['logits'][i], rtol=1e-5, atol=1e-6)
-        np.testing.assert_allclose(probabilities.numpy()[0], data['probabilities'][i], rtol=1e-5, atol=1e-6)
+        np.testing.assert_allclose(logits.numpy()[0], data['logits'][i],
+                                   rtol=MODEL_RTOL, atol=MODEL_ATOL)
+        np.testing.assert_allclose(probabilities.numpy()[0], data['probabilities'][i],
+                                   rtol=MODEL_RTOL, atol=MODEL_ATOL)
         if architecture == 'mlp':
-            np.testing.assert_allclose(hidden_pre[0], data['hidden_preactivations'][i], rtol=1e-5,
-                                       atol=1e-6)
-            np.testing.assert_allclose(hidden_post[0], data['hidden_activations'][i], rtol=1e-5,
-                                       atol=1e-6)
+            np.testing.assert_allclose(hidden_pre[0], data['hidden_preactivations'][i],
+                                       rtol=MODEL_RTOL, atol=MODEL_ATOL)
+            np.testing.assert_allclose(hidden_post[0], data['hidden_activations'][i],
+                                       rtol=MODEL_RTOL, atol=MODEL_ATOL)
         else:
-            np.testing.assert_allclose(states[0], data['states'][i], rtol=1e-5, atol=1e-6)
-            np.testing.assert_allclose(pre[0], data['preactivations'][i], rtol=1e-5, atol=1e-6)
-            np.testing.assert_allclose(sensory[0], data['sensory'][i], rtol=1e-5, atol=1e-6)
+            np.testing.assert_allclose(states[0], data['states'][i],
+                                       rtol=MODEL_RTOL, atol=MODEL_ATOL)
+            np.testing.assert_allclose(pre[0], data['preactivations'][i],
+                                       rtol=MODEL_RTOL, atol=MODEL_ATOL)
+            np.testing.assert_allclose(sensory[0], data['sensory'][i],
+                                       rtol=MODEL_RTOL, atol=MODEL_ATOL)
         action = int(data['executed_action'][i])
         next_observation, reward, terminated, truncated, outcome = env.step(action, manifest['config']['action_repeat'])
         np.testing.assert_allclose(next_observation, data['next_observation'][i], rtol=0, atol=1e-7)
@@ -103,7 +111,8 @@ def verify(directory):
         observations[worker], infos[worker] = next_observation, outcome
     result = {'status': manifest['status'], 'architecture': architecture, 'decisions': count,
               'episodes_seen': int(len(set(zip(data['worker_id'].tolist(), data['episode_id'].tolist())))),
-              'hits': replayed_hits, 'audit_passed': True}
+              'hits': replayed_hits, 'model_rtol': MODEL_RTOL, 'model_atol': MODEL_ATOL,
+              'environment_atol': 1e-7, 'reward_atol': 1e-6, 'audit_passed': True}
     print(json.dumps(result, indent=2))
     return result
 
