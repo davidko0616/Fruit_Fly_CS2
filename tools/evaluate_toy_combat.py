@@ -135,7 +135,10 @@ def evaluate(run, output, episodes=256):
         selected = [row for row in rows if row['mode'] == mode]
         axes[0].plot(versions, [100 * r['hit_rate'] for r in selected], marker='o', label=mode, color=color)
         axes[1].plot(versions, [r['return_mean'] for r in selected], marker='o', label=mode, color=color)
-    axes[0].axhline(100 * scripted['hit_rate'], color='#56833e', linestyle=':', label='scripted oracle')
+    scripted_label = ('scripted benchmark'
+                      if manifest['config'].get('environment', {}).get('target_movement_enabled', False)
+                      else 'scripted oracle')
+    axes[0].axhline(100 * scripted['hit_rate'], color='#56833e', linestyle=':', label=scripted_label)
     axes[1].axhline(scripted['return_mean'], color='#56833e', linestyle=':')
     axes[0].set(title='Held-out hit rate', xlabel='PPO update / policy version', ylabel='Hit rate (%)', ylim=(0, 105))
     axes[1].set(title='Held-out episode return', xlabel='PPO update / policy version', ylabel='Mean return')

@@ -97,3 +97,12 @@ Curriculum transfer and fine-tuning raise held-out stochastic hit rate from 80.9
 to **99.6%**. The final controller acquires line of sight, reaches firing
 alignment, and fires in all 256 held-out layouts; all 51,200 recorded decisions
 again pass replay.
+
+## Moving-target milestone
+
+The [moving-target curriculum](experiments/toy_combat_moving_target/README.md)
+moves the target one cell after every agent decision. After a transparently
+reported failed first confirmation and a predeclared zero-entropy replacement,
+the independent seed-69 controller improves held-out stochastic hit rate from
+79.3% to **92.2%**. Target motion occurs in every evaluation episode, averaging
+33.5 moves for the final controller, and all 51,200 decisions pass replay.

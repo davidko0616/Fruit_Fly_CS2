@@ -1,6 +1,6 @@
 # Project handoff — updated September 23, 2026
 
-## Current PC: integrated navigation milestone complete
+## Current PC: moving-target milestone complete
 
 The current machine is the Ryzen 5 7600 desktop, using Python 3.12 and
 PyTorch 2.7.1+cpu in `.venv`. The first fixed navigation confirmation now passes:
@@ -9,6 +9,8 @@ episode behind occlusion. All 51,200 recorded decisions replayed successfully.
 The subsequent integrated curriculum removes phase masking and reaches 99.6%
 held-out hit rate with movement and firing available together. Its independent
 51,200-decision replay also passes.
+The next confirmed policy tracks a target moving after every decision and reaches
+92.2% held-out hit rate. Its complete 51,200-decision replay passes as well.
 
 All 15 recorded classifier runs (FlyWire, matched random
 destinations and matched MLP; seeds 42-46; 200 epochs) completed and passed
@@ -35,6 +37,13 @@ limitations below describe the previous computer. The original trainer remains
 CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device.
 
 ## Completed
+
+- Moving-target toy combat: after preserving a narrowly failed first confirmation,
+  a predeclared zero-entropy replacement reached 92.2% held-out stochastic hit
+  rate from a 79.3% transferred baseline. Target motion occurred in every episode
+  and averaged 33.5 moves for the final policy. Topology/sign and 51,200-decision
+  replay checks passed. See the
+  [protocols, report, and curve](../experiments/toy_combat_moving_target/README.md).
 
 - Integrated toy-combat navigation: curriculum transfer followed by 100 PPO
   updates produced 99.6% held-out stochastic hit rate with movement, aiming, and
@@ -106,21 +115,20 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Add controlled target motion while retaining integrated actions, synchronized
-   activity recording, and stochastic evaluation.
-2. Hide target coordinates during occlusion to introduce memory-dependent partial
-   observability and longer credit assignment.
-3. Confirm each harder curriculum across multiple seeds before connecting the
+1. Hide target coordinates during occlusion to introduce memory-dependent partial
+   observability and longer credit assignment. Decide explicitly whether the
+   policy receives last-seen state or persistent recurrent state.
+2. Confirm the partial-observability curriculum before connecting the
    controller to a live Counter-Strike observation/action bridge. Repeat matched
    actor comparisons when they answer a specific scientific question rather than
    as the main optimization target.
-4. For stronger scientific conclusions, predeclare harder synthetic tasks,
+3. For stronger scientific conclusions, predeclare harder synthetic tasks,
    independent dataset splits, or less dense circuits. The first comparison
    is close to the accuracy ceiling and uses a single fixed split.
-5. Extend replay to feedforward MLP schema-2 recordings if visual comparison
+4. Extend replay to feedforward MLP schema-2 recordings if visual comparison
    is needed. They are fully recorded and numerically audited, but the current
    recurrent viewer intentionally accepts schema 1 only.
-6. Benchmark larger models only when needed. Current experiments run on CPU;
+5. Benchmark larger models only when needed. Current experiments run on CPU;
    NVIDIA laptop results remain historical evidence for a CUDA option.
 
 Do not claim biological advantages from the first classification run. The current
