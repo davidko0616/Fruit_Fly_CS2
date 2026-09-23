@@ -31,3 +31,18 @@ The privileged reactive benchmark solved all 256 held-out layouts and at least
 99% of a broader 1,000-seed check. It is reported as a benchmark rather than a
 proof of universal solvability because rare target cycles can outlast its simple
 chasing rule.
+
+## Version 3: remove the entropy bonus
+
+The first confirmation narrowly missed its frozen thresholds, while its greedy
+controller outperformed stochastic sampling. Two diagnostic runs therefore kept
+the environment, source actor, rewards, update budget, and evaluation fixed but
+set the entropy coefficient to zero from update 1.
+
+- Seed 42 reached 90.6% stochastic and 94.5% greedy hit rate.
+- Seed 61, which had reached only 87.1% stochastic under the original entropy
+  schedule, reached **93.4% stochastic** and 93.8% greedy with zero entropy.
+
+Both zero-entropy runs passed 51,200-decision replay. The seed-61 improvement
+isolates policy diffusion as the main cause of the failed endpoint and motivates
+the prospective replacement protocol.
