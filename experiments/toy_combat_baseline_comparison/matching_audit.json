@@ -1,0 +1,167 @@
+{
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "all_checks_passed": true,
+  "runs": [
+    {
+      "seed": 42,
+      "parameter_counts": {
+        "flywire": 7913,
+        "random": 7913,
+        "mlp": 7913
+      },
+      "mlp_hidden_sizes": [
+        78,
+        81
+      ],
+      "edges": 7615,
+      "randomized_edge_overlap_count": 6209,
+      "randomized_edge_overlap_percent": 81.53644123440577,
+      "signed_edge_counts": {
+        "flywire_excitatory": 5019,
+        "flywire_inhibitory": 2596,
+        "random_excitatory": 5019,
+        "random_inhibitory": 2596
+      },
+      "checks": {
+        "parameter_counts_exact": true,
+        "mlp_hidden_sizes_exact": true,
+        "edge_count_match": true,
+        "source_degrees_match": true,
+        "self_loops_match": true,
+        "per_source_count_multisets_match": true,
+        "recurrent_io_initialization_match": true,
+        "signed_edge_counts_match": true
+      }
+    },
+    {
+      "seed": 43,
+      "parameter_counts": {
+        "flywire": 7913,
+        "random": 7913,
+        "mlp": 7913
+      },
+      "mlp_hidden_sizes": [
+        78,
+        81
+      ],
+      "edges": 7615,
+      "randomized_edge_overlap_count": 6218,
+      "randomized_edge_overlap_percent": 81.65462902166776,
+      "signed_edge_counts": {
+        "flywire_excitatory": 5019,
+        "flywire_inhibitory": 2596,
+        "random_excitatory": 5019,
+        "random_inhibitory": 2596
+      },
+      "checks": {
+        "parameter_counts_exact": true,
+        "mlp_hidden_sizes_exact": true,
+        "edge_count_match": true,
+        "source_degrees_match": true,
+        "self_loops_match": true,
+        "per_source_count_multisets_match": true,
+        "recurrent_io_initialization_match": true,
+        "signed_edge_counts_match": true
+      }
+    },
+    {
+      "seed": 44,
+      "parameter_counts": {
+        "flywire": 7913,
+        "random": 7913,
+        "mlp": 7913
+      },
+      "mlp_hidden_sizes": [
+        78,
+        81
+      ],
+      "edges": 7615,
+      "randomized_edge_overlap_count": 6244,
+      "randomized_edge_overlap_percent": 81.99606040709126,
+      "signed_edge_counts": {
+        "flywire_excitatory": 5019,
+        "flywire_inhibitory": 2596,
+        "random_excitatory": 5019,
+        "random_inhibitory": 2596
+      },
+      "checks": {
+        "parameter_counts_exact": true,
+        "mlp_hidden_sizes_exact": true,
+        "edge_count_match": true,
+        "source_degrees_match": true,
+        "self_loops_match": true,
+        "per_source_count_multisets_match": true,
+        "recurrent_io_initialization_match": true,
+        "signed_edge_counts_match": true
+      }
+    },
+    {
+      "seed": 45,
+      "parameter_counts": {
+        "flywire": 7913,
+        "random": 7913,
+        "mlp": 7913
+      },
+      "mlp_hidden_sizes": [
+        78,
+        81
+      ],
+      "edges": 7615,
+      "randomized_edge_overlap_count": 6234,
+      "randomized_edge_overlap_percent": 81.86474064346685,
+      "signed_edge_counts": {
+        "flywire_excitatory": 5019,
+        "flywire_inhibitory": 2596,
+        "random_excitatory": 5019,
+        "random_inhibitory": 2596
+      },
+      "checks": {
+        "parameter_counts_exact": true,
+        "mlp_hidden_sizes_exact": true,
+        "edge_count_match": true,
+        "source_degrees_match": true,
+        "self_loops_match": true,
+        "per_source_count_multisets_match": true,
+        "recurrent_io_initialization_match": true,
+        "signed_edge_counts_match": true
+      }
+    },
+    {
+      "seed": 46,
+      "parameter_counts": {
+        "flywire": 7913,
+        "random": 7913,
+        "mlp": 7913
+      },
+      "mlp_hidden_sizes": [
+        78,
+        81
+      ],
+      "edges": 7615,
+      "randomized_edge_overlap_count": 6211,
+      "randomized_edge_overlap_percent": 81.56270518713066,
+      "signed_edge_counts": {
+        "flywire_excitatory": 5019,
+        "flywire_inhibitory": 2596,
+        "random_excitatory": 5019,
+        "random_inhibitory": 2596
+      },
+      "checks": {
+        "parameter_counts_exact": true,
+        "mlp_hidden_sizes_exact": true,
+        "edge_count_match": true,
+        "source_degrees_match": true,
+        "self_loops_match": true,
+        "per_source_count_multisets_match": true,
+        "recurrent_io_initialization_match": true,
+        "signed_edge_counts_match": true
+      }
+    }
+  ]
+}

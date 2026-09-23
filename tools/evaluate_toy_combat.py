@@ -14,15 +14,21 @@ import torch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from models.flywire_network import FlyWireNetwork
+from models.mlp_baseline import MLPBaseline
 from toy_combat.env import ACTION_NAMES, CombatConfig, ToyCombatEnv, scripted_action
 
 
 def load_policy(run, version):
     manifest = json.loads((run / 'manifest.json').read_text())
-    with np.load(run / 'graph.npz') as graph:
-        model = FlyWireNetwork(sp.load_npz(run / 'adjacency.npz'), graph['signs'], graph['inputs'],
-                               graph['outputs'], manifest['config']['observation_size'],
-                               len(manifest['config']['action_names']), 3, 'normalized_synapse_count')
+    config = manifest['config']
+    if config.get('architecture', 'flywire') == 'mlp':
+        model = MLPBaseline(config['observation_size'], len(config['action_names']),
+                            tuple(config['hidden_sizes']))
+    else:
+        with np.load(run / 'graph.npz') as graph:
+            model = FlyWireNetwork(sp.load_npz(run / 'adjacency.npz'), graph['signs'], graph['inputs'],
+                                   graph['outputs'], config['observation_size'],
+                                   len(config['action_names']), 3, 'normalized_synapse_count')
     with np.load(run / 'weights' / f'{version:07d}.npz') as weights, torch.no_grad():
         for i, parameter in enumerate(model.parameters()):
             parameter.copy_(torch.from_numpy(weights[f'p{i}']))
@@ -113,7 +119,9 @@ def evaluate(run, output, episodes=256):
     axes[0].set(title='Held-out hit rate', xlabel='PPO update / policy version', ylabel='Hit rate (%)', ylim=(0, 105))
     axes[1].set(title='Held-out episode return', xlabel='PPO update / policy version', ylabel='Mean return')
     for ax in axes: ax.grid(alpha=.2)
-    axes[0].legend(); fig.suptitle(f'Toy combat aiming · {episodes} fixed held-out episodes')
+    axes[0].legend()
+    fig.suptitle(f'{manifest["config"].get("architecture", "flywire")} aiming · '
+                 f'{episodes} fixed held-out episodes')
     fig.savefig(output / 'learning.png', dpi=160); plt.close(fig)
     return payload
 

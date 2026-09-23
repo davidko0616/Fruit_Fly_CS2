@@ -11,8 +11,9 @@ import torch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from models.flywire_network import FlyWireNetwork
+from models.mlp_baseline import MLPBaseline
 from toy_combat.env import REWARD_NAMES, CombatConfig, ToyCombatEnv
-from toy_combat.recording import RESET_CODES, policy_forward_with_activity
+from toy_combat.recording import RESET_CODES, mlp_forward_with_activity, policy_forward_with_activity
 
 
 def verify(directory):
@@ -35,11 +36,17 @@ def verify(directory):
     np.testing.assert_array_equal(data['global_decision'], np.arange(count))
     if manifest['status'] == 'complete' and count != manifest['decisions']:
         raise ValueError('Manifest decision count disagrees with chunks')
-    with np.load(directory / 'graph.npz') as graph:
-        graph = dict(graph)
-    model = FlyWireNetwork(sp.load_npz(directory / 'adjacency.npz'), graph['signs'], graph['inputs'],
-                           graph['outputs'], manifest['config']['observation_size'],
-                           len(manifest['config']['action_names']), 3, 'normalized_synapse_count')
+    config = manifest['config']
+    architecture = config.get('architecture', 'flywire')
+    if architecture == 'mlp':
+        model = MLPBaseline(config['observation_size'], len(config['action_names']),
+                            tuple(config['hidden_sizes']))
+    else:
+        with np.load(directory / 'graph.npz') as graph:
+            graph = dict(graph)
+        model = FlyWireNetwork(sp.load_npz(directory / 'adjacency.npz'), graph['signs'], graph['inputs'],
+                               graph['outputs'], config['observation_size'],
+                               len(config['action_names']), 3, 'normalized_synapse_count')
     model.eval()
     environments = {worker: ToyCombatEnv(CombatConfig(**manifest['config']['environment']))
                     for worker in range(manifest['config']['workers'])}
@@ -66,12 +73,21 @@ def verify(directory):
         x = torch.from_numpy(data['transformed_input'][i:i+1])
         mask = torch.from_numpy(data['action_mask'][i:i+1])
         with torch.no_grad():
-            logits, probabilities, states, pre, sensory = policy_forward_with_activity(model, x, mask)
+            if architecture == 'mlp':
+                logits, probabilities, hidden_pre, hidden_post = mlp_forward_with_activity(model, x, mask)
+            else:
+                logits, probabilities, states, pre, sensory = policy_forward_with_activity(model, x, mask)
         np.testing.assert_allclose(logits.numpy()[0], data['logits'][i], rtol=1e-5, atol=1e-6)
         np.testing.assert_allclose(probabilities.numpy()[0], data['probabilities'][i], rtol=1e-5, atol=1e-6)
-        np.testing.assert_allclose(states[0], data['states'][i], rtol=1e-5, atol=1e-6)
-        np.testing.assert_allclose(pre[0], data['preactivations'][i], rtol=1e-5, atol=1e-6)
-        np.testing.assert_allclose(sensory[0], data['sensory'][i], rtol=1e-5, atol=1e-6)
+        if architecture == 'mlp':
+            np.testing.assert_allclose(hidden_pre[0], data['hidden_preactivations'][i], rtol=1e-5,
+                                       atol=1e-6)
+            np.testing.assert_allclose(hidden_post[0], data['hidden_activations'][i], rtol=1e-5,
+                                       atol=1e-6)
+        else:
+            np.testing.assert_allclose(states[0], data['states'][i], rtol=1e-5, atol=1e-6)
+            np.testing.assert_allclose(pre[0], data['preactivations'][i], rtol=1e-5, atol=1e-6)
+            np.testing.assert_allclose(sensory[0], data['sensory'][i], rtol=1e-5, atol=1e-6)
         action = int(data['executed_action'][i])
         next_observation, reward, terminated, truncated, outcome = env.step(action, manifest['config']['action_repeat'])
         np.testing.assert_allclose(next_observation, data['next_observation'][i], rtol=0, atol=1e-7)
@@ -85,7 +101,7 @@ def verify(directory):
         assert int(outcome['action_applied_ticks']) == int(data['action_applied_ticks'][i])
         replayed_hits += int(outcome['hit'])
         observations[worker], infos[worker] = next_observation, outcome
-    result = {'status': manifest['status'], 'decisions': count,
+    result = {'status': manifest['status'], 'architecture': architecture, 'decisions': count,
               'episodes_seen': int(len(set(zip(data['worker_id'].tolist(), data['episode_id'].tolist())))),
               'hits': replayed_hits, 'audit_passed': True}
     print(json.dumps(result, indent=2))

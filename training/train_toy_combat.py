@@ -1,4 +1,4 @@
-"""PPO training for the connectome policy with complete rollout recording."""
+"""PPO training for matched aiming policies with complete rollout recording."""
 import argparse
 import hashlib
 import json
@@ -8,11 +8,13 @@ import shutil
 import time
 
 import numpy as np
+import scipy.sparse as sp
 import torch
 import torch.nn as nn
 
 from toy_combat.env import ACTION_NAMES, REWARD_NAMES, CombatConfig, ToyCombatEnv
-from toy_combat.recording import CombatRecorder, RESET_CODES, policy_forward_with_activity
+from toy_combat.recording import (CombatRecorder, RESET_CODES, mlp_forward_with_activity,
+                                  policy_forward_with_activity)
 from training.recording import array, atomic_json
 from training.run_toy_combat import load_policy
 
@@ -28,11 +30,12 @@ class ValueNetwork(nn.Module):
 
 
 def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
-          learning_rate=3e-4, ppo_epochs=4, minibatch_size=256):
+          learning_rate=3e-4, ppo_epochs=4, minibatch_size=256, architecture='flywire'):
     if updates < 1 or workers < 1 or horizon < 2:
         raise ValueError('Positive updates/workers and horizon >=2 required')
     torch.manual_seed(seed); torch.set_num_threads(4); torch.use_deterministic_algorithms(True)
-    policy, source_graph = load_policy(seed)
+    policy, source_graph, run_adjacency, hidden_sizes = load_policy(seed, architecture)
+    torch.manual_seed(seed + 3)
     value_model = ValueNetwork(ToyCombatEnv.observation_size)
     optimizer = torch.optim.Adam([*policy.parameters(), *value_model.parameters()], lr=learning_rate, foreach=False)
     sample_generator = torch.Generator().manual_seed(seed + 1)
@@ -44,34 +47,54 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
     observations, infos = [v[0] for v in reset], [v[1] for v in reset]
     episode_returns, episode_return = [], [0.0] * workers
     episode_hits, completed_lengths = [], []
-    graph = {'root_ids': [str(i) for i in source_graph['root_ids']],
-             'inputs': source_graph['inputs'].tolist(), 'outputs': source_graph['outputs'].tolist(),
-             'sources': policy.connectome_layer.indices[1].tolist(),
-             'targets': policy.connectome_layer.indices[0].tolist(),
-             'edge_signs': policy.connectome_layer.edge_signs.tolist()}
+    if architecture == 'mlp':
+        graph = {'architecture': architecture, 'hidden_sizes': list(hidden_sizes),
+                 'parameter_names': [name for name, _ in policy.named_parameters()]}
+    else:
+        graph = {'architecture': architecture,
+                 'root_ids': [str(i) for i in source_graph['root_ids']],
+                 'inputs': source_graph['inputs'].tolist(), 'outputs': source_graph['outputs'].tolist(),
+                 'sources': policy.connectome_layer.indices[1].tolist(),
+                 'targets': policy.connectome_layer.indices[0].tolist(),
+                 'edge_signs': policy.connectome_layer.edge_signs.tolist()}
+    parameter_budget = sum(parameter.numel() for parameter in policy.parameters())
     config = {'seed': seed, 'workers': workers, 'updates': updates, 'horizon': horizon,
               'action_repeat': action_repeat, 'algorithm': 'PPO', 'learning_rate': learning_rate,
               'ppo_epochs': ppo_epochs, 'minibatch_size': minibatch_size, 'gamma': .99,
               'gae_lambda': .95, 'clip_ratio': .2, 'entropy_coefficient': .01,
               'value_coefficient': .5, 'max_gradient_norm': .5,
+              'architecture': architecture, 'parameters': sum(p.numel() for p in policy.parameters()),
+              'parameter_budget': parameter_budget,
+              'hidden_sizes': list(hidden_sizes) if architecture == 'mlp' else None,
+              'topology_seed': seed if architecture == 'random' else None,
+              'random_control': ('source degree, self-loops, source sign, and per-source count '
+                                 'multiset preserved') if architecture == 'random' else None,
+              'value_seed': seed + 3,
               'observation_size': ToyCombatEnv.observation_size, 'action_names': ACTION_NAMES,
               'reward_names': REWARD_NAMES, 'environment': CombatConfig().__dict__}
     update_rows, policy_version, global_decision = [], 0, 0
-    fixed_indices = policy.connectome_layer.indices.detach().clone()
-    fixed_edge_signs = policy.connectome_layer.edge_signs.detach().clone()
+    fixed_structure = [(name, tuple(parameter.shape)) for name, parameter in policy.named_parameters()]
+    fixed_indices = (policy.connectome_layer.indices.detach().clone()
+                     if architecture != 'mlp' else None)
+    fixed_edge_signs = (policy.connectome_layer.edge_signs.detach().clone()
+                        if architecture != 'mlp' else None)
     start = time.perf_counter()
     with CombatRecorder(output, policy, graph, config, max_buffer_decisions=256) as recorder:
-        for name in ('graph.npz', 'adjacency.npz'):
-            shutil.copyfile(ARCHIVE / name, Path(output) / name)
-        provenance_paths = (Path(__file__), ROOT / 'toy_combat/env.py',
+        shutil.copyfile(ARCHIVE / 'graph.npz', Path(output) / 'graph.npz')
+        sp.save_npz(Path(output) / 'adjacency.npz', run_adjacency)
+        provenance_paths = (Path(__file__), ROOT / 'training/run_toy_combat.py',
+                            ROOT / 'toy_combat/env.py',
                             ROOT / 'toy_combat/recording.py', ROOT / 'models/flywire_network.py',
+                            ROOT / 'models/sparse_layer.py',
+                            ROOT / 'models/random_sparse.py', ROOT / 'models/mlp_baseline.py',
                             ARCHIVE / 'graph.npz', ARCHIVE / 'adjacency.npz')
         atomic_json(Path(output) / 'provenance.json', {
             'python': platform.python_version(), 'platform': platform.platform(),
             'processor': platform.processor(), 'torch': torch.__version__,
-            'numpy': np.__version__,
+            'numpy': np.__version__, 'architecture': architecture,
             'source_sha256': {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
-                              for path in provenance_paths}})
+                              for path in provenance_paths},
+            'run_adjacency_sha256': hashlib.sha256((Path(output) / 'adjacency.npz').read_bytes()).hexdigest()})
         for update in range(1, updates + 1):
             rollout = {key: [] for key in ('observations', 'masks', 'actions', 'old_log_probabilities',
                                             'rewards', 'dones', 'values')}
@@ -79,7 +102,12 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
                 obs_tensor = torch.from_numpy(np.stack(observations))
                 mask_tensor = torch.from_numpy(np.stack([info['action_mask'] for info in infos]))
                 with torch.no_grad():
-                    logits, probabilities, states, pre, sensory = policy_forward_with_activity(policy, obs_tensor, mask_tensor)
+                    if architecture == 'mlp':
+                        logits, probabilities, hidden_pre, hidden_post = mlp_forward_with_activity(
+                            policy, obs_tensor, mask_tensor)
+                    else:
+                        logits, probabilities, states, pre, sensory = policy_forward_with_activity(
+                            policy, obs_tensor, mask_tensor)
                     values = value_model(obs_tensor)
                     actions = torch.multinomial(probabilities, 1, generator=sample_generator).squeeze(1)
                     selected = probabilities.gather(1, actions[:, None]).squeeze(1)
@@ -91,12 +119,16 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
                     next_obs, reward, terminated, truncated, outcome = env.step(int(actions[worker]), action_repeat)
                     done = terminated or truncated
                     components = np.asarray([outcome['reward_components'][name] for name in REWARD_NAMES], dtype=np.float32)
+                    activity = ({'hidden_preactivations': hidden_pre[worker],
+                                 'hidden_activations': hidden_post[worker]}
+                                if architecture == 'mlp' else
+                                {'sensory': sensory[worker], 'states': states[worker],
+                                 'preactivations': pre[worker]})
                     recorder.append(worker_id=worker, episode_id=episode_ids[worker],
                         episode_seed=episode_seeds[worker], decision_index=episode_steps[worker],
                         global_decision=global_decision, policy_version=policy_version,
                         tick_before=before[-1], tick_after=outcome['tick'], observation=observations[worker],
                         transformed_input=observations[worker], action_mask=infos[worker]['action_mask'],
-                        sensory=sensory[worker], states=states[worker], preactivations=pre[worker],
                         logits=array(logits[worker]), probabilities=array(probabilities[worker]),
                         chosen_action=int(actions[worker]), executed_action=int(actions[worker]),
                         log_probability=float(log_probabilities[worker]), entropy=float(entropy[worker]),
@@ -105,7 +137,7 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
                         next_observation=next_obs, terminated=terminated, truncated=truncated,
                         reset_reason=RESET_CODES[outcome['reset_reason']], hit=outcome['hit'], miss=outcome['miss'],
                         collision=outcome['collision'], privileged_before=before,
-                        privileged_after=outcome['privileged_state'])
+                        privileged_after=outcome['privileged_state'], **activity)
                     global_decision += 1; episode_steps[worker] += 1; episode_return[worker] += reward
                     step_rewards.append(reward); step_dones.append(done)
                     observations[worker], infos[worker] = next_obs, outcome
@@ -157,15 +189,19 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
                     diagnostics['entropy'].append(float(entropy)); diagnostics['approx_kl'].append(float((flat['old_log_probabilities'][indices] - new_log_probs).mean()))
                     diagnostics['clip_fraction'].append(float((abs(ratio - 1) > .2).float().mean()))
             policy_version += 1
-            topology_and_signs_preserved = (torch.equal(policy.connectome_layer.indices, fixed_indices)
-                                            and torch.equal(policy.connectome_layer.edge_signs,
-                                                            fixed_edge_signs))
-            if not topology_and_signs_preserved:
-                raise RuntimeError('Connectome topology or edge signs changed during optimization')
+            model_structure_preserved = (fixed_structure ==
+                                         [(name, tuple(parameter.shape))
+                                          for name, parameter in policy.named_parameters()])
+            topology_and_signs_preserved = (None if architecture == 'mlp' else
+                (torch.equal(policy.connectome_layer.indices, fixed_indices)
+                 and torch.equal(policy.connectome_layer.edge_signs, fixed_edge_signs)))
+            if not model_structure_preserved or topology_and_signs_preserved is False:
+                raise RuntimeError('Policy structure, connectome topology, or edge signs changed')
             update_summary = {'update': update, 'policy_version': policy_version,
                 **{key: float(np.mean(value)) for key, value in diagnostics.items()},
                 'gradient_norm': float(gradient_norm),
                 'policy_update_norm': float(torch.sqrt(sum((p - old).square().sum() for p, old in zip(policy.parameters(), before)))),
+                'model_structure_preserved': model_structure_preserved,
                 'topology_and_signs_preserved': topology_and_signs_preserved,
                 'rollout_mean_reward': float(rewards.mean()), 'episodes_completed_total': len(episode_returns),
                 'recent_100_hit_rate': float(np.mean(episode_hits[-100:])) if episode_hits else None,
@@ -176,12 +212,15 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
             if update == 1 or update % 10 == 0 or update == updates:
                 print(f"Update {update}/{updates}: episodes={len(episode_returns)} "
                       f"hit100={update_summary['recent_100_hit_rate']} reward={update_summary['recent_100_return']}", flush=True)
-        metrics = {'updates': updates, 'decisions': global_decision, 'episodes': len(episode_returns),
+        metrics = {'architecture': architecture, 'seed': seed,
+                   'parameters': sum(p.numel() for p in policy.parameters()),
+                   'updates': updates, 'decisions': global_decision, 'episodes': len(episode_returns),
                    'hits': int(sum(episode_hits)), 'overall_hit_rate': float(np.mean(episode_hits)) if episode_hits else None,
                    'recent_100_hit_rate': float(np.mean(episode_hits[-100:])) if episode_hits else None,
                    'recent_100_return': float(np.mean(episode_returns[-100:])) if episode_returns else None,
                    'mean_episode_length': float(np.mean(completed_lengths)) if completed_lengths else None,
-                   'topology_and_signs_preserved': True,
+                   'model_structure_preserved': True,
+                   'topology_and_signs_preserved': None if architecture == 'mlp' else True,
                    'training_seconds_including_recording': time.perf_counter() - start}
         atomic_json(Path(output) / 'metrics.json', metrics)
     print(json.dumps(metrics, indent=2)); return metrics
@@ -192,4 +231,6 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=Path, required=True); parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--updates', type=int, default=80); parser.add_argument('--workers', type=int, default=8)
     parser.add_argument('--horizon', type=int, default=64); parser.add_argument('--action-repeat', type=int, default=2)
-    args = parser.parse_args(); train(args.output, args.seed, args.updates, args.workers, args.horizon, args.action_repeat)
+    parser.add_argument('--architecture', choices=('flywire', 'random', 'mlp'), default='flywire')
+    args = parser.parse_args(); train(args.output, args.seed, args.updates, args.workers,
+                                      args.horizon, args.action_repeat, architecture=args.architecture)

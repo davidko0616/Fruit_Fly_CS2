@@ -10,6 +10,8 @@ import scipy.sparse as sp
 import torch
 
 from models.flywire_network import FlyWireNetwork
+from models.mlp_baseline import MLPBaseline, matched_hidden_sizes
+from models.random_sparse import randomize_destinations
 from toy_combat.env import ACTION_NAMES, REWARD_NAMES, CombatConfig, ToyCombatEnv
 from toy_combat.recording import CombatRecorder, RESET_CODES, policy_forward_with_activity
 from training.recording import atomic_json
@@ -18,22 +20,40 @@ ROOT = Path(__file__).resolve().parents[1]
 ARCHIVE = ROOT / 'experiments/cpu_spiral_100/seed_42'
 
 
-def load_policy(seed):
+def load_policy(seed, architecture='flywire'):
+    if architecture not in ('flywire', 'random', 'mlp'):
+        raise ValueError(f'Unknown architecture: {architecture}')
     with np.load(ARCHIVE / 'graph.npz', allow_pickle=False) as file:
         graph = dict(file)
+    reference_adjacency = sp.load_npz(ARCHIVE / 'adjacency.npz')
     torch.manual_seed(seed)
-    model = FlyWireNetwork(sp.load_npz(ARCHIVE / 'adjacency.npz'), graph['signs'],
-                           graph['inputs'], graph['outputs'], ToyCombatEnv.observation_size,
-                           ToyCombatEnv.action_size, 3, 'normalized_synapse_count')
+    reference = FlyWireNetwork(reference_adjacency, graph['signs'], graph['inputs'], graph['outputs'],
+                               ToyCombatEnv.observation_size, ToyCombatEnv.action_size, 3,
+                               'normalized_synapse_count')
+    parameter_budget = sum(parameter.numel() for parameter in reference.parameters())
+    hidden_sizes = matched_hidden_sizes(parameter_budget, ToyCombatEnv.observation_size,
+                                        ToyCombatEnv.action_size)
+    if architecture == 'flywire':
+        model, adjacency = reference, reference_adjacency
+    elif architecture == 'random':
+        adjacency = randomize_destinations(reference_adjacency, seed)
+        torch.manual_seed(seed)
+        model = FlyWireNetwork(adjacency, graph['signs'], graph['inputs'], graph['outputs'],
+                               ToyCombatEnv.observation_size, ToyCombatEnv.action_size, 3,
+                               'normalized_synapse_count')
+    else:
+        adjacency = reference_adjacency
+        torch.manual_seed(seed)
+        model = MLPBaseline(ToyCombatEnv.observation_size, ToyCombatEnv.action_size, hidden_sizes)
     model.eval()
-    return model, graph
+    return model, graph, adjacency, hidden_sizes
 
 
 def run(output, decisions=128, workers=2, seed=42, action_repeat=2):
     if decisions < workers or workers < 1:
         raise ValueError('Decisions must cover at least one decision per worker')
     torch.set_num_threads(4); torch.use_deterministic_algorithms(True)
-    model, source_graph = load_policy(seed)
+    model, source_graph, _, _ = load_policy(seed)
     environments = [ToyCombatEnv() for _ in range(workers)]
     episode_ids = list(range(workers)); episode_counters = [0] * workers
     episode_seeds = [seed * 100000 + worker for worker in range(workers)]

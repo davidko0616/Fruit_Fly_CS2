@@ -3,14 +3,31 @@ from pathlib import Path
 import unittest
 
 import numpy as np
+import torch
 
 from toy_combat.env import REWARD_NAMES, ToyCombatEnv, scripted_action
-from training.run_toy_combat import run
+from training.run_toy_combat import load_policy, run
 from training.train_toy_combat import train
 from tools.verify_combat_recording import verify
 
 
 class ToyCombatTests(unittest.TestCase):
+    def test_comparison_policies_match_declared_budget_and_recurrent_io_initialization(self):
+        flywire, _, flywire_adjacency, _ = load_policy(42, 'flywire')
+        random, _, random_adjacency, _ = load_policy(42, 'random')
+        mlp, _, _, hidden_sizes = load_policy(42, 'mlp')
+        self.assertEqual(hidden_sizes, (78, 81))
+        self.assertEqual([sum(parameter.numel() for parameter in model.parameters())
+                          for model in (flywire, random, mlp)], [7913, 7913, 7913])
+        self.assertEqual(flywire_adjacency.nnz, random_adjacency.nnz)
+        np.testing.assert_array_equal(np.diff(flywire_adjacency.indptr),
+                                      np.diff(random_adjacency.indptr))
+        self.assertGreater((flywire_adjacency != random_adjacency).nnz, 0)
+        for name in ('input_proj.weight', 'input_proj.bias', 'output_proj.weight',
+                     'output_proj.bias'):
+            torch.testing.assert_close(dict(flywire.named_parameters())[name],
+                                       dict(random.named_parameters())[name], rtol=0, atol=0)
+
     def test_reset_and_transitions_are_deterministic(self):
         first, second = ToyCombatEnv(), ToyCombatEnv()
         a, ai = first.reset(123); b, bi = second.reset(123)
@@ -48,15 +65,23 @@ class ToyCombatTests(unittest.TestCase):
             self.assertEqual(result['decisions'], 20)
             self.assertTrue(result['audit_passed'])
 
-    def test_one_ppo_update_saves_replayable_policy_versions(self):
+    def test_one_ppo_update_saves_replayable_policy_versions_for_all_architectures(self):
         with tempfile.TemporaryDirectory() as temporary:
-            directory = Path(temporary) / 'ppo'
-            metrics = train(directory, seed=6, updates=1, workers=2, horizon=4,
-                            action_repeat=2, ppo_epochs=1, minibatch_size=8)
-            result = verify(directory)
-            self.assertEqual(metrics['decisions'], 8)
-            self.assertTrue((directory / 'weights/0000001.npz').is_file())
-            self.assertEqual(result['decisions'], 8)
+            parameter_counts = []
+            for architecture in ('flywire', 'random', 'mlp'):
+                with self.subTest(architecture=architecture):
+                    directory = Path(temporary) / architecture
+                    metrics = train(directory, seed=6, updates=1, workers=2, horizon=4,
+                                    action_repeat=2, ppo_epochs=1, minibatch_size=8,
+                                    architecture=architecture)
+                    result = verify(directory)
+                    parameter_counts.append(metrics['parameters'])
+                    self.assertEqual(metrics['decisions'], 8)
+                    self.assertTrue((directory / 'weights/0000001.npz').is_file())
+                    self.assertTrue((directory / 'provenance.json').is_file())
+                    self.assertEqual(result['architecture'], architecture)
+                    self.assertEqual(result['decisions'], 8)
+            self.assertEqual(parameter_counts, [7913, 7913, 7913])
 
 
 if __name__ == '__main__':

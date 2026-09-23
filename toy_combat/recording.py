@@ -32,6 +32,27 @@ def policy_forward_with_activity(model, observations, action_masks):
     return logits, probabilities, np.stack([initial, *post], axis=1), np.stack(pre, axis=1), sensory[0]
 
 
+def mlp_forward_with_activity(model, observations, action_masks):
+    """Capture both hidden linear outputs and post-ReLU values without altering the forward."""
+    preactivations, activations, hooks = [], [], []
+    hidden_linears = [layer for layer in model.net[:-1] if isinstance(layer, torch.nn.Linear)]
+    hidden_relus = [layer for layer in model.net[:-1] if isinstance(layer, torch.nn.ReLU)]
+    for layer in hidden_linears:
+        hooks.append(layer.register_forward_hook(lambda module, inputs, output: preactivations.append(array(output))))
+    for layer in hidden_relus:
+        hooks.append(layer.register_forward_hook(lambda module, inputs, output: activations.append(array(output))))
+    try:
+        logits = model(observations)
+    finally:
+        for hook in hooks:
+            hook.remove()
+    if len(preactivations) != len(model.hidden_sizes) or len(activations) != len(model.hidden_sizes):
+        raise RuntimeError('Unexpected MLP activity sequence')
+    masked = logits.masked_fill(~action_masks, torch.finfo(logits.dtype).min)
+    probabilities = masked.softmax(1)
+    return logits, probabilities, np.concatenate(preactivations, axis=1), np.concatenate(activations, axis=1)
+
+
 class CombatRecorder:
     def __init__(self, directory, model, graph, config, max_buffer_decisions=256):
         self.directory = Path(directory)
