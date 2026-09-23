@@ -90,3 +90,10 @@ layouts, stochastic hit rate rose from 48.4% to **97.3%**, with 100% line-of-sig
 acquisition and firing alignment at the final checkpoint. All 51,200 recorded CPU
 decisions passed independent policy and environment replay. See the
 [fixed protocol and results](experiments/toy_combat_navigation/README.md).
+
+The following [integrated-navigation milestone](experiments/toy_combat_integrated_navigation/README.md)
+removes the phase scaffold so movement, turning, waiting, and firing coexist.
+Curriculum transfer and fine-tuning raise held-out stochastic hit rate from 80.9%
+to **99.6%**. The final controller acquires line of sight, reaches firing
+alignment, and fires in all 256 held-out layouts; all 51,200 recorded decisions
+again pass replay.

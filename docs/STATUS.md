@@ -1,11 +1,14 @@
 # Project handoff — updated September 23, 2026
 
-## Current PC: first navigation milestone complete
+## Current PC: integrated navigation milestone complete
 
 The current machine is the Ryzen 5 7600 desktop, using Python 3.12 and
 PyTorch 2.7.1+cpu in `.venv`. The first fixed navigation confirmation now passes:
 the FlyWire controller reaches a 97.3% held-out hit rate after starting every
 episode behind occlusion. All 51,200 recorded decisions replayed successfully.
+The subsequent integrated curriculum removes phase masking and reaches 99.6%
+held-out hit rate with movement and firing available together. Its independent
+51,200-decision replay also passes.
 
 All 15 recorded classifier runs (FlyWire, matched random
 destinations and matched MLP; seeds 42-46; 200 epochs) completed and passed
@@ -32,6 +35,13 @@ limitations below describe the previous computer. The original trainer remains
 CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device.
 
 ## Completed
+
+- Integrated toy-combat navigation: curriculum transfer followed by 100 PPO
+  updates produced 99.6% held-out stochastic hit rate with movement, aiming, and
+  firing simultaneously available. Mean return was +2.857 and greedy hit rate
+  was 74.6%. The source-policy lineage, topology/signs, and all 51,200 decisions
+  passed their checks. See the
+  [protocol, report, and curve](../experiments/toy_combat_integrated_navigation/README.md).
 
 - First toy-combat navigation milestone: the recorded FlyWire PPO policy learned
   to move from initial occlusion, acquire line of sight, aim, and fire. Held-out
@@ -96,13 +106,14 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Relax navigation phase masking so movement, aiming, and firing coexist, while
-   retaining synchronized activity recording and stochastic evaluation.
-2. Add moving targets, partial observability, and longer credit assignment before
-   connecting the controller to a live Counter-Strike observation/action bridge.
-3. Confirm each harder curriculum across multiple seeds. Repeat matched actor
-   comparisons when they answer a specific scientific question rather than as
-   the main optimization target.
+1. Add controlled target motion while retaining integrated actions, synchronized
+   activity recording, and stochastic evaluation.
+2. Hide target coordinates during occlusion to introduce memory-dependent partial
+   observability and longer credit assignment.
+3. Confirm each harder curriculum across multiple seeds before connecting the
+   controller to a live Counter-Strike observation/action bridge. Repeat matched
+   actor comparisons when they answer a specific scientific question rather than
+   as the main optimization target.
 4. For stronger scientific conclusions, predeclare harder synthetic tasks,
    independent dataset splits, or less dense circuits. The first comparison
    is close to the accuracy ceiling and uses a single fixed split.

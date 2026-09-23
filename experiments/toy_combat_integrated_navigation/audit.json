@@ -1,0 +1,14 @@
+{
+  "run_id": "fe67e1db-d400-469a-9028-d3b29125076e",
+  "status": "complete",
+  "decisions_replayed": 51200,
+  "episode_ids_seen": 1143,
+  "hits": 1064,
+  "model_rtol": 1e-05,
+  "model_atol": 5e-06,
+  "environment_atol": 1e-07,
+  "reward_atol": 1e-06,
+  "policy_activity_reproduced": true,
+  "environment_outcomes_reproduced": true,
+  "audit_passed": true
+}
