@@ -1,0 +1,436 @@
+{
+  "run_id": "98c0d2c8-f873-4b74-a450-e8d138ed0a28",
+  "evaluation_episode_seeds": [
+    9000000,
+    9000255
+  ],
+  "episodes_per_evaluation": 256,
+  "policies": [
+    {
+      "policy_version": 0,
+      "mode": "stochastic",
+      "episodes": 256,
+      "hit_rate": 0.3515625,
+      "return_mean": -0.8904881994367679,
+      "return_sample_sd": 1.6148688711535433,
+      "length_mean": 32.68359375,
+      "action_counts": {
+        "wait": 2147,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 2163,
+        "turn_right": 2297,
+        "fire": 1760
+      }
+    },
+    {
+      "policy_version": 0,
+      "mode": "greedy",
+      "episodes": 256,
+      "hit_rate": 0.0,
+      "return_mean": -0.8059589594700811,
+      "return_sample_sd": 0.2836786971133881,
+      "length_mean": 40.0,
+      "action_counts": {
+        "wait": 0,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 0,
+        "turn_right": 10240,
+        "fire": 0
+      }
+    },
+    {
+      "policy_version": 10,
+      "mode": "stochastic",
+      "episodes": 256,
+      "hit_rate": 0.37890625,
+      "return_mean": -0.8021837819274151,
+      "return_sample_sd": 1.6178181294658587,
+      "length_mean": 32.4296875,
+      "action_counts": {
+        "wait": 2106,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 2166,
+        "turn_right": 2294,
+        "fire": 1736
+      }
+    },
+    {
+      "policy_version": 10,
+      "mode": "greedy",
+      "episodes": 256,
+      "hit_rate": 0.0,
+      "return_mean": -0.8059589594700811,
+      "return_sample_sd": 0.2836786971133881,
+      "length_mean": 40.0,
+      "action_counts": {
+        "wait": 0,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 0,
+        "turn_right": 10240,
+        "fire": 0
+      }
+    },
+    {
+      "policy_version": 20,
+      "mode": "stochastic",
+      "episodes": 256,
+      "hit_rate": 0.3828125,
+      "return_mean": -0.8363754970266019,
+      "return_sample_sd": 1.6908155030172867,
+      "length_mean": 31.65234375,
+      "action_counts": {
+        "wait": 2003,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 2377,
+        "turn_right": 1870,
+        "fire": 1853
+      }
+    },
+    {
+      "policy_version": 20,
+      "mode": "greedy",
+      "episodes": 256,
+      "hit_rate": 0.59765625,
+      "return_mean": -0.32223410350885373,
+      "return_sample_sd": 2.119890188655766,
+      "length_mean": 21.74609375,
+      "action_counts": {
+        "wait": 0,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 2010,
+        "turn_right": 1359,
+        "fire": 2198
+      }
+    },
+    {
+      "policy_version": 30,
+      "mode": "stochastic",
+      "episodes": 256,
+      "hit_rate": 0.47265625,
+      "return_mean": -0.4749525712174,
+      "return_sample_sd": 1.777947816379025,
+      "length_mean": 28.33984375,
+      "action_counts": {
+        "wait": 1563,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 2309,
+        "turn_right": 1665,
+        "fire": 1718
+      }
+    },
+    {
+      "policy_version": 30,
+      "mode": "greedy",
+      "episodes": 256,
+      "hit_rate": 0.5078125,
+      "return_mean": -0.4249224969540226,
+      "return_sample_sd": 2.052915597068297,
+      "length_mean": 23.546875,
+      "action_counts": {
+        "wait": 0,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 2111,
+        "turn_right": 1893,
+        "fire": 2024
+      }
+    },
+    {
+      "policy_version": 40,
+      "mode": "stochastic",
+      "episodes": 256,
+      "hit_rate": 0.640625,
+      "return_mean": 0.07960667414452473,
+      "return_sample_sd": 1.719358009392641,
+      "length_mean": 24.19140625,
+      "action_counts": {
+        "wait": 1161,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 2005,
+        "turn_right": 1429,
+        "fire": 1598
+      }
+    },
+    {
+      "policy_version": 40,
+      "mode": "greedy",
+      "episodes": 256,
+      "hit_rate": 0.61328125,
+      "return_mean": -0.05074167985727388,
+      "return_sample_sd": 2.0522105217366517,
+      "length_mean": 20.3671875,
+      "action_counts": {
+        "wait": 0,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 1750,
+        "turn_right": 1522,
+        "fire": 1942
+      }
+    },
+    {
+      "policy_version": 50,
+      "mode": "stochastic",
+      "episodes": 256,
+      "hit_rate": 0.703125,
+      "return_mean": 0.2965003355883892,
+      "return_sample_sd": 1.6543845855083126,
+      "length_mean": 22.203125,
+      "action_counts": {
+        "wait": 1034,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 1937,
+        "turn_right": 1141,
+        "fire": 1572
+      }
+    },
+    {
+      "policy_version": 50,
+      "mode": "greedy",
+      "episodes": 256,
+      "hit_rate": 0.83984375,
+      "return_mean": 0.9293812635119322,
+      "return_sample_sd": 1.6259420660127486,
+      "length_mean": 13.1015625,
+      "action_counts": {
+        "wait": 0,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 1151,
+        "turn_right": 819,
+        "fire": 1384
+      }
+    },
+    {
+      "policy_version": 60,
+      "mode": "stochastic",
+      "episodes": 256,
+      "hit_rate": 0.76953125,
+      "return_mean": 0.572960483990646,
+      "return_sample_sd": 1.5328311383754474,
+      "length_mean": 20.53515625,
+      "action_counts": {
+        "wait": 903,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 1824,
+        "turn_right": 1106,
+        "fire": 1424
+      }
+    },
+    {
+      "policy_version": 60,
+      "mode": "greedy",
+      "episodes": 256,
+      "hit_rate": 0.875,
+      "return_mean": 1.0657722534516143,
+      "return_sample_sd": 1.4786938524965663,
+      "length_mean": 12.1015625,
+      "action_counts": {
+        "wait": 0,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 1085,
+        "turn_right": 694,
+        "fire": 1319
+      }
+    },
+    {
+      "policy_version": 70,
+      "mode": "stochastic",
+      "episodes": 256,
+      "hit_rate": 0.828125,
+      "return_mean": 0.8873532050690847,
+      "return_sample_sd": 1.3789535504647072,
+      "length_mean": 18.8984375,
+      "action_counts": {
+        "wait": 779,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 1823,
+        "turn_right": 1052,
+        "fire": 1184
+      }
+    },
+    {
+      "policy_version": 70,
+      "mode": "greedy",
+      "episodes": 256,
+      "hit_rate": 0.6484375,
+      "return_mean": 0.9508678775138468,
+      "return_sample_sd": 1.6348288409213956,
+      "length_mean": 17.51953125,
+      "action_counts": {
+        "wait": 0,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 2241,
+        "turn_right": 1745,
+        "fire": 499
+      }
+    },
+    {
+      "policy_version": 80,
+      "mode": "stochastic",
+      "episodes": 256,
+      "hit_rate": 0.85546875,
+      "return_mean": 1.0687666011575858,
+      "return_sample_sd": 1.3118366641820387,
+      "length_mean": 18.2890625,
+      "action_counts": {
+        "wait": 659,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 2084,
+        "turn_right": 928,
+        "fire": 1011
+      }
+    },
+    {
+      "policy_version": 80,
+      "mode": "greedy",
+      "episodes": 256,
+      "hit_rate": 0.37890625,
+      "return_mean": 0.19266763236348194,
+      "return_sample_sd": 1.5700082201175083,
+      "length_mean": 26.953125,
+      "action_counts": {
+        "wait": 0,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 3739,
+        "turn_right": 2695,
+        "fire": 466
+      }
+    },
+    {
+      "policy_version": 90,
+      "mode": "stochastic",
+      "episodes": 256,
+      "hit_rate": 0.88671875,
+      "return_mean": 1.2513439683019896,
+      "return_sample_sd": 1.1639607936750427,
+      "length_mean": 17.34765625,
+      "action_counts": {
+        "wait": 543,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 2175,
+        "turn_right": 867,
+        "fire": 856
+      }
+    },
+    {
+      "policy_version": 90,
+      "mode": "greedy",
+      "episodes": 256,
+      "hit_rate": 0.51953125,
+      "return_mean": 0.7564797434394495,
+      "return_sample_sd": 1.400818693162518,
+      "length_mean": 22.3828125,
+      "action_counts": {
+        "wait": 0,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 3231,
+        "turn_right": 2308,
+        "fire": 191
+      }
+    },
+    {
+      "policy_version": 100,
+      "mode": "stochastic",
+      "episodes": 256,
+      "hit_rate": 0.953125,
+      "return_mean": 1.4919460186639117,
+      "return_sample_sd": 0.8838551134062169,
+      "length_mean": 13.80078125,
+      "action_counts": {
+        "wait": 320,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 1755,
+        "turn_right": 635,
+        "fire": 823
+      }
+    },
+    {
+      "policy_version": 100,
+      "mode": "greedy",
+      "episodes": 256,
+      "hit_rate": 0.8828125,
+      "return_mean": 1.5847859289168627,
+      "return_sample_sd": 1.2663394866590674,
+      "length_mean": 10.19140625,
+      "action_counts": {
+        "wait": 0,
+        "forward": 0,
+        "backward": 0,
+        "strafe_left": 0,
+        "strafe_right": 0,
+        "turn_left": 1494,
+        "turn_right": 580,
+        "fire": 535
+      }
+    }
+  ],
+  "scripted_oracle": {
+    "episodes": 256,
+    "hit_rate": 1.0,
+    "return_mean": 2.1089311363871457,
+    "return_sample_sd": 0.09650282503732621,
+    "length_mean": 4.83203125
+  },
+  "selection": "versions fixed every 10 PPO updates; held-out episode seeds not used for training"
+}

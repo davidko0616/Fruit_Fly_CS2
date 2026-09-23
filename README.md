@@ -68,3 +68,10 @@ checkpoint, graph, synthetic dataset, exact configuration, metrics, provenance,
 and training plot.
 
 See [project status](docs/STATUS.md) and the [original planning documents](docs/planning/README.md).
+
+## Toy combat aiming milestone
+
+The first recorded PPO run in the deterministic toy-combat environment improves
+held-out stochastic hit rate from 35.2% to 95.3% on CPU. Every rollout decision,
+reward component, outcome, and internal connectome activation is replayable from
+the saved policy version. See the [protocol and results](experiments/toy_combat_aiming/README.md).

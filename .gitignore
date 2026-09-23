@@ -23,3 +23,6 @@ dist/
 .local-zluda/
 artifacts/zluda/
 artifacts/synthetic/
+artifacts/toy_combat/
+experiments/toy_combat_aiming_seed_42/
+experiments/toy_combat_aiming_seed_42_v2/

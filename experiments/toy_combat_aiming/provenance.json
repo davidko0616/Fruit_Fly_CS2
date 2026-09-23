@@ -1,0 +1,17 @@
+{
+  "capture_timing": "Recorded immediately after the run from the source files used for the run; the trainer subsequently gained automatic provenance writing and an explicit invariant assertion without changing the learning calculation.",
+  "python": "3.12.14",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "processor": "AMD64 Family 25 Model 97 Stepping 2, AuthenticAMD",
+  "torch": "2.7.1+cpu",
+  "numpy": "2.5.3",
+  "scipy": "1.18.1",
+  "source_sha256": {
+    "training/train_toy_combat.py": "a19b696fa5aa4a6576a41884960bbc48818e2f8824dc2bbc3710d1ece1c51e61",
+    "toy_combat/env.py": "9baea60da46bb74972f0e38eb5f54c6b312f1e938116d8e613fe6bb117313983",
+    "toy_combat/recording.py": "6126dcf1c86c81684a50f55991babab1d2f18f8477203229bcc0c7cab92c67be",
+    "models/flywire_network.py": "9d40150c437ca0e1ef596ec1f6e4685b4703a6e5b7c88678537db3eb98ff3ac9",
+    "experiments/cpu_spiral_100/seed_42/graph.npz": "8fb773256e04d32f26365e83c95760b93fa106e3121d6eaf7b79e21c2c4a4a31",
+    "experiments/cpu_spiral_100/seed_42/adjacency.npz": "f632c1e2bcc4d0fd96f03714b2962b026c7c0faba99ddf0b8eaae7b18c01b6dd"
+  }
+}

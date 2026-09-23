@@ -29,6 +29,12 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
 
 ## Completed
 
+- First toy-combat aiming milestone: the recorded FlyWire PPO policy improved
+  from 35.2% to 95.3% stochastic hit rate on 256 held-out episodes; mean return
+  improved from -0.89 to +1.49. All 51,200 decisions and internal activations
+  passed independent policy/environment replay. See the
+  [protocol, report and learning curve](../experiments/toy_combat_aiming/README.md).
+
 - First descriptive activity analysis of recorded seed 42 on the Ryzen PC:
   both splits reach 95% accuracy at epoch 27; neurons 36/37 are silent only at
   the final processing step, and class-associated responses appear in output
@@ -71,15 +77,16 @@ live display and anatomical layouts remain planned. Every future environment
 decision must retain synchronized observations, activity, actions, rewards and
 outcomes. Older experiments cannot retroactively supply full activity traces.
 
-1. Develop a minimal toy combat environment with synchronized observations,
-   actions, rewards, outcomes and model activity; retain the matched baselines.
-2. For stronger scientific conclusions, predeclare harder synthetic tasks,
+1. Run matched random-connectivity and MLP policies across multiple seeds under
+   the fixed aiming protocol. This first RL result uses one FlyWire seed only.
+2. Enable movement and add navigation after the aiming baseline comparison.
+3. For stronger scientific conclusions, predeclare harder synthetic tasks,
    independent dataset splits, or less dense circuits. The first comparison
    is close to the accuracy ceiling and uses a single fixed split.
-3. Extend replay to feedforward MLP schema-2 recordings if visual comparison
+4. Extend replay to feedforward MLP schema-2 recordings if visual comparison
    is needed. They are fully recorded and numerically audited, but the current
    recurrent viewer intentionally accepts schema 1 only.
-4. Benchmark larger models only when needed. Current experiments run on CPU;
+5. Benchmark larger models only when needed. Current experiments run on CPU;
    NVIDIA laptop results remain historical evidence for a CUDA option.
 
 Do not claim biological advantages from the first classification run. The current
