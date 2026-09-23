@@ -139,6 +139,8 @@ def evaluate(run, output, episodes=256):
     axes[0].legend()
     environment = manifest["config"].get("environment", {})
     scenario = environment.get("scenario", "aiming_v1").removesuffix("_v1")
+    if scenario == "navigation" and not environment.get("navigation_phase_masking", False):
+        scenario = "integrated navigation"
     fig.suptitle(f'{manifest["config"].get("architecture", "flywire")} {scenario} · '
                  f'{episodes} fixed held-out episodes')
     fig.savefig(output / 'learning.png', dpi=160); plt.close(fig)

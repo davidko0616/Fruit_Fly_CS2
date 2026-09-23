@@ -12,7 +12,8 @@ import scipy.sparse as sp
 import torch
 import torch.nn as nn
 
-from toy_combat.env import ACTION_NAMES, CombatConfig, ToyCombatEnv, navigation_config
+from toy_combat.env import (ACTION_NAMES, CombatConfig, ToyCombatEnv,
+                            integrated_navigation_config, navigation_config)
 from toy_combat.recording import (CombatRecorder, RESET_CODES, mlp_forward_with_activity,
                                   policy_forward_with_activity)
 from training.recording import array, atomic_json
@@ -32,7 +33,8 @@ class ValueNetwork(nn.Module):
 def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
           learning_rate=3e-4, ppo_epochs=4, minibatch_size=256, architecture='flywire',
           environment_config=None, entropy_coefficient=0.01,
-          final_entropy_coefficient=None):
+          final_entropy_coefficient=None, initial_policy_run=None,
+          initial_policy_version=None):
     if updates < 1 or workers < 1 or horizon < 2:
         raise ValueError('Positive updates/workers and horizon >=2 required')
     if entropy_coefficient < 0 or (final_entropy_coefficient is not None and
@@ -47,6 +49,33 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
     observation_size = ToyCombatEnv.observation_size_for(environment_config)
     policy, source_graph, run_adjacency, hidden_sizes = load_policy(
         seed, architecture, observation_size, ToyCombatEnv.action_size)
+    initial_policy = None
+    if initial_policy_run is not None:
+        initial_policy_run = Path(initial_policy_run)
+        source_manifest = json.loads((initial_policy_run / 'manifest.json').read_text())
+        source_config = source_manifest['config']
+        if (source_config.get('architecture', 'flywire') != architecture or
+                source_config['observation_size'] != observation_size or
+                len(source_config['action_names']) != ToyCombatEnv.action_size):
+            raise ValueError('Initial policy architecture or interface does not match this run')
+        if initial_policy_version is None:
+            initial_policy_version = max(
+                int(path.stem) for path in (initial_policy_run / 'weights').glob('*.npz'))
+        weights_path = initial_policy_run / 'weights' / f'{initial_policy_version:07d}.npz'
+        with np.load(weights_path) as weights, torch.no_grad():
+            parameters = list(policy.parameters())
+            policy_keys = {key for key in weights.files if key.startswith('p')}
+            if policy_keys != {f'p{i}' for i in range(len(parameters))}:
+                raise ValueError('Initial policy parameter set does not match this model')
+            for index, parameter in enumerate(parameters):
+                value = torch.from_numpy(weights[f'p{index}'])
+                if value.shape != parameter.shape:
+                    raise ValueError('Initial policy parameter shape does not match this model')
+                parameter.copy_(value)
+        initial_policy = {
+            'run': str(initial_policy_run), 'run_id': source_manifest['run_id'],
+            'policy_version': int(initial_policy_version),
+            'weights_sha256': hashlib.sha256(weights_path.read_bytes()).hexdigest()}
     torch.manual_seed(seed + 3)
     value_model = ValueNetwork(observation_size)
     optimizer = torch.optim.Adam([*policy.parameters(), *value_model.parameters()], lr=learning_rate, foreach=False)
@@ -87,6 +116,7 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
               'value_seed': seed + 3,
               'observation_size': observation_size, 'action_names': ACTION_NAMES,
               'reward_names': reward_names, 'environment': environment_config.__dict__}
+    config['initial_policy'] = initial_policy
     update_rows, policy_version, global_decision = [], 0, 0
     fixed_structure = [(name, tuple(parameter.shape)) for name, parameter in policy.named_parameters()]
     fixed_indices = (policy.connectome_layer.indices.detach().clone()
@@ -252,13 +282,20 @@ if __name__ == '__main__':
     parser.add_argument('--updates', type=int, default=80); parser.add_argument('--workers', type=int, default=8)
     parser.add_argument('--horizon', type=int, default=64); parser.add_argument('--action-repeat', type=int, default=2)
     parser.add_argument('--architecture', choices=('flywire', 'random', 'mlp'), default='flywire')
-    parser.add_argument('--scenario', choices=('aiming', 'navigation'), default='aiming')
+    parser.add_argument('--scenario', choices=('aiming', 'navigation', 'integrated-navigation'),
+                        default='aiming')
     parser.add_argument('--entropy-coefficient', type=float, default=0.01)
     parser.add_argument('--final-entropy-coefficient', type=float)
+    parser.add_argument('--initial-policy-run', type=Path)
+    parser.add_argument('--initial-policy-version', type=int)
     args = parser.parse_args()
-    environment = navigation_config() if args.scenario == 'navigation' else CombatConfig()
+    environment = (navigation_config() if args.scenario == 'navigation' else
+                   integrated_navigation_config() if args.scenario == 'integrated-navigation' else
+                   CombatConfig())
     train(args.output, args.seed, args.updates, args.workers,
                                       args.horizon, args.action_repeat, architecture=args.architecture,
                                       environment_config=environment,
                                       entropy_coefficient=args.entropy_coefficient,
-                                      final_entropy_coefficient=args.final_entropy_coefficient)
+                                      final_entropy_coefficient=args.final_entropy_coefficient,
+                                      initial_policy_run=args.initial_policy_run,
+                                      initial_policy_version=args.initial_policy_version)

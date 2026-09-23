@@ -42,6 +42,14 @@ def navigation_config():
                         navigation_phase_masking=True, miss_penalty=-0.1, hit_reward=3.0)
 
 
+def integrated_navigation_config():
+    """Second curriculum: navigation and combat actions remain available together."""
+    return CombatConfig(max_ticks=120, movement_enabled=True, scenario='navigation_v1',
+                        require_initial_occlusion=True, aim_progress_scale=0.2,
+                        distance_progress_scale=0.1, line_of_sight_progress_scale=0.2,
+                        navigation_phase_masking=False, miss_penalty=-0.1, hit_reward=3.0)
+
+
 class ToyCombatEnv:
     """One agent, one stationary target, deterministic obstacles and transitions."""
     observation_size = 10

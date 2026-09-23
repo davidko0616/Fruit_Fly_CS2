@@ -1,3 +1,4 @@
+import json
 import tempfile
 from pathlib import Path
 import unittest
@@ -6,7 +7,8 @@ import numpy as np
 import torch
 
 from toy_combat.env import (NAVIGATION_REWARD_NAMES, REWARD_NAMES, ToyCombatEnv,
-                            navigation_config, scripted_action, scripted_navigation_action)
+                            integrated_navigation_config, navigation_config, scripted_action,
+                            scripted_navigation_action)
 from training.run_toy_combat import load_policy, run
 from training.train_toy_combat import train
 from tools.verify_combat_recording import verify
@@ -77,6 +79,18 @@ class ToyCombatTests(unittest.TestCase):
             lengths.append(decision)
         self.assertLessEqual(max(lengths), 30)
 
+    def test_integrated_navigation_keeps_movement_aiming_and_fire_available(self):
+        env = ToyCombatEnv(integrated_navigation_config())
+        _, info = env.reset(123)
+        self.assertFalse(info['line_of_sight'])
+        self.assertTrue(info['action_mask'].all())
+        self.assertFalse(env.config.navigation_phase_masking)
+
+        while not env._line_of_sight():
+            _, _, terminated, truncated, info = env.step(scripted_navigation_action(env))
+            self.assertFalse(terminated or truncated)
+        self.assertTrue(info['action_mask'].all())
+
     def test_short_parallel_recording_replays_in_separate_code_path(self):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary) / 'run'
@@ -114,6 +128,22 @@ class ToyCombatTests(unittest.TestCase):
             self.assertEqual(metrics['decisions'], 8)
             self.assertEqual(result['decisions'], 8)
             self.assertTrue(result['audit_passed'])
+
+            integrated = Path(temporary) / 'integrated'
+            train(integrated, seed=10, updates=1, workers=2, horizon=4,
+                  action_repeat=1, ppo_epochs=1, minibatch_size=8,
+                  architecture='flywire', environment_config=integrated_navigation_config(),
+                  initial_policy_run=directory, initial_policy_version=1)
+            integrated_result = verify(integrated)
+            with np.load(directory / 'weights/0000001.npz') as source, \
+                    np.load(integrated / 'weights/0000000.npz') as transferred:
+                for index in range(6):
+                    np.testing.assert_array_equal(source[f'p{index}'], transferred[f'p{index}'])
+            manifest = json.loads((integrated / 'manifest.json').read_text())
+            self.assertEqual(manifest['config']['initial_policy']['policy_version'], 1)
+            self.assertEqual(manifest['config']['initial_policy']['run_id'],
+                             json.loads((directory / 'manifest.json').read_text())['run_id'])
+            self.assertTrue(integrated_result['audit_passed'])
 
 
 if __name__ == '__main__':
