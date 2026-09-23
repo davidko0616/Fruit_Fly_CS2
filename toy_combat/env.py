@@ -11,6 +11,7 @@ ACTION_NAMES = ('wait', 'forward', 'backward', 'strafe_left', 'strafe_right',
 REWARD_NAMES = ('time', 'aim_progress', 'collision', 'shot')
 NAVIGATION_REWARD_NAMES = ('time', 'aim_progress', 'distance_progress',
                            'line_of_sight_progress', 'collision', 'shot')
+NAVIGATION_SCENARIOS = ('navigation_v1', 'moving_target_v1')
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,8 @@ class CombatConfig:
     distance_progress_scale: float = 0.0
     line_of_sight_progress_scale: float = 0.0
     navigation_phase_masking: bool = False
+    target_movement_enabled: bool = False
+    target_move_interval: int = 1
 
 
 def navigation_config():
@@ -50,6 +53,15 @@ def integrated_navigation_config():
                         navigation_phase_masking=False, miss_penalty=-0.1, hit_reward=3.0)
 
 
+def moving_target_config():
+    """Third curriculum: integrated actions against a deterministic moving target."""
+    return CombatConfig(max_ticks=120, movement_enabled=True, scenario='moving_target_v1',
+                        require_initial_occlusion=True, aim_progress_scale=0.2,
+                        distance_progress_scale=0.1, line_of_sight_progress_scale=0.2,
+                        navigation_phase_masking=False, miss_penalty=-0.1, hit_reward=3.0,
+                        target_movement_enabled=True, target_move_interval=1)
+
+
 class ToyCombatEnv:
     """One agent, one stationary target, deterministic obstacles and transitions."""
     observation_size = 10
@@ -60,26 +72,31 @@ class ToyCombatEnv:
         self.config = config or CombatConfig()
         if self.config.grid_size < 5 or self.config.obstacle_count < 0:
             raise ValueError('Grid must be at least 5x5 and obstacle count nonnegative')
-        if self.config.scenario not in ('aiming_v1', 'navigation_v1'):
+        if self.config.scenario not in ('aiming_v1', *NAVIGATION_SCENARIOS):
             raise ValueError(f'Unknown scenario: {self.config.scenario}')
         if self.config.require_initial_occlusion and self.config.obstacle_count < 1:
             raise ValueError('Initial occlusion requires at least one obstacle')
-        if self.config.scenario == 'navigation_v1' and not self.config.movement_enabled:
+        if self.config.scenario in NAVIGATION_SCENARIOS and not self.config.movement_enabled:
             raise ValueError('Navigation scenario requires movement')
+        if self.config.target_movement_enabled != (self.config.scenario == 'moving_target_v1'):
+            raise ValueError('Target movement must match the moving-target scenario')
+        if self.config.target_move_interval < 1:
+            raise ValueError('Target movement interval must be positive')
         self.rng = None
         self.episode_seed = None
         self.agent = self.enemy = self.obstacles = None
-        self.heading = self.cooldown = self.tick = 0
+        self.heading = self.enemy_heading = self.cooldown = self.tick = 0
         self.terminated = self.truncated = False
 
     @staticmethod
     def observation_size_for(config):
         return (ToyCombatEnv.navigation_observation_size
-                if config.scenario == 'navigation_v1' else ToyCombatEnv.observation_size)
+                if config.scenario in NAVIGATION_SCENARIOS else ToyCombatEnv.observation_size)
 
     @property
     def reward_names(self):
-        return NAVIGATION_REWARD_NAMES if self.config.scenario == 'navigation_v1' else REWARD_NAMES
+        return (NAVIGATION_REWARD_NAMES
+                if self.config.scenario in NAVIGATION_SCENARIOS else REWARD_NAMES)
 
     def reset(self, seed):
         self.episode_seed = int(seed)
@@ -102,6 +119,8 @@ class ToyCombatEnv:
                                                replace=False)
             self.obstacles = {tuple(v) for v in candidates[obstacle_indices]}
         self.heading = int(self.rng.integers(0, self.heading_count))
+        if self.config.target_movement_enabled:
+            self.enemy_heading = int(self.rng.integers(0, 4))
         self.cooldown = self.tick = 0
         self.terminated = self.truncated = False
         return self.observation(), self.info(reset_reason='episode_start')
@@ -205,7 +224,7 @@ class ToyCombatEnv:
                   distance / (math.sqrt(2) * scale), self.aim_alignment(),
                   float(self._line_of_sight()),
                   self.cooldown / max(1, self.config.fire_cooldown_ticks)]
-        if self.config.scenario == 'navigation_v1':
+        if self.config.scenario in NAVIGATION_SCENARIOS:
             directions = self._movement_directions()
             values.extend(self._clearance(directions[action]) / scale for action in (1, 2, 3, 4))
         return np.asarray(values, dtype=np.float32)
@@ -223,8 +242,11 @@ class ToyCombatEnv:
         return mask
 
     def privileged_state(self):
-        return np.asarray([self.agent[0], self.agent[1], self.heading,
-                           self.enemy[0], self.enemy[1], self.cooldown, self.tick], dtype=np.int32)
+        values = [self.agent[0], self.agent[1], self.heading,
+                  self.enemy[0], self.enemy[1], self.cooldown, self.tick]
+        if self.config.target_movement_enabled:
+            values.append(self.enemy_heading)
+        return np.asarray(values, dtype=np.int32)
 
     def info(self, **extra):
         return {'tick': self.tick, 'episode_seed': self.episode_seed,
@@ -249,6 +271,23 @@ class ToyCombatEnv:
                 break
             position, steps = candidate, steps + 1
         return steps
+
+    def _move_enemy_if_due(self):
+        if (not self.config.target_movement_enabled or
+                self.tick % self.config.target_move_interval != 0):
+            return False
+        directions = (np.asarray((1, 0)), np.asarray((0, 1)),
+                      np.asarray((-1, 0)), np.asarray((0, -1)))
+        for offset in (0, 1, -1, 2):
+            heading = (self.enemy_heading + offset) % len(directions)
+            candidate = self.enemy + directions[heading]
+            if (np.any(candidate < 0) or np.any(candidate >= self.config.grid_size) or
+                    tuple(candidate) in self.obstacles or np.array_equal(candidate, self.agent)):
+                continue
+            self.enemy = candidate
+            self.enemy_heading = heading
+            return True
+        return False
 
     def _single_tick(self, action):
         if self.terminated or self.truncated:
@@ -288,30 +327,32 @@ class ToyCombatEnv:
             raise ValueError(f'Invalid action {action}')
         self.cooldown = max(0, self.cooldown - 1)
         self.tick += 1
+        target_moved = False if hit else self._move_enemy_if_due()
         if not hit:
             components['aim_progress'] = self.config.aim_progress_scale * (self.aim_alignment() - before_aim)
-            if self.config.scenario == 'navigation_v1':
+            if self.config.scenario in NAVIGATION_SCENARIOS:
                 components['distance_progress'] = self.config.distance_progress_scale * (
                     before_distance - self._relative()[3])
                 components['line_of_sight_progress'] = self.config.line_of_sight_progress_scale * (
                     float(self._line_of_sight()) - float(before_line_of_sight))
         self.terminated = hit
         self.truncated = self.tick >= self.config.max_ticks and not hit
-        return components, rejected, hit, miss, collision
+        return components, rejected, hit, miss, collision, target_moved
 
     def step(self, action, repeat=1):
         if repeat < 1:
             raise ValueError('Action repeat must be positive')
         totals = dict.fromkeys(self.reward_names, 0.0)
         applied, rejected = 0, False
-        events = {'hit': False, 'miss': False, 'collision': False}
+        events = {'hit': False, 'miss': False, 'collision': False, 'target_moved': False}
         for _ in range(repeat):
-            components, was_rejected, hit, miss, collision = self._single_tick(int(action))
+            components, was_rejected, hit, miss, collision, target_moved = self._single_tick(int(action))
             for name, value in components.items():
                 totals[name] += value
             applied += 1
             rejected |= was_rejected
             events['hit'] |= hit; events['miss'] |= miss; events['collision'] |= collision
+            events['target_moved'] |= target_moved
             if self.terminated or self.truncated:
                 break
         reason = 'hit' if self.terminated else 'time_limit' if self.truncated else None

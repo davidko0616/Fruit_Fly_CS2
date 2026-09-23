@@ -13,7 +13,8 @@ import torch
 import torch.nn as nn
 
 from toy_combat.env import (ACTION_NAMES, CombatConfig, ToyCombatEnv,
-                            integrated_navigation_config, navigation_config)
+                            integrated_navigation_config, moving_target_config,
+                            navigation_config)
 from toy_combat.recording import (CombatRecorder, RESET_CODES, mlp_forward_with_activity,
                                   policy_forward_with_activity)
 from training.recording import array, atomic_json
@@ -44,8 +45,8 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
                                  else final_entropy_coefficient)
     torch.manual_seed(seed); torch.set_num_threads(4); torch.use_deterministic_algorithms(True)
     environment_config = environment_config or CombatConfig()
-    if environment_config.scenario == 'navigation_v1' and action_repeat != 1:
-        raise ValueError('navigation_v1 requires action_repeat=1 for cell-level control')
+    if environment_config.scenario in ('navigation_v1', 'moving_target_v1') and action_repeat != 1:
+        raise ValueError('Navigation scenarios require action_repeat=1 for cell-level control')
     observation_size = ToyCombatEnv.observation_size_for(environment_config)
     policy, source_graph, run_adjacency, hidden_sizes = load_policy(
         seed, architecture, observation_size, ToyCombatEnv.action_size)
@@ -282,7 +283,8 @@ if __name__ == '__main__':
     parser.add_argument('--updates', type=int, default=80); parser.add_argument('--workers', type=int, default=8)
     parser.add_argument('--horizon', type=int, default=64); parser.add_argument('--action-repeat', type=int, default=2)
     parser.add_argument('--architecture', choices=('flywire', 'random', 'mlp'), default='flywire')
-    parser.add_argument('--scenario', choices=('aiming', 'navigation', 'integrated-navigation'),
+    parser.add_argument('--scenario',
+                        choices=('aiming', 'navigation', 'integrated-navigation', 'moving-target'),
                         default='aiming')
     parser.add_argument('--entropy-coefficient', type=float, default=0.01)
     parser.add_argument('--final-entropy-coefficient', type=float)
@@ -291,6 +293,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     environment = (navigation_config() if args.scenario == 'navigation' else
                    integrated_navigation_config() if args.scenario == 'integrated-navigation' else
+                   moving_target_config() if args.scenario == 'moving-target' else
                    CombatConfig())
     train(args.output, args.seed, args.updates, args.workers,
                                       args.horizon, args.action_repeat, architecture=args.architecture,

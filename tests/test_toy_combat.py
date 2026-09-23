@@ -7,8 +7,8 @@ import numpy as np
 import torch
 
 from toy_combat.env import (NAVIGATION_REWARD_NAMES, REWARD_NAMES, ToyCombatEnv,
-                            integrated_navigation_config, navigation_config, scripted_action,
-                            scripted_navigation_action)
+                            integrated_navigation_config, moving_target_config,
+                            navigation_config, scripted_action, scripted_navigation_action)
 from training.run_toy_combat import load_policy, run
 from training.train_toy_combat import train
 from tools.verify_combat_recording import verify
@@ -90,6 +90,50 @@ class ToyCombatTests(unittest.TestCase):
             _, _, terminated, truncated, info = env.step(scripted_navigation_action(env))
             self.assertFalse(terminated or truncated)
         self.assertTrue(info['action_mask'].all())
+
+    def test_moving_target_is_deterministic_obstacle_aware_and_fully_recorded_in_state(self):
+        first = ToyCombatEnv(moving_target_config())
+        second = ToyCombatEnv(moving_target_config())
+        first.reset(321); second.reset(321)
+        moved = 0
+        for _ in range(24):
+            before = first.enemy.copy()
+            observed_first = first.step(0)
+            observed_second = second.step(0)
+            np.testing.assert_array_equal(observed_first[0], observed_second[0])
+            np.testing.assert_array_equal(observed_first[4]['privileged_state'],
+                                          observed_second[4]['privileged_state'])
+            self.assertEqual(len(observed_first[4]['privileged_state']), 8)
+            self.assertNotIn(tuple(first.enemy), first.obstacles)
+            self.assertFalse(np.array_equal(first.enemy, first.agent))
+            moved += int(not np.array_equal(before, first.enemy))
+        self.assertGreaterEqual(moved, 20)
+
+    def test_moving_target_oracle_and_recording_replay(self):
+        moved_episodes = hits = 0
+        for seed in range(200):
+            env = ToyCombatEnv(moving_target_config())
+            env.reset(seed)
+            target_moved = False
+            for _ in range(env.config.max_ticks):
+                _, _, terminated, truncated, info = env.step(scripted_navigation_action(env))
+                target_moved |= info['target_moved']
+                if terminated or truncated:
+                    break
+            hits += int(info['hit'])
+            moved_episodes += int(target_moved)
+        self.assertGreaterEqual(hits, 198)
+        self.assertGreaterEqual(moved_episodes, 100)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / 'moving-target'
+            metrics = train(directory, seed=11, updates=1, workers=2, horizon=8,
+                            action_repeat=1, ppo_epochs=1, minibatch_size=16,
+                            architecture='flywire', environment_config=moving_target_config())
+            result = verify(directory)
+            self.assertEqual(metrics['decisions'], 16)
+            self.assertEqual(result['decisions'], 16)
+            self.assertTrue(result['audit_passed'])
 
     def test_short_parallel_recording_replays_in_separate_code_path(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -48,6 +48,7 @@ def evaluate_model(model, config, episode_seeds, mode, random_seed=20260923):
     acquired_line_of_sight = np.zeros(len(environments), dtype=bool)
     reached_firing_alignment = np.zeros(len(environments), dtype=bool)
     fired = np.zeros(len(environments), dtype=bool)
+    target_moves = np.zeros(len(environments), dtype=int)
     max_decisions = math.ceil(config['environment']['max_ticks'] / config['action_repeat'])
     uniforms = np.random.default_rng(random_seed).random((len(environments), max_decisions))
     for decision in range(max_decisions):
@@ -74,6 +75,7 @@ def evaluate_model(model, config, episode_seeds, mode, random_seed=20260923):
             fired[index] |= int(action) == 7
             next_observation, reward, terminated, truncated, outcome = environments[index].step(int(action), config['action_repeat'])
             observations[index], infos[index] = next_observation, outcome
+            target_moves[index] += int(outcome.get('target_moved', False))
             returns[index] += reward; lengths[index] += 1; action_counts[action] += 1
             if terminated or truncated:
                 active[index] = False; hits[index] = outcome['hit']
@@ -85,6 +87,8 @@ def evaluate_model(model, config, episode_seeds, mode, random_seed=20260923):
             'line_of_sight_acquisition_rate': float(acquired_line_of_sight.mean()),
             'firing_alignment_rate': float(reached_firing_alignment.mean()),
             'fired_rate': float(fired.mean()),
+            'target_movement_episode_rate': float((target_moves > 0).mean()),
+            'target_moves_mean': float(target_moves.mean()),
             'action_counts': {name: int(action_counts[i]) for i, name in enumerate(ACTION_NAMES)}}
 
 
@@ -96,7 +100,7 @@ def evaluate_scripted(config, episode_seeds):
         max_decisions = math.ceil(config['environment']['max_ticks'] / config['action_repeat'])
         for length in range(1, max_decisions + 1):
             action = (scripted_navigation_action(env)
-                      if env.config.scenario == 'navigation_v1'
+                      if env.config.scenario in ('navigation_v1', 'moving_target_v1')
                       else scripted_action(observation, info['action_mask']))
             observation, reward, terminated, truncated, info = env.step(action, config['action_repeat'])
             total += reward
@@ -138,7 +142,7 @@ def evaluate(run, output, episodes=256):
     for ax in axes: ax.grid(alpha=.2)
     axes[0].legend()
     environment = manifest["config"].get("environment", {})
-    scenario = environment.get("scenario", "aiming_v1").removesuffix("_v1")
+    scenario = environment.get("scenario", "aiming_v1").removesuffix("_v1").replace("_", " ")
     if scenario == "navigation" and not environment.get("navigation_phase_masking", False):
         scenario = "integrated navigation"
     fig.suptitle(f'{manifest["config"].get("architecture", "flywire")} {scenario} · '
