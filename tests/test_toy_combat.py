@@ -5,7 +5,8 @@ import unittest
 import numpy as np
 import torch
 
-from toy_combat.env import REWARD_NAMES, ToyCombatEnv, scripted_action
+from toy_combat.env import (NAVIGATION_REWARD_NAMES, REWARD_NAMES, ToyCombatEnv,
+                            navigation_config, scripted_action, scripted_navigation_action)
 from training.run_toy_combat import load_policy, run
 from training.train_toy_combat import train
 from tools.verify_combat_recording import verify
@@ -56,6 +57,26 @@ class ToyCombatTests(unittest.TestCase):
         else:
             self.fail('Scripted policy did not solve the aiming episode')
 
+    def test_navigation_layouts_start_occluded_and_privileged_oracle_solves_them(self):
+        lengths = []
+        for seed in range(200):
+            env = ToyCombatEnv(navigation_config())
+            observation, info = env.reset(seed)
+            self.assertEqual(observation.shape, (14,))
+            self.assertFalse(info['line_of_sight'])
+            self.assertTrue(info['action_mask'][:7].all())
+            self.assertFalse(info['action_mask'][7])
+            for decision in range(1, env.config.max_ticks + 1):
+                action = scripted_navigation_action(env)
+                observation, reward, terminated, truncated, info = env.step(action, repeat=1)
+                self.assertAlmostEqual(reward, sum(info['reward_components'][name]
+                                                   for name in NAVIGATION_REWARD_NAMES))
+                if terminated or truncated:
+                    break
+            self.assertTrue(info['hit'], f'Oracle failed navigation seed {seed}')
+            lengths.append(decision)
+        self.assertLessEqual(max(lengths), 30)
+
     def test_short_parallel_recording_replays_in_separate_code_path(self):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary) / 'run'
@@ -82,6 +103,17 @@ class ToyCombatTests(unittest.TestCase):
                     self.assertEqual(result['architecture'], architecture)
                     self.assertEqual(result['decisions'], 8)
             self.assertEqual(parameter_counts, [7913, 7913, 7913])
+
+    def test_navigation_ppo_recording_replays(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / 'navigation'
+            metrics = train(directory, seed=9, updates=1, workers=2, horizon=4,
+                            action_repeat=1, ppo_epochs=1, minibatch_size=8,
+                            architecture='flywire', environment_config=navigation_config())
+            result = verify(directory)
+            self.assertEqual(metrics['decisions'], 8)
+            self.assertEqual(result['decisions'], 8)
+            self.assertTrue(result['audit_passed'])
 
 
 if __name__ == '__main__':

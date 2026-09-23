@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from models.flywire_network import FlyWireNetwork
 from models.mlp_baseline import MLPBaseline
-from toy_combat.env import REWARD_NAMES, CombatConfig, ToyCombatEnv
+from toy_combat.env import CombatConfig, ToyCombatEnv
 from toy_combat.recording import RESET_CODES, mlp_forward_with_activity, policy_forward_with_activity
 
 MODEL_RTOL = 1e-5
@@ -40,6 +40,7 @@ def verify(directory):
     if manifest['status'] == 'complete' and count != manifest['decisions']:
         raise ValueError('Manifest decision count disagrees with chunks')
     config = manifest['config']
+    reward_names = config['reward_names']
     architecture = config.get('architecture', 'flywire')
     if architecture == 'mlp':
         model = MLPBaseline(config['observation_size'], len(config['action_names']),
@@ -100,7 +101,7 @@ def verify(directory):
         next_observation, reward, terminated, truncated, outcome = env.step(action, manifest['config']['action_repeat'])
         np.testing.assert_allclose(next_observation, data['next_observation'][i], rtol=0, atol=1e-7)
         np.testing.assert_allclose(reward, data['reward'][i], rtol=0, atol=1e-6)
-        expected_components = [outcome['reward_components'][name] for name in REWARD_NAMES]
+        expected_components = [outcome['reward_components'][name] for name in reward_names]
         np.testing.assert_allclose(expected_components, data['reward_components'][i], rtol=0, atol=1e-6)
         np.testing.assert_array_equal(outcome['privileged_state'], data['privileged_after'][i])
         assert bool(terminated) == bool(data['terminated'][i])

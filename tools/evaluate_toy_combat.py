@@ -1,6 +1,7 @@
 """Evaluate saved policy versions on fixed held-out toy-combat episodes."""
 import argparse
 import json
+import math
 from pathlib import Path
 import sys
 
@@ -15,7 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from models.flywire_network import FlyWireNetwork
 from models.mlp_baseline import MLPBaseline
-from toy_combat.env import ACTION_NAMES, CombatConfig, ToyCombatEnv, scripted_action
+from toy_combat.env import (ACTION_NAMES, CombatConfig, ToyCombatEnv, scripted_action,
+                            scripted_navigation_action)
 
 
 def load_policy(run, version):
@@ -43,8 +45,12 @@ def evaluate_model(model, config, episode_seeds, mode, random_seed=20260923):
     active = np.ones(len(environments), dtype=bool)
     returns = np.zeros(len(environments)); lengths = np.zeros(len(environments), dtype=int)
     hits = np.zeros(len(environments), dtype=bool); action_counts = np.zeros(len(ACTION_NAMES), dtype=int)
-    uniforms = np.random.default_rng(random_seed).random((len(environments), 64))
-    for decision in range(64):
+    acquired_line_of_sight = np.zeros(len(environments), dtype=bool)
+    reached_firing_alignment = np.zeros(len(environments), dtype=bool)
+    fired = np.zeros(len(environments), dtype=bool)
+    max_decisions = math.ceil(config['environment']['max_ticks'] / config['action_repeat'])
+    uniforms = np.random.default_rng(random_seed).random((len(environments), max_decisions))
+    for decision in range(max_decisions):
         indices = np.flatnonzero(active)
         if not len(indices): break
         x = torch.from_numpy(np.stack([observations[i] for i in indices]))
@@ -61,6 +67,11 @@ def evaluate_model(model, config, episode_seeds, mode, random_seed=20260923):
         else:
             raise ValueError(mode)
         for index, action in zip(indices, actions):
+            acquired_line_of_sight[index] |= bool(infos[index]['line_of_sight'])
+            reached_firing_alignment[index] |= bool(
+                infos[index]['line_of_sight'] and infos[index]['aim_alignment'] + 1e-6 >=
+                np.cos(np.deg2rad(config['environment']['hit_tolerance_degrees'])))
+            fired[index] |= int(action) == 7
             next_observation, reward, terminated, truncated, outcome = environments[index].step(int(action), config['action_repeat'])
             observations[index], infos[index] = next_observation, outcome
             returns[index] += reward; lengths[index] += 1; action_counts[action] += 1
@@ -71,6 +82,9 @@ def evaluate_model(model, config, episode_seeds, mode, random_seed=20260923):
     return {'episodes': len(environments), 'hit_rate': float(hits.mean()),
             'return_mean': float(returns.mean()), 'return_sample_sd': float(returns.std(ddof=1)),
             'length_mean': float(lengths.mean()),
+            'line_of_sight_acquisition_rate': float(acquired_line_of_sight.mean()),
+            'firing_alignment_rate': float(reached_firing_alignment.mean()),
+            'fired_rate': float(fired.mean()),
             'action_counts': {name: int(action_counts[i]) for i, name in enumerate(ACTION_NAMES)}}
 
 
@@ -79,8 +93,11 @@ def evaluate_scripted(config, episode_seeds):
     for seed in episode_seeds:
         env = ToyCombatEnv(CombatConfig(**config['environment'])); observation, info = env.reset(seed)
         total = 0.0
-        for length in range(1, 65):
-            action = scripted_action(observation, info['action_mask'])
+        max_decisions = math.ceil(config['environment']['max_ticks'] / config['action_repeat'])
+        for length in range(1, max_decisions + 1):
+            action = (scripted_navigation_action(env)
+                      if env.config.scenario == 'navigation_v1'
+                      else scripted_action(observation, info['action_mask']))
             observation, reward, terminated, truncated, info = env.step(action, config['action_repeat'])
             total += reward
             if terminated or truncated: break

@@ -20,7 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 ARCHIVE = ROOT / 'experiments/cpu_spiral_100/seed_42'
 
 
-def load_policy(seed, architecture='flywire'):
+def load_policy(seed, architecture='flywire', observation_size=ToyCombatEnv.observation_size,
+                action_size=ToyCombatEnv.action_size):
     if architecture not in ('flywire', 'random', 'mlp'):
         raise ValueError(f'Unknown architecture: {architecture}')
     with np.load(ARCHIVE / 'graph.npz', allow_pickle=False) as file:
@@ -28,23 +29,22 @@ def load_policy(seed, architecture='flywire'):
     reference_adjacency = sp.load_npz(ARCHIVE / 'adjacency.npz')
     torch.manual_seed(seed)
     reference = FlyWireNetwork(reference_adjacency, graph['signs'], graph['inputs'], graph['outputs'],
-                               ToyCombatEnv.observation_size, ToyCombatEnv.action_size, 3,
+                               observation_size, action_size, 3,
                                'normalized_synapse_count')
     parameter_budget = sum(parameter.numel() for parameter in reference.parameters())
-    hidden_sizes = matched_hidden_sizes(parameter_budget, ToyCombatEnv.observation_size,
-                                        ToyCombatEnv.action_size)
+    hidden_sizes = matched_hidden_sizes(parameter_budget, observation_size, action_size)
     if architecture == 'flywire':
         model, adjacency = reference, reference_adjacency
     elif architecture == 'random':
         adjacency = randomize_destinations(reference_adjacency, seed)
         torch.manual_seed(seed)
         model = FlyWireNetwork(adjacency, graph['signs'], graph['inputs'], graph['outputs'],
-                               ToyCombatEnv.observation_size, ToyCombatEnv.action_size, 3,
+                               observation_size, action_size, 3,
                                'normalized_synapse_count')
     else:
         adjacency = reference_adjacency
         torch.manual_seed(seed)
-        model = MLPBaseline(ToyCombatEnv.observation_size, ToyCombatEnv.action_size, hidden_sizes)
+        model = MLPBaseline(observation_size, action_size, hidden_sizes)
     model.eval()
     return model, graph, adjacency, hidden_sizes
 

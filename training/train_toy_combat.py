@@ -12,7 +12,7 @@ import scipy.sparse as sp
 import torch
 import torch.nn as nn
 
-from toy_combat.env import ACTION_NAMES, REWARD_NAMES, CombatConfig, ToyCombatEnv
+from toy_combat.env import ACTION_NAMES, CombatConfig, ToyCombatEnv, navigation_config
 from toy_combat.recording import (CombatRecorder, RESET_CODES, mlp_forward_with_activity,
                                   policy_forward_with_activity)
 from training.recording import array, atomic_json
@@ -30,17 +30,30 @@ class ValueNetwork(nn.Module):
 
 
 def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
-          learning_rate=3e-4, ppo_epochs=4, minibatch_size=256, architecture='flywire'):
+          learning_rate=3e-4, ppo_epochs=4, minibatch_size=256, architecture='flywire',
+          environment_config=None, entropy_coefficient=0.01,
+          final_entropy_coefficient=None):
     if updates < 1 or workers < 1 or horizon < 2:
         raise ValueError('Positive updates/workers and horizon >=2 required')
+    if entropy_coefficient < 0 or (final_entropy_coefficient is not None and
+                                   final_entropy_coefficient < 0):
+        raise ValueError('Entropy coefficients must be nonnegative')
+    final_entropy_coefficient = (entropy_coefficient if final_entropy_coefficient is None
+                                 else final_entropy_coefficient)
     torch.manual_seed(seed); torch.set_num_threads(4); torch.use_deterministic_algorithms(True)
-    policy, source_graph, run_adjacency, hidden_sizes = load_policy(seed, architecture)
+    environment_config = environment_config or CombatConfig()
+    if environment_config.scenario == 'navigation_v1' and action_repeat != 1:
+        raise ValueError('navigation_v1 requires action_repeat=1 for cell-level control')
+    observation_size = ToyCombatEnv.observation_size_for(environment_config)
+    policy, source_graph, run_adjacency, hidden_sizes = load_policy(
+        seed, architecture, observation_size, ToyCombatEnv.action_size)
     torch.manual_seed(seed + 3)
-    value_model = ValueNetwork(ToyCombatEnv.observation_size)
+    value_model = ValueNetwork(observation_size)
     optimizer = torch.optim.Adam([*policy.parameters(), *value_model.parameters()], lr=learning_rate, foreach=False)
     sample_generator = torch.Generator().manual_seed(seed + 1)
     batch_generator = torch.Generator().manual_seed(seed + 2)
-    environments = [ToyCombatEnv() for _ in range(workers)]
+    environments = [ToyCombatEnv(environment_config) for _ in range(workers)]
+    reward_names = environments[0].reward_names
     episode_ids, episode_steps = list(range(workers)), [0] * workers
     episode_seeds = [seed * 100000 + i for i in range(workers)]
     reset = [env.reset(s) for env, s in zip(environments, episode_seeds)]
@@ -61,7 +74,9 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
     config = {'seed': seed, 'workers': workers, 'updates': updates, 'horizon': horizon,
               'action_repeat': action_repeat, 'algorithm': 'PPO', 'learning_rate': learning_rate,
               'ppo_epochs': ppo_epochs, 'minibatch_size': minibatch_size, 'gamma': .99,
-              'gae_lambda': .95, 'clip_ratio': .2, 'entropy_coefficient': .01,
+              'gae_lambda': .95, 'clip_ratio': .2,
+              'entropy_coefficient': entropy_coefficient,
+              'final_entropy_coefficient': final_entropy_coefficient,
               'value_coefficient': .5, 'max_gradient_norm': .5,
               'architecture': architecture, 'parameters': sum(p.numel() for p in policy.parameters()),
               'parameter_budget': parameter_budget,
@@ -70,8 +85,8 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
               'random_control': ('source degree, self-loops, source sign, and per-source count '
                                  'multiset preserved') if architecture == 'random' else None,
               'value_seed': seed + 3,
-              'observation_size': ToyCombatEnv.observation_size, 'action_names': ACTION_NAMES,
-              'reward_names': REWARD_NAMES, 'environment': CombatConfig().__dict__}
+              'observation_size': observation_size, 'action_names': ACTION_NAMES,
+              'reward_names': reward_names, 'environment': environment_config.__dict__}
     update_rows, policy_version, global_decision = [], 0, 0
     fixed_structure = [(name, tuple(parameter.shape)) for name, parameter in policy.named_parameters()]
     fixed_indices = (policy.connectome_layer.indices.detach().clone()
@@ -96,6 +111,9 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
                               for path in provenance_paths},
             'run_adjacency_sha256': hashlib.sha256((Path(output) / 'adjacency.npz').read_bytes()).hexdigest()})
         for update in range(1, updates + 1):
+            schedule_fraction = 0.0 if updates == 1 else (update - 1) / (updates - 1)
+            current_entropy_coefficient = (entropy_coefficient + schedule_fraction *
+                                           (final_entropy_coefficient - entropy_coefficient))
             rollout = {key: [] for key in ('observations', 'masks', 'actions', 'old_log_probabilities',
                                             'rewards', 'dones', 'values')}
             for rollout_step in range(horizon):
@@ -118,7 +136,8 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
                     before = infos[worker]['privileged_state'].copy()
                     next_obs, reward, terminated, truncated, outcome = env.step(int(actions[worker]), action_repeat)
                     done = terminated or truncated
-                    components = np.asarray([outcome['reward_components'][name] for name in REWARD_NAMES], dtype=np.float32)
+                    components = np.asarray([outcome['reward_components'][name] for name in reward_names],
+                                            dtype=np.float32)
                     activity = ({'hidden_preactivations': hidden_pre[worker],
                                  'hidden_activations': hidden_post[worker]}
                                 if architecture == 'mlp' else
@@ -180,7 +199,7 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
                     clipped = ratio.clamp(.8, 1.2) * flat_advantages[indices]
                     policy_loss = -torch.minimum(unclipped, clipped).mean()
                     value_loss = (value_model(flat['observations'][indices]) - flat_returns[indices]).square().mean()
-                    loss = policy_loss + .5 * value_loss - .01 * entropy
+                    loss = policy_loss + .5 * value_loss - current_entropy_coefficient * entropy
                     optimizer.zero_grad(set_to_none=True); loss.backward()
                     gradient_norm = torch.nn.utils.clip_grad_norm_([*policy.parameters(), *value_model.parameters()], .5)
                     if not torch.isfinite(gradient_norm): raise RuntimeError('Nonfinite gradient')
@@ -199,6 +218,7 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
                 raise RuntimeError('Policy structure, connectome topology, or edge signs changed')
             update_summary = {'update': update, 'policy_version': policy_version,
                 **{key: float(np.mean(value)) for key, value in diagnostics.items()},
+                'entropy_coefficient': current_entropy_coefficient,
                 'gradient_norm': float(gradient_norm),
                 'policy_update_norm': float(torch.sqrt(sum((p - old).square().sum() for p, old in zip(policy.parameters(), before)))),
                 'model_structure_preserved': model_structure_preserved,
@@ -232,5 +252,13 @@ if __name__ == '__main__':
     parser.add_argument('--updates', type=int, default=80); parser.add_argument('--workers', type=int, default=8)
     parser.add_argument('--horizon', type=int, default=64); parser.add_argument('--action-repeat', type=int, default=2)
     parser.add_argument('--architecture', choices=('flywire', 'random', 'mlp'), default='flywire')
-    args = parser.parse_args(); train(args.output, args.seed, args.updates, args.workers,
-                                      args.horizon, args.action_repeat, architecture=args.architecture)
+    parser.add_argument('--scenario', choices=('aiming', 'navigation'), default='aiming')
+    parser.add_argument('--entropy-coefficient', type=float, default=0.01)
+    parser.add_argument('--final-entropy-coefficient', type=float)
+    args = parser.parse_args()
+    environment = navigation_config() if args.scenario == 'navigation' else CombatConfig()
+    train(args.output, args.seed, args.updates, args.workers,
+                                      args.horizon, args.action_repeat, architecture=args.architecture,
+                                      environment_config=environment,
+                                      entropy_coefficient=args.entropy_coefficient,
+                                      final_entropy_coefficient=args.final_entropy_coefficient)
