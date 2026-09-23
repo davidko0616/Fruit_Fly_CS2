@@ -137,7 +137,9 @@ def evaluate(run, output, episodes=256):
     axes[1].set(title='Held-out episode return', xlabel='PPO update / policy version', ylabel='Mean return')
     for ax in axes: ax.grid(alpha=.2)
     axes[0].legend()
-    fig.suptitle(f'{manifest["config"].get("architecture", "flywire")} aiming · '
+    environment = manifest["config"].get("environment", {})
+    scenario = environment.get("scenario", "aiming_v1").removesuffix("_v1")
+    fig.suptitle(f'{manifest["config"].get("architecture", "flywire")} {scenario} · '
                  f'{episodes} fixed held-out episodes')
     fig.savefig(output / 'learning.png', dpi=160); plt.close(fig)
     return payload

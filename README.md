@@ -81,3 +81,12 @@ uses exactly 7,913 actor parameters for FlyWire, randomized wiring, and an MLP.
 Final stochastic hit rates are 90.7%, 96.1%, and 100.0%, respectively. FlyWire
 trails both controls on hit rate, return, and learning-curve area in every paired
 seed, so this task provides no evidence of a connectome-wiring advantage.
+
+## Toy combat navigation milestone
+
+The next recorded FlyWire policy learned to move out from behind obstacles,
+acquire line of sight, aim, and hit a stationary target. On 256 fixed held-out
+layouts, stochastic hit rate rose from 48.4% to **97.3%**, with 100% line-of-sight
+acquisition and firing alignment at the final checkpoint. All 51,200 recorded CPU
+decisions passed independent policy and environment replay. See the
+[fixed protocol and results](experiments/toy_combat_navigation/README.md).

@@ -1,9 +1,13 @@
 # Project handoff — updated September 23, 2026
 
-## Current PC: CPU baseline comparison complete
+## Current PC: first navigation milestone complete
 
 The current machine is the Ryzen 5 7600 desktop, using Python 3.12 and
-PyTorch 2.7.1+cpu in `.venv`. All 15 recorded runs (FlyWire, matched random
+PyTorch 2.7.1+cpu in `.venv`. The first fixed navigation confirmation now passes:
+the FlyWire controller reaches a 97.3% held-out hit rate after starting every
+episode behind occlusion. All 51,200 recorded decisions replayed successfully.
+
+All 15 recorded classifier runs (FlyWire, matched random
 destinations and matched MLP; seeds 42-46; 200 epochs) completed and passed
 independent audits. Mean test accuracy is 99.46% for FlyWire and 99.32% for both
 baselines. MLP reaches 95% validation accuracy sooner in all five paired seeds.
@@ -28,6 +32,13 @@ limitations below describe the previous computer. The original trainer remains
 CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device.
 
 ## Completed
+
+- First toy-combat navigation milestone: the recorded FlyWire PPO policy learned
+  to move from initial occlusion, acquire line of sight, aim, and fire. Held-out
+  stochastic hit rate improved from 48.4% to 97.3%, with final 100% line-of-sight
+  acquisition and firing alignment. All 51,200 CPU decisions passed replay and
+  topology/sign invariants passed. See the
+  [fixed protocol, report, and learning curve](../experiments/toy_combat_navigation/README.md).
 
 - Five-seed toy-combat aiming comparison: all 15 matched CPU runs and all
   768,000 rollout decisions passed replay. Final stochastic hit rate was
@@ -80,23 +91,25 @@ See [reproduction and diagnostics](../tools/ZLUDA.md).
 The [activity recording and visualization plan](planning/activity_recording_and_visualization.md)
 now has a working classifier recorder, offline viewer, and audited environment
 action recorder. Use `training.train_recorded` for new inspectable classifiers
-and `training.train_toy_combat` for recorded aiming policies. Live environment
+and `training.train_toy_combat` for recorded combat policies. Live environment
 display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Enable movement and add navigation under a fixed protocol, retaining all
-   three matched actors, synchronized activity recording, stochastic evaluation,
-   and multiple training seeds.
-2. Add occlusion or partial observability and longer credit assignment so the
-   task no longer reduces to a direct feedforward aiming map.
-3. For stronger scientific conclusions, predeclare harder synthetic tasks,
+1. Relax navigation phase masking so movement, aiming, and firing coexist, while
+   retaining synchronized activity recording and stochastic evaluation.
+2. Add moving targets, partial observability, and longer credit assignment before
+   connecting the controller to a live Counter-Strike observation/action bridge.
+3. Confirm each harder curriculum across multiple seeds. Repeat matched actor
+   comparisons when they answer a specific scientific question rather than as
+   the main optimization target.
+4. For stronger scientific conclusions, predeclare harder synthetic tasks,
    independent dataset splits, or less dense circuits. The first comparison
    is close to the accuracy ceiling and uses a single fixed split.
-4. Extend replay to feedforward MLP schema-2 recordings if visual comparison
+5. Extend replay to feedforward MLP schema-2 recordings if visual comparison
    is needed. They are fully recorded and numerically audited, but the current
    recurrent viewer intentionally accepts schema 1 only.
-5. Benchmark larger models only when needed. Current experiments run on CPU;
+6. Benchmark larger models only when needed. Current experiments run on CPU;
    NVIDIA laptop results remain historical evidence for a CUDA option.
 
 Do not claim biological advantages from the first classification run. The current
