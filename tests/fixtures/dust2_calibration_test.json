@@ -1,0 +1,8 @@
+{
+  "map_name": "de_dust2",
+  "min_x": 0.0,
+  "max_x": 1000.0,
+  "min_y": 0.0,
+  "max_y": 1000.0,
+  "local_distance_scale": 1000.0
+}

@@ -117,3 +117,13 @@ decisions occluded. With identical weights and evaluation seeds, zeroing that
 remembered target input reduces hit rate to **0.0%**, demonstrating that the
 controller depends on remembered state. All 51,200 recorded decisions pass
 independent replay.
+
+## Dust II bridge
+
+The first [Dust II integration stage](docs/CS2_DUST2_BRIDGE.md) is implemented as
+a read-only bridge. It records Valve GSI map and own-player telemetry, excludes
+opponent-position feeds, converts visibility-gated frames into the existing
+14-value controller input, maintains last-seen target memory across occlusion,
+and replays proposed actions without sending game controls. The synthetic bridge
+fixture passes end-to-end through the confirmed policy. Real Dust II calibration,
+screen perception, and synchronized capture are the next acceptance run.

@@ -42,6 +42,13 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
 
 ## Completed
 
+- Dust II bridge foundation: a loopback-only GSI recorder now retains own-player
+  and map telemetry while discarding authentication and unrequested opponent
+  fields. The visibility-gated 14-value encoder, round-scoped last-seen memory,
+  calibration tool, and offline policy replay are implemented and covered by seven
+  tests. See the [setup and contract](CS2_DUST2_BRIDGE.md) and
+  [fixed read-only protocol](../experiments/cs2_dust2_bridge/PROTOCOL.md).
+
 - Partial-observability toy combat: the seed-77 FlyWire controller reached 82.8%
   held-out stochastic hit rate without live through-wall coordinates. A fixed
   no-memory intervention reduced hit rate to 0.0%, establishing dependence on
@@ -126,14 +133,13 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Build the first Counter-Strike observation/action bridge. Start with captured
-   frames or telemetry and controlled local inputs, keep target detections gated
-   by visibility, and retain synchronized observations, neuron activity, actions,
-   rewards, and outcomes.
-2. Validate that bridge in offline replay or a controlled local match before
-   training against the live loop. Repeat matched actor comparisons when they
-   answer a specific scientific question rather than as the main optimization
-   target.
+1. On a PC with CS2 installed, run the fixed Dust II read-only protocol: collect
+   a full-region GSI calibration walk, timestamped screen frames, and visible-only
+   target/clearance estimates. The current PC did not expose a Steam installation
+   in the standard locations.
+2. Synchronize the two streams and validate the combined frames in offline replay
+   before adding local-practice input execution or map-specific training. Repeat
+   matched actor comparisons when they answer a specific scientific question.
 3. For stronger scientific conclusions, predeclare harder synthetic tasks,
    independent dataset splits, or less dense circuits. The first comparison
    is close to the accuracy ceiling and uses a single fixed split.
