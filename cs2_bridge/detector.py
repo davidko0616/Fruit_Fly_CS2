@@ -54,8 +54,10 @@ def collate_detection_batch(batch):
     return list(images), list(targets), list(metadata)
 
 
-def build_player_ssdlite(pretrained=True):
+def build_player_ssdlite(pretrained=True, image_size=320):
     """Create background/player SSDlite, retaining COCO person initialization."""
+    if image_size <= 0 or image_size % 32:
+        raise ValueError('image_size must be a positive multiple of 32')
     weights = (SSDLite320_MobileNet_V3_Large_Weights.DEFAULT
                if pretrained else None)
     model = ssdlite320_mobilenet_v3_large(
@@ -84,6 +86,9 @@ def build_player_ssdlite(pretrained=True):
                 new_conv.bias[new_start:new_start + 2].copy_(
                     old_conv.bias[old_indices])
     model.head.classification_head = new_head
+    model.transform.min_size = (image_size,)
+    model.transform.max_size = image_size
+    model.transform.fixed_size = (image_size, image_size)
     return model
 
 
@@ -185,6 +190,8 @@ def collect_detection_records(model, data_loader, device):
         latencies.extend([elapsed / len(images)] * len(images))
         for prediction, target, row in zip(predictions, targets, metadata):
             records.append({
+                'source_frame_id': row['source_frame_id'],
+                'image': row['image'],
                 'ground_truth': target['boxes'].tolist(),
                 'boxes_metadata': row['boxes'],
                 'predicted_boxes': prediction['boxes'].cpu().tolist(),

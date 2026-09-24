@@ -2,30 +2,37 @@
 
 ## Scope
 
-This is an intermediate CPU feasibility run for the screen-visible body detector.
-It does not establish final accuracy and has not been evaluated on the held-out
-test route. The detector receives only captured RGB frames; radar contacts and
-game-state opponent coordinates are not inputs.
+This is an intermediate CPU feasibility result for screen-visible player
+detection. It does not establish final accuracy and has not been evaluated on
+the held-out test route. The detector receives captured RGB frames only; radar
+contacts and game-state opponent coordinates are not inputs.
 
-The accepted local dataset contains four training sessions and one independent
+The accepted local dataset contains five training sessions and one independent
 validation session:
 
-- train: 75 frames, 44 positive frames, 31 verified negatives, 51 boxes;
+- train: 95 frames, 59 positive frames, 36 verified negatives, 85 boxes;
 - validation: 20 frames, nine positive frames, 11 verified negatives, 11 boxes.
+
+The latest training-only live-match session added 20 active-play frames: 15
+positive frames, five verified negatives, and 34 boxes. Thirty-three boxes are
+friendly players and 12 are partially visible. Console, round-end, and buy-menu
+frames were explicitly excluded rather than treated as negatives. A validation
+QA pass tightened one erroneous close-player box before the final run.
 
 Capture sessions remain intact within one split. Full-resolution images and
 checkpoints remain local under `artifacts/cs2_bridge/`.
 
-## Fixed training run
+## Fixed 320-pixel run
 
 - model: TorchVision SSDlite320 MobileNetV3 Large;
 - initialization: official COCO background/person weights;
 - runtime: PyTorch 2.7.1+cpu and TorchVision 0.22.1+cpu;
+- input: 320 x 320;
 - seed: 42;
 - optimizer: AdamW, learning rate `1e-4`, weight decay `1e-4`;
 - batch size: two, 15 epochs, frozen MobileNet backbone;
 - checkpoint selection: validation F1 at score 0.25 and IoU 0.50;
-- selected checkpoint: epoch six.
+- selected checkpoint: epoch nine.
 
 The official PyTorch compatibility table pairs PyTorch 2.7.1 with TorchVision
 0.22.1. TorchVision describes SSDlite320 as a compact detector intended for
@@ -34,39 +41,50 @@ efficient inference:
 - <https://pytorch.org/get-started/previous-versions/>
 - <https://pytorch.org/blog/torchvision-ssdlite-implementation/>
 
-## Validation calibration and result
+## Validation result
 
-NMS and score calibration used only the validation split. The frozen pilot
-settings, selected before any test capture, are:
-
-- score threshold: 0.25;
-- NMS threshold: 0.30;
-- match IoU: 0.50.
-
-At those settings the selected checkpoint reports:
+Validation-only calibration selects score threshold 0.25, NMS threshold 0.30,
+and match IoU 0.50. At those settings:
 
 | Metric | Result |
 |---|---:|
-| Precision | 40.0% |
-| Recall | 54.5% |
-| F1 | 0.462 |
+| Precision | 53.8% |
+| Recall | 63.6% |
+| F1 | 0.583 |
 | Enemy recall | 83.3% (5/6) |
-| Friendly recall | 20.0% (1/5) |
-| Full-body recall | 71.4% (5/7) |
+| Friendly recall | 40.0% (2/5) |
+| Full-body recall | 85.7% (6/7) |
 | Partial-body recall | 25.0% (1/4) |
 | False positives on negative frames | 0 across 11 frames |
-| Mean CPU latency | about 40 ms/frame |
+| Mean CPU latency | about 35 ms/frame |
 
-Lowering the score threshold to 0.20 raises no additional matched bodies at NMS
-0.30 but produces 22 false positives. Raising it above 0.25 loses recall. The
-15-epoch curve peaks at epoch six while training loss continues to decrease,
-which is consistent with overfitting to the small capture set.
+The earlier pre-targeted-data pilot reached 40.0% precision, 54.5% recall, and
+F1 0.462 on the same validation session. The added teammate-heavy session and
+validation correction therefore improved the pilot, but partial-player recall
+remains poor. The four remaining misses comprise three partial bodies and one
+small full body. Two targets are only 55 x 80 and 44 x 33 pixels in the original
+2560 x 1440 frame, so they become only a few pixels after 320 x 320 resizing.
+
+## Rejected resolution experiments
+
+Two validation-only experiments were retained as negative results:
+
+- A 640 x 640 run used the same training data, seed, optimizer, and 15-epoch
+  schedule. Its best calibrated F1 was 0.400 and mean CPU latency was about
+  57 ms/frame. It produced more false positives and lower recall than the fixed
+  320-pixel model.
+- Full-frame plus four 320-pixel quadrant inferences preserved more small-target
+  pixels, but its best validation F1 was 0.381 at about 96 ms/frame and it added
+  false detections on negative frames.
+
+Neither experiment replaces the selected 320-pixel checkpoint.
 
 ## Decision
 
-Do not run the final held-out test yet. Add training-only sessions rich in
-friendly bodies and partial occlusions, retrain with the same architecture, and
-use the existing validation split for checkpoint selection. Freeze the revised
-checkpoint and thresholds before capturing the final test route. Enemy/friendly
-classification remains a later stage; this pilot detects any visible body and
-reports recall grouped by the retained team labels.
+Keep the corrected 320-pixel epoch-nine checkpoint as the current read-only
+integration baseline. Do not run the final held-out detector test yet. First
+synchronize its detections with fixed-radar pose and GSI round state, verify that
+targets become null on misses and occlusion, and replay the combined observation
+stream without game input. A later detector revision should target partial and
+tiny players with an architecture designed for multi-scale detection rather
+than stretching SSDlite320 or merging uncalibrated tiled predictions.

@@ -44,7 +44,9 @@ def main():
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False,
                         num_workers=0, collate_fn=collate_detection_batch)
     checkpoint = torch.load(args.checkpoint, map_location=device, weights_only=False)
-    model = build_player_ssdlite(pretrained=False).to(device)
+    image_size = int(checkpoint.get('config', {}).get('image_size', 320))
+    model = build_player_ssdlite(
+        pretrained=False, image_size=image_size).to(device)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.nms_thresh = args.nms_threshold
     records, latencies = collect_detection_records(model, loader, device)
@@ -58,6 +60,7 @@ def main():
         'schema_version': 1,
         'checkpoint': str(args.checkpoint),
         'checkpoint_epoch': checkpoint['epoch'],
+        'image_size': image_size,
         'split': args.split,
         'nms_threshold': args.nms_threshold,
         'metrics': results,

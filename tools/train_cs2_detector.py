@@ -34,7 +34,7 @@ def _sha256(path):
 def _save_checkpoint(path, model, optimizer, epoch, config, metrics):
     torch.save({
         'schema_version': 1,
-        'architecture': 'ssdlite320_mobilenet_v3_large',
+        'architecture': f"ssdlite_mobilenet_v3_large_{config['image_size']}",
         'classes': ['background', 'player'],
         'epoch': epoch,
         'config': config,
@@ -70,7 +70,8 @@ def train(args):
         validation_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=0, collate_fn=collate_detection_batch)
 
-    model = build_player_ssdlite(pretrained=not args.no_pretrained).to(device)
+    model = build_player_ssdlite(
+        pretrained=not args.no_pretrained, image_size=args.image_size).to(device)
     if args.freeze_backbone:
         for parameter in model.backbone.parameters():
             parameter.requires_grad_(False)
@@ -86,6 +87,7 @@ def train(args):
         'batch_size': args.batch_size,
         'learning_rate': args.learning_rate,
         'weight_decay': args.weight_decay,
+        'image_size': args.image_size,
         'freeze_backbone': args.freeze_backbone,
         'pretrained_coco_person_initialization': not args.no_pretrained,
         'score_threshold': args.score_threshold,
@@ -178,6 +180,7 @@ def main():
     parser.add_argument('--weight-decay', type=float, default=1e-4)
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--cpu-threads', type=int, default=min(6, os.cpu_count() or 1))
+    parser.add_argument('--image-size', type=int, default=320)
     parser.add_argument('--score-threshold', type=float, default=0.25)
     parser.add_argument('--iou-threshold', type=float, default=0.5)
     parser.add_argument('--freeze-backbone', action=argparse.BooleanOptionalAction,
@@ -186,6 +189,8 @@ def main():
     args = parser.parse_args()
     if args.epochs <= 0 or args.batch_size <= 0 or args.cpu_threads <= 0:
         parser.error('epochs, batch size, and CPU threads must be positive')
+    if args.image_size <= 0 or args.image_size % 32:
+        parser.error('image size must be a positive multiple of 32')
     print(json.dumps(train(args), indent=2))
 
 

@@ -47,7 +47,12 @@ visible body. Skip transition, white, desktop, and overlay frames.
 
 The label schema validates positive-area boxes inside the source frame. The
 server binds to loopback, serves only files named by the capture manifest, and
-writes labels atomically after every saved frame.
+writes labels atomically after every saved frame. For live matches, review the
+sampled contact sheet before labeling and omit console, death, round-end,
+freeze-time, respawn, and buy-menu frames with repeated
+`--exclude-frame FRAME_ID` arguments. Those states are handled by synchronized
+GSI activity and round state and must not be recorded as ordinary detector
+negatives.
 
 Audit the labels before using them:
 
@@ -70,12 +75,13 @@ source and output are on the same filesystem.
   --session artifacts/cs2_bridge/dust2_visible_players_train_neg_02 artifacts/cs2_bridge/dust2_visible_players_train_neg_02_labels.json `
   --session artifacts/cs2_bridge/dust2_visible_players_train_02 artifacts/cs2_bridge/dust2_visible_players_train_02_labels.json `
   --session artifacts/cs2_bridge/dust2_visible_players_train_03 artifacts/cs2_bridge/dust2_visible_players_train_03_labels.json `
+  --session artifacts/cs2_bridge/dust2_visible_players_train_04 artifacts/cs2_bridge/dust2_visible_players_train_04_labels.json `
   --session artifacts/cs2_bridge/dust2_visible_players_validation_01 artifacts/cs2_bridge/dust2_visible_players_validation_01_labels.json `
-  --output artifacts/cs2_bridge/dust2_detector_dataset_v1 `
-  --class-mode team --transfer hardlink
+  --output artifacts/cs2_bridge/dust2_detector_player_dataset_v3 `
+  --class-mode player --transfer hardlink
 ```
 
-The first exported pilot contains 75 training frames with 51 boxes and 31
+The corrected pilot export contains 95 training frames with 85 boxes and 36
 verified negatives, plus 20 independent validation frames with 11 boxes and 11
 verified negatives. The exported dataset remains local under `artifacts/`.
 Its size supports an end-to-end detector pilot and error analysis, not a final
@@ -93,27 +99,29 @@ configuration, environment, history, last, and best checkpoints.
 
 ```powershell
 .\.venv\Scripts\python.exe tools/train_cs2_detector.py `
-  --dataset artifacts/cs2_bridge/dust2_detector_player_dataset_v1 `
-  --output artifacts/cs2_bridge/dust2_player_detector_pilot_v2_15epochs `
+  --dataset artifacts/cs2_bridge/dust2_detector_player_dataset_v3 `
+  --output artifacts/cs2_bridge/dust2_player_detector_pilot_v5_corrected_validation `
   --epochs 15 --batch-size 2 --learning-rate 0.0001 `
   --weight-decay 0.0001 --seed 42 --cpu-threads 6 `
-  --score-threshold 0.25 --iou-threshold 0.5 --freeze-backbone
+  --image-size 320 --score-threshold 0.25 --iou-threshold 0.5 --freeze-backbone
 ```
 
-Epoch six was selected. Validation-only calibration froze score threshold 0.25,
+After adding a teammate-heavy training session and correcting one loose
+validation box, epoch nine was selected. Validation-only calibration froze score threshold 0.25,
 NMS threshold 0.30, and IoU threshold 0.50 before any test capture. On the 20
-validation frames, the selected detector has 40.0% precision, 54.5% recall, F1
-0.462, zero detections on 11 negative frames, and about 40 ms mean CPU latency.
-Grouped recall is 83.3% for enemies, 20.0% for teammates, 71.4% for full bodies,
-and 25.0% for partial bodies. These results identify missing teammate and partial
-coverage; they are pilot diagnostics, not held-out test evidence.
+validation frames, the selected detector has 53.8% precision, 63.6% recall, F1
+0.583, zero detections on 11 negative frames, and about 35 ms mean CPU latency.
+Grouped recall is 83.3% for enemies, 40.0% for teammates, 85.7% for full bodies,
+and 25.0% for partial bodies. A matched 640-pixel run and full-frame-plus-tiles
+inference both performed worse. These are pilot diagnostics, not held-out test
+evidence; see [the full report](DETECTOR_PILOT.md).
 
 Run fixed-threshold validation or test evaluation with:
 
 ```powershell
 .\.venv\Scripts\python.exe tools/evaluate_cs2_detector.py `
-  --dataset artifacts/cs2_bridge/dust2_detector_player_dataset_v1 `
-  --checkpoint artifacts/cs2_bridge/dust2_player_detector_pilot_v2_15epochs/best.pt `
+  --dataset artifacts/cs2_bridge/dust2_detector_player_dataset_v3 `
+  --checkpoint artifacts/cs2_bridge/dust2_player_detector_pilot_v5_corrected_validation/best.pt `
   --split validation --thresholds 0.25 --nms-threshold 0.30 `
   --iou-threshold 0.50
 ```

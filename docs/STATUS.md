@@ -55,16 +55,18 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
   with no timestamp reversal or consecutive jump above 40 pixels. See the
   [calibration report](../experiments/cs2_dust2_bridge/RADAR_CALIBRATION.md).
   Visible-player collection now has an exported, session-separated pilot dataset:
-  75 training frames with 51 boxes and 31 negatives, and 20 independent
+  95 training frames with 85 boxes and 36 negatives, and 20 independent
   validation frames with 11 boxes and 11 negatives. The exporter emits YOLO
   labels plus source/team/visibility metadata and uses hard links locally to
   avoid duplicating full-resolution captures. A final held-out test route has
   not been captured.
-  A CPU SSDlite320 pilot selected epoch six from a 15-epoch run. Its frozen
-  validation setting reaches 40.0% precision and 54.5% recall at about 40 ms per
-  frame, with no detections on 11 negative frames. Enemy recall is 83.3%, but
-  teammate recall is 20.0% and partial-body recall is 25.0%; targeted training
-  data for those two cases is required before held-out test evaluation. See the
+  A CPU SSDlite320 pilot selected epoch nine from a corrected 15-epoch run. Its
+  validation setting reaches 53.8% precision and 63.6% recall at about 35 ms per
+  frame, with no detections on 11 negative frames. Enemy recall is 83.3%,
+  teammate recall is 40.0%, and partial-body recall remains 25.0%. Matched
+  640-pixel and tiled-inference experiments performed worse. The selected model
+  is now the read-only integration baseline; final held-out testing remains
+  deferred. See the
   [detector pilot report](../experiments/cs2_dust2_bridge/DETECTOR_PILOT.md).
 
 - Partial-observability toy combat: the seed-77 FlyWire controller reached 82.8%
