@@ -45,8 +45,9 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
 - Dust II bridge foundation: a loopback-only GSI recorder now retains own-player
   and map telemetry while discarding authentication and unrequested opponent
   fields. The visibility-gated 14-value encoder, round-scoped last-seen memory,
-  calibration tool, and offline policy replay are implemented and covered by nine
-  tests. See the [setup and contract](CS2_DUST2_BRIDGE.md) and
+  calibration tool, offline policy replay, and visible-label contracts are
+  implemented and covered by eleven tests. See the
+  [setup and contract](CS2_DUST2_BRIDGE.md) and
   [fixed read-only protocol](../experiments/cs2_dust2_bridge/PROTOCOL.md).
   A live probe found that active-player GSI omits position and facing in the
   installed CS2 build. Fixed-radar screen localization now replaces GSI pose;

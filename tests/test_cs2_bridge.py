@@ -11,10 +11,12 @@ from PIL import Image, ImageDraw
 
 from cs2_bridge.encoder import Dust2ObservationEncoder
 from cs2_bridge.gsi import parse_gsi_payload
+from cs2_bridge.labels import PlayerBox, validate_frame_label
 from cs2_bridge.radar import detect_player_pose
 from cs2_bridge.replay import read_frames, replay_frames, write_jsonl
 from cs2_bridge.schema import BridgeFrame, Dust2Calibration, PlayerPose, VisibleTarget
 from tools.calibrate_dust2_bridge import calibrate
+from tools.audit_cs2_labels import audit
 from tools.extract_dust2_radar import _temporally_supported
 from http.server import ThreadingHTTPServer
 from tools.serve_cs2_gsi import GSIRecorder, make_handler
@@ -201,6 +203,46 @@ class CS2BridgeTests(unittest.TestCase):
         kept, rejected = _temporally_supported(rows, 20, 2)
         self.assertEqual([row['frame_id'] for row in kept], [0, 1, 3, 4])
         self.assertEqual([row['frame_id'] for row in rejected], [2])
+
+    def test_visible_player_labels_require_in_frame_positive_boxes(self):
+        label = validate_frame_label({
+            'annotated': True,
+            'players': [{'x1': 10, 'y1': 20, 'x2': 50, 'y2': 90,
+                         'team': 'enemy', 'visibility': 'partial'}],
+        }, width=100, height=100)
+        self.assertEqual(PlayerBox.from_dict(label['players'][0], 100, 100).team,
+                         'enemy')
+        self.assertEqual(validate_frame_label(
+            {'annotated': True, 'players': []}, 100, 100)['players'], [])
+        with self.assertRaisesRegex(ValueError, 'inside the frame'):
+            validate_frame_label({
+                'annotated': True,
+                'players': [{'x1': 10, 'y1': 20, 'x2': 110, 'y2': 90}],
+            }, width=100, height=100)
+
+    def test_visible_player_label_audit_counts_session_split(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            capture = Path(temporary) / 'capture'
+            capture.mkdir()
+            frames = [
+                {'frame_id': 0, 'file': '0.png', 'width': 100, 'height': 80},
+                {'frame_id': 1, 'file': '1.png', 'width': 100, 'height': 80},
+            ]
+            (capture / 'frames.jsonl').write_text(
+                '\n'.join(json.dumps(row) for row in frames) + '\n')
+            labels = Path(temporary) / 'labels.json'
+            labels.write_text(json.dumps({
+                'schema_version': 1, 'split': 'validation', 'labels': {
+                    '0': {'annotated': True, 'players': [{
+                        'x1': 10, 'y1': 10, 'x2': 40, 'y2': 60,
+                        'team': 'enemy', 'visibility': 'full'}]},
+                    '1': {'annotated': True, 'players': []},
+                }}) + '\n')
+            result = audit(capture, labels)
+            self.assertEqual(result['split'], 'validation')
+            self.assertEqual(result['positive_frames'], 1)
+            self.assertEqual(result['negative_frames'], 1)
+            self.assertEqual(result['player_boxes'], 1)
 
 
 if __name__ == '__main__':

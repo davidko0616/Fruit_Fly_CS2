@@ -36,7 +36,9 @@ before map-specific data collection and training.
   fixed-radar capture. Calibration is explicit and versionable rather than
   embedding guessed Dust II coordinates in code.
 - `tools/capture_cs2_screen.py` records lossless timestamped full frames or radar
-  crops and flushes the manifest after every frame. `tools/extract_dust2_radar.py`
+  crops and flushes the manifest after every frame. It can fall back to DXcam's
+  Windows Desktop Duplication path for full-screen Direct3D capture.
+  `tools/extract_dust2_radar.py`
   detects the compact yellow player marker and adjacent white or red heading
   marker without reading game memory. A visible radar-map search rectangle and
   temporal-support check reject scenery and menu lookalikes.
@@ -142,3 +144,8 @@ Before enabling any action executor:
 
 Only after this read-only run passes should proposed actions be mapped to local
 practice controls behind an explicit enable flag and immediate stop control.
+
+Visible-player captures and labels follow the separate
+[perception protocol](../experiments/cs2_dust2_bridge/PERCEPTION_PROTOCOL.md).
+The loopback labeler supports tight full/partial player boxes, team class,
+verified negative frames, and a fixed split for the whole capture session.

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CS2 visible-player labeler</title>
+<style>
+  body { margin: 0; background: #111; color: #eee; font: 15px system-ui, sans-serif; }
+  header { display: flex; gap: 14px; align-items: center; padding: 10px 14px; background: #1d1d1d; }
+  button, select { font: inherit; padding: 6px 10px; }
+  #status { margin-left: auto; color: #9fd; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 12px; padding: 12px; }
+  #stage { position: relative; overflow: auto; max-height: calc(100vh - 80px); }
+  canvas { display: block; max-width: 100%; cursor: crosshair; background: #000; }
+  aside { background: #1b1b1b; padding: 12px; }
+  .box-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin: 8px 0; }
+  small { color: #aaa; }
+</style>
+<header>
+  <button id="prev">Previous</button><button id="next">Next</button>
+  <span id="counter"></span>
+  <select id="team"><option>enemy</option><option>friendly</option><option>unknown</option></select>
+  <select id="visibility"><option>full</option><option>partial</option></select>
+  <button id="none">Mark none</button><button id="save">Save + next</button>
+  <span id="status"></span>
+</header>
+<main><div id="stage"><canvas id="canvas"></canvas></div>
+<aside><b>Visible players</b><div id="boxes"></div>
+<p><small>Drag a tight box around each player whose body is visible in the game view.
+Do not label radar-only or through-wall targets. Choose enemy, friendly, or unknown,
+then save. “Mark none” records a verified negative frame.</small></p></aside></main>
+<script>
+let info, index = 0, boxes = [], drag = null;
+const canvas = document.querySelector('#canvas'), ctx = canvas.getContext('2d');
+const image = new Image(), status = document.querySelector('#status');
+function frame() { return info.frames[index]; }
+function load() {
+  const f = frame(), saved = info.labels[String(f.frame_id)];
+  boxes = saved ? saved.players.map(x => ({...x})) : [];
+  document.querySelector('#counter').textContent = `${index + 1}/${info.frames.length} · frame ${f.frame_id} · ${info.split}`;
+  image.src = `/frame/${f.frame_id}?v=${Date.now()}`;
+  renderList(); status.textContent = saved ? 'saved' : 'unlabeled';
+}
+image.onload = () => { canvas.width = image.naturalWidth; canvas.height = image.naturalHeight; draw(); };
+function draw() {
+  ctx.drawImage(image, 0, 0);
+  boxes.forEach((b, i) => {
+    ctx.strokeStyle = b.team === 'enemy' ? '#ff4d4d' : b.team === 'friendly' ? '#55b8ff' : '#ffe066';
+    ctx.lineWidth = 4; ctx.strokeRect(b.x1, b.y1, b.x2-b.x1, b.y2-b.y1);
+    ctx.fillStyle = ctx.strokeStyle; ctx.font = '22px sans-serif'; ctx.fillText(`${i+1} ${b.team}`, b.x1+3, Math.max(23,b.y1-5));
+  });
+  if (drag) { ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.strokeRect(drag.x1,drag.y1,drag.x2-drag.x1,drag.y2-drag.y1); }
+}
+function point(e) { const r=canvas.getBoundingClientRect(); return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height}; }
+canvas.onpointerdown=e=>{ const p=point(e); drag={x1:p.x,y1:p.y,x2:p.x,y2:p.y}; canvas.setPointerCapture(e.pointerId); };
+canvas.onpointermove=e=>{ if(!drag)return; const p=point(e); drag.x2=p.x;drag.y2=p.y;draw(); };
+canvas.onpointerup=e=>{ if(!drag)return; const p=point(e), x1=Math.min(drag.x1,p.x),x2=Math.max(drag.x1,p.x),y1=Math.min(drag.y1,p.y),y2=Math.max(drag.y1,p.y); drag=null;
+  if(x2-x1>=4&&y2-y1>=4) boxes.push({x1,y1,x2,y2,team:document.querySelector('#team').value,visibility:document.querySelector('#visibility').value}); renderList();draw(); };
+function renderList(){ const root=document.querySelector('#boxes');root.replaceChildren();boxes.forEach((b,i)=>{const row=document.createElement('div');row.className='box-row';row.textContent=`${i+1}. ${b.team} · ${b.visibility}`;const del=document.createElement('button');del.textContent='Delete';del.onclick=()=>{boxes.splice(i,1);renderList();draw();};row.appendChild(del);root.appendChild(row);}); }
+async function save(next=true){ const f=frame(); const response=await fetch('/api/label',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({frame_id:f.frame_id,label:{annotated:true,players:boxes}})});if(!response.ok)throw Error(await response.text());info.labels[String(f.frame_id)]={annotated:true,players:boxes.map(x=>({...x}))};status.textContent='saved';if(next&&index<info.frames.length-1){index++;load();}}
+document.querySelector('#save').onclick=()=>save().catch(e=>status.textContent=e);
+document.querySelector('#none').onclick=()=>{boxes=[];save().catch(e=>status.textContent=e);};
+document.querySelector('#prev').onclick=()=>{if(index>0){index--;load();}};
+document.querySelector('#next').onclick=()=>{if(index<info.frames.length-1){index++;load();}};
+addEventListener('keydown',e=>{if(e.key==='ArrowLeft')document.querySelector('#prev').click();if(e.key==='ArrowRight')document.querySelector('#next').click();if(e.key==='Enter')document.querySelector('#save').click();});
+fetch('/api/info').then(r=>r.json()).then(x=>{info=x;load();}).catch(e=>status.textContent=e);
+</script>
+</html>
