@@ -16,10 +16,13 @@ The [real calibration walk](RADAR_CALIBRATION.md) recovered 2,987 of 3,000 poses
 63.6% overall precision and recall, 71.4% enemy precision, and 83.3% enemy recall
 at about 36 ms/frame, with no detections on 11 negative frames. It is sufficient
 to test the read-only integration path but not to claim final perception
-accuracy or enable firing. The next required artifact is
-synchronized detector, radar, and GSI replay, followed by a local-clearance
-perception set. The [live GSI probe](GSI_POSE_PROBE.md) showed
+accuracy or enable firing. The next required artifacts are visible-box range
+calibration and a local-clearance perception set. The
+[live GSI probe](GSI_POSE_PROBE.md) showed
 that active-player GSI omits pose, so localization uses the visible fixed radar.
+The [first synchronized replay](SYNCHRONIZED_REPLAY.md) emitted all 20 selected
+validation frames with causal GSI state, in-calibration radar poses, detector
+outputs, and no drops or input execution.
 See the
 [fixed read-only protocol](PROTOCOL.md) and the
 [setup and data contract](../../docs/CS2_DUST2_BRIDGE.md). The capture backend,

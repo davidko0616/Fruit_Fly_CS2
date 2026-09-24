@@ -70,6 +70,11 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
   is now the read-only integration baseline; final held-out testing remains
   deferred. See the
   [detector pilot report](../experiments/cs2_dust2_bridge/DETECTOR_PILOT.md).
+  The first synchronized read-only replay then combined 20 validation images
+  with causal sanitized GSI state and same-frame fixed-radar pose. All 20 rows
+  were active Dust II play, no rows dropped, timestamps were strictly ordered,
+  and every pose stayed inside the real calibration. See the
+  [synchronized replay report](../experiments/cs2_dust2_bridge/SYNCHRONIZED_REPLAY.md).
 
 - Partial-observability toy combat: the seed-77 FlyWire controller reached 82.8%
   held-out stochastic hit rate without live through-wall coordinates. A fixed
@@ -155,11 +160,11 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Continue the fixed Dust II read-only protocol on this PC: collect and label
-   visible-only target and local-clearance frames using the completed radar
-   calibration.
-2. Synchronize the two streams and validate the combined frames in offline replay
-   before adding local-practice input execution or map-specific training. Repeat
+1. Calibrate visible-box bearing and distance, then derive and manually validate
+   four local-clearance rays from a static Dust II map mask and radar pose.
+2. Convert the completed synchronized perception records into `BridgeFrame`
+   observations and validate offline policy replay before adding local-practice
+   input execution or map-specific training. Repeat
    matched actor comparisons when they answer a specific scientific question.
 3. For stronger scientific conclusions, predeclare harder synthetic tasks,
    independent dataset splits, or less dense circuits. The first comparison

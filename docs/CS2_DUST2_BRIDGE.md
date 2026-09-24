@@ -103,10 +103,16 @@ supplies map, round, health, and weapon state; the visible fixed radar supplies
 pose. The team-aware CPU visible-player pilot now supplies the first read-only
 detector baseline; its validation result is documented in the
 [detector report](../experiments/cs2_dust2_bridge/DETECTOR_PILOT.md). The next
-increment must synchronize detections with radar pose and GSI, then add
-local-clearance estimation. Opponent coordinates from observer feeds, server
+increment must calibrate visible-box bearing/range and add local-clearance
+estimation. Opponent coordinates from observer feeds, server
 plugins, demos, or `allplayers` may be retained separately as evaluation labels
 only; they must never populate the policy observation.
+
+The first [synchronized perception replay](../experiments/cs2_dust2_bridge/SYNCHRONIZED_REPLAY.md)
+now combines causal GSI snapshots, same-frame radar pose, and team-aware visible
+detections for all 20 selected validation frames without drops. It deliberately
+stops before `BridgeFrame`: visible-box range and the four clearance rays still
+require calibration.
 
 ## Verified synthetic bridge replay
 
@@ -135,10 +141,10 @@ been captured from the same controlled session.
 
 Before enabling any action executor:
 
-1. Add a visible-player detector and local-clearance estimator, with held-out
-   labeled frames measuring detection precision, recall, range error, and false
-   positives through walls.
-2. Synchronize perception and GSI, then replay the combined frames through the
+1. Complete visible-box range calibration and a local-clearance estimator, with
+   held-out measurements of range and ray-cast error.
+2. Convert synchronized perception and GSI into controller observations, then
+   replay the combined frames through the
    policy. Require finite observations, strictly increasing timestamps, explicit
    round resets, and a report of dropped or late frames.
 3. Collect map-specific demonstrations or controlled rewards and train a Dust II

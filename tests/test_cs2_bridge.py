@@ -18,6 +18,7 @@ from cs2_bridge.labels import PlayerBox, validate_frame_label
 from cs2_bridge.radar import detect_player_pose
 from cs2_bridge.replay import read_frames, replay_frames, write_jsonl
 from cs2_bridge.schema import BridgeFrame, Dust2Calibration, PlayerPose, VisibleTarget
+from cs2_bridge.sync import TimestampMatcher
 from tools.calibrate_dust2_bridge import calibrate
 from tools.audit_cs2_labels import audit
 from tools.extract_dust2_radar import _temporally_supported
@@ -57,6 +58,29 @@ class CS2BridgeTests(unittest.TestCase):
         reset = encoder.encode(frames[2])
         self.assertFalse(reset.has_last_seen_target)
         np.testing.assert_array_equal(reset.observation[4:8], np.zeros(4, dtype=np.float32))
+
+    def test_timestamp_matcher_prefers_nearest_and_rejects_stale_rows(self):
+        matcher = TimestampMatcher([
+            {'time': 100, 'value': 'earlier'},
+            {'time': 200, 'value': 'later'},
+        ], 'time')
+        row, delta = matcher.nearest(160, 50)
+        self.assertEqual((row['value'], delta), ('later', 40))
+        row, delta = matcher.nearest(150, 50)
+        self.assertEqual((row['value'], delta), ('earlier', -50))
+        row, delta = matcher.nearest(400, 50)
+        self.assertIsNone(row)
+        self.assertEqual(delta, -200)
+        row, delta = matcher.latest(160, 100)
+        self.assertEqual((row['value'], delta), ('earlier', -60))
+        row, delta = matcher.latest(90, 100)
+        self.assertIsNone(row)
+        self.assertIsNone(delta)
+        row, delta = matcher.latest(400, 50)
+        self.assertIsNone(row)
+        self.assertEqual(delta, -200)
+        with self.assertRaisesRegex(ValueError, 'strictly increasing'):
+            TimestampMatcher([{'time': 100}, {'time': 100}], 'time')
 
     def test_encoder_rejects_out_of_order_and_out_of_bounds_frames(self):
         encoder = Dust2ObservationEncoder(self.calibration)
