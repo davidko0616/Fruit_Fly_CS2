@@ -24,5 +24,6 @@ dist/
 artifacts/zluda/
 artifacts/synthetic/
 artifacts/toy_combat/
+artifacts/cs2_bridge/
 experiments/toy_combat_aiming_seed_42/
 experiments/toy_combat_aiming_seed_42_v2/

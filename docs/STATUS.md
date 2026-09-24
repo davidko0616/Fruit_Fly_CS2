@@ -133,10 +133,9 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. On a PC with CS2 installed, run the fixed Dust II read-only protocol: collect
-   a full-region GSI calibration walk, timestamped screen frames, and visible-only
-   target/clearance estimates. The current PC did not expose a Steam installation
-   in the standard locations.
+1. Run the fixed Dust II read-only protocol on this PC: collect a full-region GSI
+   calibration walk, timestamped screen frames, and visible-only target/clearance
+   estimates. Steam reports CS2 in its default Program Files library.
 2. Synchronize the two streams and validate the combined frames in offline replay
    before adding local-practice input execution or map-specific training. Repeat
    matched actor comparisons when they answer a specific scientific question.

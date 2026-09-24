@@ -38,14 +38,13 @@ before map-specific data collection and training.
 
 ## Install the GSI configuration
 
-The repository did not detect Steam or CS2 in the usual library locations on the
-current PC, so no external game files were changed. Once the actual CS2
-`game/csgo/cfg` directory is known, generate a local token and install without
+Steam reports CS2 at `C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike
+Global Offensive` on the current PC. Generate a local token and install without
 overwriting an existing configuration:
 
 ```powershell
 $token = [guid]::NewGuid().ToString('N')
-.\.venv\Scripts\python.exe tools/install_cs2_gsi.py --cfg-directory "C:\path\to\Counter-Strike Global Offensive\game\csgo\cfg" --token $token
+.\.venv\Scripts\python.exe tools/install_cs2_gsi.py --cfg-directory "C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive\game\csgo\cfg" --token $token
 .\.venv\Scripts\python.exe tools/serve_cs2_gsi.py --output artifacts/cs2_bridge/dust2_gsi_walk_01.jsonl --token $token
 ```
 
