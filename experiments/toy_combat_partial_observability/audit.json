@@ -1,0 +1,12 @@
+{
+  "status": "complete",
+  "architecture": "flywire",
+  "decisions": 51200,
+  "episodes_seen": 1043,
+  "hits": 859,
+  "model_rtol": 1e-05,
+  "model_atol": 5e-06,
+  "environment_atol": 1e-07,
+  "reward_atol": 1e-06,
+  "audit_passed": true
+}

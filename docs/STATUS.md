@@ -1,6 +1,6 @@
-# Project handoff — updated September 23, 2026
+# Project handoff — updated September 24, 2026
 
-## Current PC: moving-target milestone complete
+## Current PC: partial-observability milestone complete
 
 The current machine is the Ryzen 5 7600 desktop, using Python 3.12 and
 PyTorch 2.7.1+cpu in `.venv`. The first fixed navigation confirmation now passes:
@@ -11,6 +11,10 @@ held-out hit rate with movement and firing available together. Its independent
 51,200-decision replay also passes.
 The next confirmed policy tracks a target moving after every decision and reaches
 92.2% held-out hit rate. Its complete 51,200-decision replay passes as well.
+The partial-observability confirmation now hides the live target behind 16
+obstacles, reaches 82.8% held-out hit rate, and spends 73.5% of decisions
+occluded. Removing its last-seen target input reduces the same policy to 0.0%,
+and all 51,200 recorded decisions pass replay.
 
 All 15 recorded classifier runs (FlyWire, matched random
 destinations and matched MLP; seeds 42-46; 200 epochs) completed and passed
@@ -37,6 +41,13 @@ limitations below describe the previous computer. The original trainer remains
 CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device.
 
 ## Completed
+
+- Partial-observability toy combat: the seed-77 FlyWire controller reached 82.8%
+  held-out stochastic hit rate without live through-wall coordinates. A fixed
+  no-memory intervention reduced hit rate to 0.0%, establishing dependence on
+  the last-seen target representation. Topology/sign and 51,200-decision replay
+  checks passed. See the
+  [protocol, report, exploration, and curve](../experiments/toy_combat_partial_observability/README.md).
 
 - Moving-target toy combat: after preserving a narrowly failed first confirmation,
   a predeclared zero-entropy replacement reached 92.2% held-out stochastic hit
@@ -115,20 +126,23 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Hide target coordinates during occlusion to introduce memory-dependent partial
-   observability and longer credit assignment. Decide explicitly whether the
-   policy receives last-seen state or persistent recurrent state.
-2. Confirm the partial-observability curriculum before connecting the
-   controller to a live Counter-Strike observation/action bridge. Repeat matched
-   actor comparisons when they answer a specific scientific question rather than
-   as the main optimization target.
+1. Build the first Counter-Strike observation/action bridge. Start with captured
+   frames or telemetry and controlled local inputs, keep target detections gated
+   by visibility, and retain synchronized observations, neuron activity, actions,
+   rewards, and outcomes.
+2. Validate that bridge in offline replay or a controlled local match before
+   training against the live loop. Repeat matched actor comparisons when they
+   answer a specific scientific question rather than as the main optimization
+   target.
 3. For stronger scientific conclusions, predeclare harder synthetic tasks,
    independent dataset splits, or less dense circuits. The first comparison
    is close to the accuracy ceiling and uses a single fixed split.
-4. Extend replay to feedforward MLP schema-2 recordings if visual comparison
+4. Train the implemented persistent connectome state with sequence batches if a
+   learned memory mechanism is needed beyond the confirmed last-seen scaffold.
+5. Extend replay to feedforward MLP schema-2 recordings if visual comparison
    is needed. They are fully recorded and numerically audited, but the current
    recurrent viewer intentionally accepts schema 1 only.
-5. Benchmark larger models only when needed. Current experiments run on CPU;
+6. Benchmark larger models only when needed. Current experiments run on CPU;
    NVIDIA laptop results remain historical evidence for a CUDA option.
 
 Do not claim biological advantages from the first classification run. The current

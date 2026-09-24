@@ -106,3 +106,14 @@ reported failed first confirmation and a predeclared zero-entropy replacement,
 the independent seed-69 controller improves held-out stochastic hit rate from
 79.3% to **92.2%**. Target motion occurs in every evaluation episode, averaging
 33.5 moves for the final controller, and all 51,200 decisions pass replay.
+
+## Partial-observability milestone
+
+The [partial-observability curriculum](experiments/toy_combat_partial_observability/README.md)
+hides live target coordinates behind 16 obstacles and supplies only the last
+visible target position during later occlusion. The independent seed-77
+controller reaches **82.8%** held-out stochastic hit rate while spending 73.5% of
+decisions occluded. With identical weights and evaluation seeds, zeroing that
+remembered target input reduces hit rate to **0.0%**, demonstrating that the
+controller depends on remembered state. All 51,200 recorded decisions pass
+independent replay.

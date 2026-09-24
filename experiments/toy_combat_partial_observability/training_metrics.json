@@ -1,0 +1,16 @@
+{
+  "architecture": "flywire",
+  "seed": 77,
+  "parameters": 7953,
+  "updates": 100,
+  "decisions": 51200,
+  "episodes": 1035,
+  "hits": 859,
+  "overall_hit_rate": 0.8299516908212561,
+  "recent_100_hit_rate": 0.78,
+  "recent_100_return": 1.553800281809991,
+  "mean_episode_length": 49.170048309178746,
+  "model_structure_preserved": true,
+  "topology_and_signs_preserved": true,
+  "training_seconds_including_recording": 43.43469219999952
+}

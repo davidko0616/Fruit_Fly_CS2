@@ -1,0 +1,21 @@
+{
+  "python": "3.12.14",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "processor": "AMD64 Family 25 Model 97 Stepping 2, AuthenticAMD",
+  "torch": "2.7.1+cpu",
+  "numpy": "2.5.3",
+  "architecture": "flywire",
+  "source_sha256": {
+    "training\\train_toy_combat.py": "a5bd6f339ceddc4362c610da7f5b864d3f924ed7d42bc7132269f70b56daba3b",
+    "training\\run_toy_combat.py": "f51dd6224a8a269117423544a64b766347bfbe85083dfe4c5cd1a39060eb2979",
+    "toy_combat\\env.py": "1f1afac3935180b8f4a5f962e94b084b9dd38e6d5f5318f9e06f076cf18455af",
+    "toy_combat\\recording.py": "d3191df5433495e98a4e888bfed4557f6c8c142e23d81e27ade7b3ed6487d8b5",
+    "models\\flywire_network.py": "2bef6c426c7c5e741749a7631324d745b17741f487684ec24d28f13f71142571",
+    "models\\sparse_layer.py": "39bff51957f086d31801d43c4c0c962826e5d71e70ab8cfc7c8a0968cba062b8",
+    "models\\random_sparse.py": "7f338ee5c1b6c480406bd27486a91ab3a0eea17507f05147e1f153a7e8fa01e8",
+    "models\\mlp_baseline.py": "fb5288f88238433ddb62a1bd062e530c66f4f7bd60f980a86f37dd83042bbe49",
+    "experiments\\cpu_spiral_100\\seed_42\\graph.npz": "8fb773256e04d32f26365e83c95760b93fa106e3121d6eaf7b79e21c2c4a4a31",
+    "experiments\\cpu_spiral_100\\seed_42\\adjacency.npz": "f632c1e2bcc4d0fd96f03714b2962b026c7c0faba99ddf0b8eaae7b18c01b6dd"
+  },
+  "run_adjacency_sha256": "f632c1e2bcc4d0fd96f03714b2962b026c7c0faba99ddf0b8eaae7b18c01b6dd"
+}
