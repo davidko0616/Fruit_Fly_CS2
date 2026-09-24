@@ -149,3 +149,6 @@ Visible-player captures and labels follow the separate
 [perception protocol](../experiments/cs2_dust2_bridge/PERCEPTION_PROTOCOL.md).
 The loopback labeler supports tight full/partial player boxes, team class,
 verified negative frames, and a fixed split for the whole capture session.
+Audited sessions can be exported with `tools/export_cs2_detector_dataset.py`;
+the export preserves capture-level train/validation/test boundaries and retains
+team and visibility metadata alongside YOLO labels.

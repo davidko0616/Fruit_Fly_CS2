@@ -54,6 +54,12 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
   the first ten-minute calibration walk recovered 2,987 of 3,000 poses (99.57%)
   with no timestamp reversal or consecutive jump above 40 pixels. See the
   [calibration report](../experiments/cs2_dust2_bridge/RADAR_CALIBRATION.md).
+  Visible-player collection now has an exported, session-separated pilot dataset:
+  75 training frames with 51 boxes and 31 negatives, and 20 independent
+  validation frames with 11 boxes and 11 negatives. The exporter emits YOLO
+  labels plus source/team/visibility metadata and uses hard links locally to
+  avoid duplicating full-resolution captures. A final held-out test route has
+  not been captured.
 
 - Partial-observability toy combat: the seed-77 FlyWire controller reached 82.8%
   held-out stochastic hit rate without live through-wall coordinates. A fixed

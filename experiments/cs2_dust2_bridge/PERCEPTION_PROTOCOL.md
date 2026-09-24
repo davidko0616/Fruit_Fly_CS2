@@ -55,6 +55,33 @@ Audit the labels before using them:
 .\.venv\Scripts\python.exe tools/audit_cs2_labels.py --capture artifacts/cs2_bridge/dust2_visible_players_train_01 --labels artifacts/cs2_bridge/dust2_visible_players_train_01_labels.json
 ```
 
+## Detector dataset export
+
+Export only audited sessions. Each capture keeps its declared split, so adjacent
+frames from one recording cannot leak between training and validation. The
+exporter writes YOLO detection labels, creates empty label files for verified
+negative frames, and retains source boxes, team, and visibility in JSONL
+metadata. Hard links avoid duplicating the full-resolution PNG data when the
+source and output are on the same filesystem.
+
+```powershell
+.\.venv\Scripts\python.exe tools/export_cs2_detector_dataset.py `
+  --session artifacts/cs2_bridge/dust2_visible_players_train_01 artifacts/cs2_bridge/dust2_visible_players_train_01_labels.json `
+  --session artifacts/cs2_bridge/dust2_visible_players_train_neg_02 artifacts/cs2_bridge/dust2_visible_players_train_neg_02_labels.json `
+  --session artifacts/cs2_bridge/dust2_visible_players_train_02 artifacts/cs2_bridge/dust2_visible_players_train_02_labels.json `
+  --session artifacts/cs2_bridge/dust2_visible_players_train_03 artifacts/cs2_bridge/dust2_visible_players_train_03_labels.json `
+  --session artifacts/cs2_bridge/dust2_visible_players_validation_01 artifacts/cs2_bridge/dust2_visible_players_validation_01_labels.json `
+  --output artifacts/cs2_bridge/dust2_detector_dataset_v1 `
+  --class-mode team --transfer hardlink
+```
+
+The first exported pilot contains 75 training frames with 51 boxes and 31
+verified negatives, plus 20 independent validation frames with 11 boxes and 11
+verified negatives. The exported dataset remains local under `artifacts/`.
+Its size supports an end-to-end detector pilot and error analysis, not a final
+accuracy claim. Freeze the detector configuration before collecting or opening
+the final held-out test route.
+
 ## Acceptance before controller use
 
 Freeze the detector configuration before evaluating it on the held-out sessions.

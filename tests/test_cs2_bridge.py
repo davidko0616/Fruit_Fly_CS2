@@ -7,9 +7,11 @@ import unittest
 
 import numpy as np
 import torch
+import yaml
 from PIL import Image, ImageDraw
 
 from cs2_bridge.encoder import Dust2ObservationEncoder
+from cs2_bridge.detector_dataset import export_dataset
 from cs2_bridge.gsi import parse_gsi_payload
 from cs2_bridge.labels import PlayerBox, validate_frame_label
 from cs2_bridge.radar import detect_player_pose
@@ -243,6 +245,55 @@ class CS2BridgeTests(unittest.TestCase):
             self.assertEqual(result['positive_frames'], 1)
             self.assertEqual(result['negative_frames'], 1)
             self.assertEqual(result['player_boxes'], 1)
+
+    def test_detector_dataset_export_preserves_session_splits_and_yolo_boxes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+
+            def make_session(name, split, boxes):
+                capture = root / name
+                capture.mkdir()
+                rows = []
+                labels = {}
+                for frame_id, frame_boxes in enumerate(boxes):
+                    file_name = f'{frame_id:07d}.png'
+                    Image.new('RGB', (100, 80), (frame_id, 0, 0)).save(
+                        capture / file_name)
+                    rows.append({'frame_id': frame_id, 'file': file_name,
+                                 'width': 100, 'height': 80})
+                    labels[str(frame_id)] = {
+                        'annotated': True, 'players': frame_boxes,
+                    }
+                (capture / 'frames.jsonl').write_text(
+                    '\n'.join(json.dumps(row) for row in rows) + '\n')
+                labels_path = root / f'{name}_labels.json'
+                labels_path.write_text(json.dumps({
+                    'schema_version': 1, 'split': split, 'labels': labels,
+                }) + '\n')
+                return capture, labels_path
+
+            train = make_session('train_capture', 'train', [[{
+                'x1': 10, 'y1': 10, 'x2': 40, 'y2': 60,
+                'team': 'enemy', 'visibility': 'full',
+            }], []])
+            validation = make_session('validation_capture', 'validation', [[{
+                'x1': 20, 'y1': 20, 'x2': 60, 'y2': 70,
+                'team': 'friendly', 'visibility': 'partial',
+            }]])
+            output = root / 'dataset'
+            summary = export_dataset([train, validation], output,
+                                     class_mode='team', transfer='copy')
+            self.assertEqual(summary['splits']['train']['frames'], 2)
+            self.assertEqual(summary['splits']['validation']['boxes'], 1)
+            yolo = (output / 'labels' / 'train' /
+                    'train_capture__0000000.txt').read_text().strip()
+            self.assertEqual(yolo, '0 0.25000000 0.43750000 0.30000000 0.62500000')
+            self.assertEqual((output / 'labels' / 'train' /
+                              'train_capture__0000001.txt').read_text(), '')
+            config = yaml.safe_load((output / 'dataset.yaml').read_text())
+            self.assertEqual(config['names'], {0: 'enemy', 1: 'friendly', 2: 'unknown'})
+            with self.assertRaises(FileExistsError):
+                export_dataset([train], output)
 
 
 if __name__ == '__main__':
