@@ -7,11 +7,12 @@ not to measure gameplay performance or claim that toy-combat weights transfer.
 ## Environment and data sources
 
 - Map: `de_dust2`, Practice with Bots or another controlled local session.
-- Valve GSI supplies map, round, own-player state, and own-player pose over
+- Valve GSI supplies map, round, and own-player state over
   loopback. The shipped configuration does not request `allplayers` or opponent
   positions. The recorder removes authentication and discards unrequested
   top-level fields.
 - Timestamped screen capture will supply only information visible to the player.
+  A fixed, non-rotating visible radar supplies own-player map position and facing.
   The target detector may emit a local forward/right displacement only when a
   player is visibly detected in that frame.
 - Any privileged labels used to score perception remain outside the policy-frame
@@ -22,7 +23,7 @@ not to measure gameplay performance or claim that toy-combat weights transfer.
 - Preserve the existing 14-value interface: normalized player x/y, facing vector,
   four target-geometry values, live-visibility flag, firing state, and four local
   clearances.
-- Calibrate player-position bounds from a versioned full-region walking capture.
+- Calibrate player-position bounds from a versioned fixed-radar walking capture.
   Reject frames outside those bounds rather than silently clipping them.
 - Convert each visible local target estimate to a world-space last-seen point.
   Recompute its relative geometry from current player pose during later

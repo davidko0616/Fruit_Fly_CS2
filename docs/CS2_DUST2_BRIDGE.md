@@ -1,9 +1,9 @@
 # Dust II observation bridge
 
-The first Counter-Strike stage is deliberately read-only. It records own-player
-and map telemetry from Valve Game State Integration (GSI), combines that later
-with screen-visible perception, converts synchronized frames to the existing
-14-value controller input, and replays them through a fixed policy without
+The first Counter-Strike stage is deliberately read-only. It records player and
+map status from Valve Game State Integration (GSI), combines it with visible-radar
+localization and later screen perception, converts synchronized frames to the
+existing 14-value controller input, and replays them through a fixed policy without
 emitting keyboard or mouse input.
 
 This stage uses the internal map name `de_dust2`. It is designed for Practice
@@ -33,8 +33,11 @@ before map-specific data collection and training.
   actions. Every row is marked
   `offline_replay_only`; no executor is present in this stage.
 - `tools/calibrate_dust2_bridge.py` derives provisional bounds from a walking
-  capture. Calibration is explicit and versionable rather than embedding guessed
-  Dust II coordinates in code.
+  fixed-radar capture. Calibration is explicit and versionable rather than
+  embedding guessed Dust II coordinates in code.
+- `tools/capture_cs2_screen.py` records lossless timestamped full frames or radar
+  crops. `tools/extract_dust2_radar.py` detects the compact yellow player marker
+  and adjacent white heading marker without reading game memory.
 
 ## Install the GSI configuration
 
@@ -49,16 +52,25 @@ $token = [guid]::NewGuid().ToString('N')
 ```
 
 Launch a controlled Dust II practice session after the receiver starts. Walk the
-full intended training region, including both spawns, mid, both bombsites, and
-the connecting routes. Stop the receiver with Ctrl+C, then create provisional
-map normalization:
+full intended training region only after installing the fixed radar config:
 
 ```powershell
-.\.venv\Scripts\python.exe tools/calibrate_dust2_bridge.py --input artifacts/cs2_bridge/dust2_gsi_walk_01.jsonl --output artifacts/cs2_bridge/dust2_calibration_v1.json
+.\.venv\Scripts\python.exe tools/install_cs2_radar.py --cfg-directory "C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive\game\csgo\cfg"
 ```
 
-The walking capture must cover both map axes. The calibration tool adds a
-128-world-unit margin by default and refuses to overwrite an earlier version.
+In the CS2 developer console run `exec flywire_radar`. This disables radar
+rotation and always-centered behavior, sets a stable scale, and does not expose
+anything absent from the normal HUD. Capture the upper-left radar region while
+walking both spawns, mid, both bombsites, and the connecting routes:
+
+```powershell
+.\.venv\Scripts\python.exe tools/capture_cs2_screen.py --output artifacts/cs2_bridge/dust2_radar_walk_01 --frames 3000 --interval 0.2 --region 20,10,720,520
+.\.venv\Scripts\python.exe tools/extract_dust2_radar.py --capture artifacts/cs2_bridge/dust2_radar_walk_01 --output artifacts/cs2_bridge/dust2_radar_poses_01.jsonl --origin 20,10
+.\.venv\Scripts\python.exe tools/calibrate_dust2_bridge.py --input artifacts/cs2_bridge/dust2_radar_poses_01.jsonl --output artifacts/cs2_bridge/dust2_calibration_v1.json
+```
+
+The walking capture must cover both map axes. The calibration tool adds an
+eight-pixel margin by default and refuses to overwrite an earlier version.
 After capture, inspect its raw bounds and repeat with broader coverage if future
 positions fall outside them.
 
@@ -74,9 +86,11 @@ Each policy frame contains:
   or null when no target is visible;
 - normalized fire cooldown and an eight-action availability mask.
 
-The current GSI receiver supplies map, round, and player pose. The next increment
-must supply screen capture, visible-target detection, local clearance estimation,
-and timestamp synchronization. Opponent coordinates from observer feeds, server
+The [live GSI probe](../experiments/cs2_dust2_bridge/GSI_POSE_PROBE.md) found that
+the current CS2 build omits own-player pose while actively playing. GSI therefore
+supplies map, round, health, and weapon state; the visible fixed radar supplies
+pose. The next increment must supply visible-target detection, local-clearance
+estimation, and timestamp synchronization. Opponent coordinates from observer feeds, server
 plugins, demos, or `allplayers` may be retained separately as evaluation labels
 only; they must never populate the policy observation.
 
@@ -107,8 +121,8 @@ been captured from the same controlled session.
 
 Before enabling any action executor:
 
-1. Record a full-map GSI calibration walk and confirm that own-player pose is
-   available in this CS2 build.
+1. Apply the fixed radar configuration and record a full-map radar calibration
+   walk. Verify marker detection across the intended routes.
 2. Capture timestamped game frames at a fixed rate without changing game input.
 3. Add a visible-player detector and local-clearance estimator, with held-out
    labeled frames measuring detection precision, recall, range error, and false

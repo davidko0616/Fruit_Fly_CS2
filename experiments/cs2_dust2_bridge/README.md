@@ -8,7 +8,9 @@ Seven bridge tests pass, and the committed three-frame fixture completes an
 end-to-end replay through policy version 100. This validates interfaces and
 memory transformations only; it is not Dust II training or performance evidence.
 
-The next required artifact is a real `de_dust2` GSI calibration walk from the PC
-that has CS2 installed, followed by timestamped screen capture and visible-target
-perception. See the [fixed read-only protocol](PROTOCOL.md) and the
+The next required artifact is a real `de_dust2` fixed-radar calibration walk,
+followed by timestamped screen capture and visible-target perception. The
+[live GSI probe](GSI_POSE_PROBE.md) showed that active-player GSI omits pose, so
+localization now uses the visible fixed radar. See the
+[fixed read-only protocol](PROTOCOL.md) and the
 [setup and data contract](../../docs/CS2_DUST2_BRIDGE.md).

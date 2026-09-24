@@ -7,9 +7,11 @@ import unittest
 
 import numpy as np
 import torch
+from PIL import Image, ImageDraw
 
 from cs2_bridge.encoder import Dust2ObservationEncoder
 from cs2_bridge.gsi import parse_gsi_payload
+from cs2_bridge.radar import detect_player_pose
 from cs2_bridge.replay import read_frames, replay_frames, write_jsonl
 from cs2_bridge.schema import BridgeFrame, Dust2Calibration, PlayerPose, VisibleTarget
 from tools.calibrate_dust2_bridge import calibrate
@@ -149,6 +151,18 @@ class CS2BridgeTests(unittest.TestCase):
             self.assertEqual((saved.min_y, saved.max_y), (-10, 190))
             with self.assertRaises(FileExistsError):
                 calibrate(capture, output, margin=10)
+
+    def test_visible_radar_player_marker_produces_pose_and_heading(self):
+        image = Image.new('RGB', (240, 180), (65, 65, 65))
+        draw = ImageDraw.Draw(image)
+        draw.ellipse((97, 77, 113, 91), fill=(245, 210, 40))
+        draw.polygon(((105, 68), (99, 76), (111, 76)), fill=(245, 245, 245))
+        draw.rectangle((20, 20, 23, 23), fill=(240, 190, 20))
+        pose = detect_player_pose(image, origin=(10, 20))
+        self.assertAlmostEqual(pose.x, 115, delta=1)
+        self.assertAlmostEqual(pose.y, 104, delta=1)
+        self.assertAlmostEqual(pose.yaw_degrees, -90, delta=8)
+        self.assertGreater(pose.confidence, 0.8)
 
 
 if __name__ == '__main__':

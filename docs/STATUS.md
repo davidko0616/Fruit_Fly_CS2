@@ -48,6 +48,10 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
   calibration tool, and offline policy replay are implemented and covered by seven
   tests. See the [setup and contract](CS2_DUST2_BRIDGE.md) and
   [fixed read-only protocol](../experiments/cs2_dust2_bridge/PROTOCOL.md).
+  A live probe found that active-player GSI omits position and facing in the
+  installed CS2 build. Fixed-radar screen localization now replaces GSI pose;
+  its detector resolves the visible player marker and heading in the diagnostic
+  capture.
 
 - Partial-observability toy combat: the seed-77 FlyWire controller reached 82.8%
   held-out stochastic hit rate without live through-wall coordinates. A fixed
@@ -133,9 +137,9 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Run the fixed Dust II read-only protocol on this PC: collect a full-region GSI
-   calibration walk, timestamped screen frames, and visible-only target/clearance
-   estimates. Steam reports CS2 in its default Program Files library.
+1. Run the fixed Dust II read-only protocol on this PC: apply the fixed radar,
+   collect a full-region radar calibration walk, timestamped screen frames, and
+   visible-only target/clearance estimates.
 2. Synchronize the two streams and validate the combined frames in offline replay
    before adding local-practice input execution or map-specific training. Repeat
    matched actor comparisons when they answer a specific scientific question.

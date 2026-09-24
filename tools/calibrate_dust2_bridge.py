@@ -1,11 +1,11 @@
-"""Build provisional Dust II map bounds from a read-only GSI walking capture."""
+"""Build provisional Dust II map bounds from a fixed-radar walking capture."""
 import argparse
 import json
 import math
 from pathlib import Path
 
 
-def calibrate(input_path, output_path, margin=128.0, minimum_positions=10):
+def calibrate(input_path, output_path, margin=8.0, minimum_positions=10):
     positions = []
     with Path(input_path).open(encoding='utf-8') as source:
         for line_number, line in enumerate(source, 1):
@@ -13,16 +13,19 @@ def calibrate(input_path, output_path, margin=128.0, minimum_positions=10):
                 continue
             try:
                 row = json.loads(line)
-                snapshot = row['snapshot']
-                pose = snapshot.get('pose')
-                if snapshot.get('map_name') == 'de_dust2' and pose is not None:
+                if row.get('radar_pose') is not None:
+                    pose = row['radar_pose']
+                else:
+                    snapshot = row['snapshot']
+                    pose = snapshot.get('pose')
+                if pose is not None:
                     position = (float(pose['x']), float(pose['y']))
                     if all(math.isfinite(value) for value in position):
                         positions.append(position)
             except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
                 raise ValueError(f'Invalid GSI capture at line {line_number}: {error}') from error
     if len(positions) < minimum_positions:
-        raise ValueError(f'Need at least {minimum_positions} valid de_dust2 positions')
+        raise ValueError(f'Need at least {minimum_positions} valid Dust II radar positions')
     xs, ys = zip(*positions)
     raw_width, raw_height = max(xs) - min(xs), max(ys) - min(ys)
     if raw_width <= 0 or raw_height <= 0:
@@ -49,7 +52,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--input', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--margin', type=float, default=128.0)
+    parser.add_argument('--margin', type=float, default=8.0)
     parser.add_argument('--minimum-positions', type=int, default=10)
     args = parser.parse_args()
     if args.margin < 0 or args.minimum_positions < 2:

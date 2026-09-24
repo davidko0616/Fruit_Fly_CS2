@@ -1,0 +1,13 @@
+{
+  "date": "2026-09-24",
+  "steam_build_id": "25492732",
+  "capture_rows": 120,
+  "dust2_active_rows": 11,
+  "dust2_active_rows_with_pose": 0,
+  "map_round_activity_available": true,
+  "health_weapons_available": true,
+  "authentication_retained": false,
+  "opponent_positions_requested": false,
+  "opponent_positions_retained": false,
+  "result": "own pose unavailable from active-player GSI; use visible fixed radar"
+}
