@@ -39,7 +39,10 @@ def main():
                         num_workers=0, collate_fn=collate_detection_batch)
     checkpoint = torch.load(args.checkpoint, map_location='cpu', weights_only=False)
     image_size = int(checkpoint.get('config', {}).get('image_size', 320))
-    model = build_player_ssdlite(pretrained=False, image_size=image_size)
+    class_names = tuple(checkpoint.get('classes', ('background', 'player'))[1:])
+    model = build_player_ssdlite(
+        pretrained=False, image_size=image_size,
+        foreground_classes=len(class_names))
     model.load_state_dict(checkpoint['model_state_dict'])
     model.nms_thresh = args.nms_threshold
     records, _ = collect_detection_records(model, loader, torch.device('cpu'))

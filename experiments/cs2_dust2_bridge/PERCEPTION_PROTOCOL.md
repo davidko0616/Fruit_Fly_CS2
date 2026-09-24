@@ -116,6 +116,14 @@ and 25.0% for partial bodies. A matched 640-pixel run and full-frame-plus-tiles
 inference both performed worse. These are pilot diagnostics, not held-out test
 evidence; see [the full report](DETECTOR_PILOT.md).
 
+For target selection, export the same sessions with `--class-mode team`. The
+balanced training split contains 43 enemy and 42 friendly boxes. Fine-tuning the
+complete network for 15 epochs at score threshold 0.15 selected epoch five.
+With NMS 0.30, it reaches 71.4% enemy precision, 83.3% enemy recall, and 85.7%
+team accuracy among matched players, with zero predictions on the 11 negative
+frames. This checkpoint is suitable for read-only synchronization and replay,
+but its four extra predictions on positive frames do not satisfy an action gate.
+
 Run fixed-threshold validation or test evaluation with:
 
 ```powershell

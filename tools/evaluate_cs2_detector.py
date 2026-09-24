@@ -45,14 +45,17 @@ def main():
                         num_workers=0, collate_fn=collate_detection_batch)
     checkpoint = torch.load(args.checkpoint, map_location=device, weights_only=False)
     image_size = int(checkpoint.get('config', {}).get('image_size', 320))
+    class_names = tuple(checkpoint.get('classes', ('background', 'player'))[1:])
     model = build_player_ssdlite(
-        pretrained=False, image_size=image_size).to(device)
+        pretrained=False, image_size=image_size,
+        foreground_classes=len(class_names)).to(device)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.nms_thresh = args.nms_threshold
     records, latencies = collect_detection_records(model, loader, device)
     results = []
     for threshold in args.thresholds:
-        metrics = evaluate_detection_records(records, threshold, args.iou_threshold)
+        metrics = evaluate_detection_records(
+            records, threshold, args.iou_threshold, class_names)
         metrics['evaluated_frames'] = len(records)
         metrics['latency_ms_mean'] = 1000 * sum(latencies) / len(latencies)
         results.append(metrics)
@@ -61,6 +64,7 @@ def main():
         'checkpoint': str(args.checkpoint),
         'checkpoint_epoch': checkpoint['epoch'],
         'image_size': image_size,
+        'class_names': list(class_names),
         'split': args.split,
         'nms_threshold': args.nms_threshold,
         'metrics': results,

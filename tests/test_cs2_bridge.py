@@ -320,16 +320,20 @@ class CS2BridgeTests(unittest.TestCase):
         self.assertEqual(metrics['false_positives_per_negative_frame'], 1)
         self.assertEqual(metrics['grouped_recall']['team:enemy']['recall'], 1)
         self.assertEqual(metrics['grouped_recall']['visibility:partial']['recall'], 0)
+        self.assertAlmostEqual(metrics['per_class']['1']['precision'], 1 / 3)
 
     def test_player_ssdlite_has_background_and_player_outputs(self):
-        model = build_player_ssdlite(pretrained=False, image_size=640)
+        model = build_player_ssdlite(
+            pretrained=False, image_size=640, foreground_classes=3)
         self.assertEqual(model.transform.fixed_size, (640, 640))
         anchors = model.anchor_generator.num_anchors_per_location()
         for block, anchor_count in zip(
                 model.head.classification_head.module_list, anchors):
-            self.assertEqual(block[1].out_channels, anchor_count * 2)
+            self.assertEqual(block[1].out_channels, anchor_count * 4)
         with self.assertRaisesRegex(ValueError, 'multiple of 32'):
             build_player_ssdlite(pretrained=False, image_size=321)
+        with self.assertRaisesRegex(ValueError, 'foreground_classes'):
+            build_player_ssdlite(pretrained=False, foreground_classes=0)
 
 
 if __name__ == '__main__':

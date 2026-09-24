@@ -100,8 +100,8 @@ Each policy frame contains:
 The [live GSI probe](../experiments/cs2_dust2_bridge/GSI_POSE_PROBE.md) found that
 the current CS2 build omits own-player pose while actively playing. GSI therefore
 supplies map, round, health, and weapon state; the visible fixed radar supplies
-pose. The CPU visible-player pilot now supplies the first read-only detector
-baseline; its validation result is documented in the
+pose. The team-aware CPU visible-player pilot now supplies the first read-only
+detector baseline; its validation result is documented in the
 [detector report](../experiments/cs2_dust2_bridge/DETECTOR_PILOT.md). The next
 increment must synchronize detections with radar pose and GSI, then add
 local-clearance estimation. Opponent coordinates from observer feeds, server

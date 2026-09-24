@@ -79,12 +79,38 @@ Two validation-only experiments were retained as negative results:
 
 Neither experiment replaces the selected 320-pixel checkpoint.
 
+## Team-aware targeting gate
+
+The same audited sessions were exported with `enemy`, `friendly`, and `unknown`
+classes. The training boxes are balanced: 43 enemy and 42 friendly. A first
+frozen-backbone run underperformed, so the final pilot fine-tuned the complete
+320-pixel network for 15 epochs with the same seed and optimizer. Validation F1
+at score threshold 0.15 selected epoch five; NMS was then fixed at 0.30.
+
+| Team-aware metric | Result |
+|---|---:|
+| Overall precision | 63.6% |
+| Overall recall | 63.6% |
+| Overall F1 | 0.636 |
+| Enemy precision | 71.4% (5/7) |
+| Enemy recall | 83.3% (5/6) |
+| Friendly precision | 50.0% (2/4) |
+| Friendly recall | 40.0% (2/5) |
+| Correct team among matched players | 85.7% (6/7) |
+| False positives on negative frames | 0 across 11 frames |
+| Mean CPU latency | about 36 ms/frame |
+
+One matched enemy was classified as friendly. No matched friendly was classified
+as enemy. Four unmatched or duplicate predictions remain on positive frames, so
+these figures support read-only integration only; they do not authorize firing.
+
 ## Decision
 
-Keep the corrected 320-pixel epoch-nine checkpoint as the current read-only
-integration baseline. Do not run the final held-out detector test yet. First
-synchronize its detections with fixed-radar pose and GSI round state, verify that
-targets become null on misses and occlusion, and replay the combined observation
-stream without game input. A later detector revision should target partial and
-tiny players with an architecture designed for multi-scale detection rather
-than stretching SSDlite320 or merging uncalibrated tiled predictions.
+Keep the team-aware 320-pixel epoch-five checkpoint as the current read-only
+integration baseline, with score threshold 0.15 and NMS 0.30. Do not run the
+final held-out detector test yet. First synchronize its detections with
+fixed-radar pose and GSI round state, verify that targets become null on misses
+and occlusion, and replay the combined observation stream without game input.
+A later detector revision should target partial and tiny players with an
+architecture designed for multi-scale detection rather than stretching
+SSDlite320 or merging uncalibrated tiled predictions.

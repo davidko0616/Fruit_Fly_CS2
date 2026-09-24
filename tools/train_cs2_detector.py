@@ -35,7 +35,7 @@ def _save_checkpoint(path, model, optimizer, epoch, config, metrics):
     torch.save({
         'schema_version': 1,
         'architecture': f"ssdlite_mobilenet_v3_large_{config['image_size']}",
-        'classes': ['background', 'player'],
+        'classes': ['background', *config['class_names']],
         'epoch': epoch,
         'config': config,
         'validation_metrics': metrics,
@@ -59,6 +59,8 @@ def train(args):
 
     train_dataset = VisiblePlayerDataset(dataset_root, 'train')
     validation_dataset = VisiblePlayerDataset(dataset_root, 'validation')
+    if train_dataset.class_names != validation_dataset.class_names:
+        raise ValueError('Training and validation class names differ')
     if len(train_dataset) < args.batch_size:
         raise ValueError('Batch size exceeds the number of training frames')
     generator = torch.Generator().manual_seed(args.seed)
@@ -71,7 +73,8 @@ def train(args):
         num_workers=0, collate_fn=collate_detection_batch)
 
     model = build_player_ssdlite(
-        pretrained=not args.no_pretrained, image_size=args.image_size).to(device)
+        pretrained=not args.no_pretrained, image_size=args.image_size,
+        foreground_classes=len(train_dataset.class_names)).to(device)
     if args.freeze_backbone:
         for parameter in model.backbone.parameters():
             parameter.requires_grad_(False)
@@ -88,6 +91,7 @@ def train(args):
         'learning_rate': args.learning_rate,
         'weight_decay': args.weight_decay,
         'image_size': args.image_size,
+        'class_names': list(train_dataset.class_names),
         'freeze_backbone': args.freeze_backbone,
         'pretrained_coco_person_initialization': not args.no_pretrained,
         'score_threshold': args.score_threshold,
@@ -130,7 +134,8 @@ def train(args):
         metrics = evaluate_model(
             model, validation_loader, device,
             score_threshold=args.score_threshold,
-            iou_threshold=args.iou_threshold)
+            iou_threshold=args.iou_threshold,
+            class_names=train_dataset.class_names)
         row = {
             'epoch': epoch,
             'mean_training_loss': sum(losses) / len(losses),

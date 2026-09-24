@@ -60,10 +60,12 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
   labels plus source/team/visibility metadata and uses hard links locally to
   avoid duplicating full-resolution captures. A final held-out test route has
   not been captured.
-  A CPU SSDlite320 pilot selected epoch nine from a corrected 15-epoch run. Its
-  validation setting reaches 53.8% precision and 63.6% recall at about 35 ms per
-  frame, with no detections on 11 negative frames. Enemy recall is 83.3%,
-  teammate recall is 40.0%, and partial-body recall remains 25.0%. Matched
+  A CPU SSDlite320 player pilot selected epoch nine from a corrected 15-epoch
+  run. A subsequent team-aware, fully fine-tuned checkpoint reaches 63.6%
+  overall precision and recall, 71.4% enemy precision, and 83.3% enemy recall at
+  about 36 ms/frame, with no detections on 11 negative frames. Team classification
+  is correct for six of seven matched players, while partial-body recall remains
+  25.0%. Matched
   640-pixel and tiled-inference experiments performed worse. The selected model
   is now the read-only integration baseline; final held-out testing remains
   deferred. See the

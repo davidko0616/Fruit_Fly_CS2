@@ -12,10 +12,11 @@ memory transformations only; it is not Dust II training or performance evidence.
 The [real calibration walk](RADAR_CALIBRATION.md) recovered 2,987 of 3,000 poses
 (99.57%) over ten minutes and produced the versioned
 [`de_dust2` bounds](dust2_calibration_v1.json). The visible-player pilot now has
-95 training and 20 validation frames. Its selected CPU checkpoint reaches 53.8%
-precision and 63.6% recall at about 35 ms/frame, with no detections on 11
-negative frames. It is sufficient to test the read-only integration path but
-not to claim final perception accuracy. The next required artifact is
+95 training and 20 validation frames. Its team-aware CPU checkpoint reaches
+63.6% overall precision and recall, 71.4% enemy precision, and 83.3% enemy recall
+at about 36 ms/frame, with no detections on 11 negative frames. It is sufficient
+to test the read-only integration path but not to claim final perception
+accuracy or enable firing. The next required artifact is
 synchronized detector, radar, and GSI replay, followed by a local-clearance
 perception set. The [live GSI probe](GSI_POSE_PROBE.md) showed
 that active-player GSI omits pose, so localization uses the visible fixed radar.
