@@ -27,26 +27,27 @@ def capture(output, frames=1, interval=0.2, region=None):
     output.mkdir(parents=True)
     rows = []
     deadline = time.monotonic()
-    for index in range(frames):
-        start_ns = time.monotonic_ns()
-        image = ImageGrab.grab(bbox=region, all_screens=region is None)
-        end_ns = time.monotonic_ns()
-        filename = f'{index:07d}.png'
-        image.save(output / filename)
-        rows.append({
-            'schema_version': 1, 'frame_id': index, 'file': filename,
-            'capture_start_monotonic_ns': start_ns,
-            'capture_end_monotonic_ns': end_ns,
-            'capture_midpoint_monotonic_ns': (start_ns + end_ns) // 2,
-            'captured_utc': datetime.now(timezone.utc).isoformat(),
-            'region': region, 'width': image.width, 'height': image.height,
-        })
-        deadline += interval
-        if index + 1 < frames:
-            time.sleep(max(0, deadline - time.monotonic()))
     with (output / 'frames.jsonl').open('x', encoding='utf-8', newline='\n') as manifest:
-        for row in rows:
+        for index in range(frames):
+            start_ns = time.monotonic_ns()
+            image = ImageGrab.grab(bbox=region, all_screens=region is None)
+            end_ns = time.monotonic_ns()
+            filename = f'{index:07d}.png'
+            image.save(output / filename)
+            row = {
+                'schema_version': 1, 'frame_id': index, 'file': filename,
+                'capture_start_monotonic_ns': start_ns,
+                'capture_end_monotonic_ns': end_ns,
+                'capture_midpoint_monotonic_ns': (start_ns + end_ns) // 2,
+                'captured_utc': datetime.now(timezone.utc).isoformat(),
+                'region': region, 'width': image.width, 'height': image.height,
+            }
+            rows.append(row)
             manifest.write(json.dumps(row, separators=(',', ':')) + '\n')
+            manifest.flush()
+            deadline += interval
+            if index + 1 < frames:
+                time.sleep(max(0, deadline - time.monotonic()))
     return rows
 
 

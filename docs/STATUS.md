@@ -45,13 +45,14 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
 - Dust II bridge foundation: a loopback-only GSI recorder now retains own-player
   and map telemetry while discarding authentication and unrequested opponent
   fields. The visibility-gated 14-value encoder, round-scoped last-seen memory,
-  calibration tool, and offline policy replay are implemented and covered by seven
+  calibration tool, and offline policy replay are implemented and covered by nine
   tests. See the [setup and contract](CS2_DUST2_BRIDGE.md) and
   [fixed read-only protocol](../experiments/cs2_dust2_bridge/PROTOCOL.md).
   A live probe found that active-player GSI omits position and facing in the
   installed CS2 build. Fixed-radar screen localization now replaces GSI pose;
-  its detector resolves the visible player marker and heading in the diagnostic
-  capture.
+  the first ten-minute calibration walk recovered 2,987 of 3,000 poses (99.57%)
+  with no timestamp reversal or consecutive jump above 40 pixels. See the
+  [calibration report](../experiments/cs2_dust2_bridge/RADAR_CALIBRATION.md).
 
 - Partial-observability toy combat: the seed-77 FlyWire controller reached 82.8%
   held-out stochastic hit rate without live through-wall coordinates. A fixed
@@ -137,9 +138,9 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Run the fixed Dust II read-only protocol on this PC: apply the fixed radar,
-   collect a full-region radar calibration walk, timestamped screen frames, and
-   visible-only target/clearance estimates.
+1. Continue the fixed Dust II read-only protocol on this PC: collect and label
+   visible-only target and local-clearance frames using the completed radar
+   calibration.
 2. Synchronize the two streams and validate the combined frames in offline replay
    before adding local-practice input execution or map-specific training. Repeat
    matched actor comparisons when they answer a specific scientific question.

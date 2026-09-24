@@ -125,5 +125,10 @@ a read-only bridge. It records Valve GSI map and own-player telemetry, excludes
 opponent-position feeds, converts visibility-gated frames into the existing
 14-value controller input, maintains last-seen target memory across occlusion,
 and replays proposed actions without sending game controls. The synthetic bridge
-fixture passes end-to-end through the confirmed policy. Real Dust II calibration,
-screen perception, and synchronized capture are the next acceptance run.
+fixture passes end-to-end through the confirmed policy.
+
+The first real fixed-radar walk is complete: 2,987 of 3,000 frames yielded valid
+player poses (99.57%) and produced the versioned
+[Dust II calibration](experiments/cs2_dust2_bridge/RADAR_CALIBRATION.md). The next
+read-only stage is visible-target and local-clearance perception, followed by a
+synchronized offline replay.

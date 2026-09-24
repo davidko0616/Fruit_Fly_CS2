@@ -15,6 +15,7 @@ from cs2_bridge.radar import detect_player_pose
 from cs2_bridge.replay import read_frames, replay_frames, write_jsonl
 from cs2_bridge.schema import BridgeFrame, Dust2Calibration, PlayerPose, VisibleTarget
 from tools.calibrate_dust2_bridge import calibrate
+from tools.extract_dust2_radar import _temporally_supported
 from http.server import ThreadingHTTPServer
 from tools.serve_cs2_gsi import GSIRecorder, make_handler
 
@@ -163,6 +164,43 @@ class CS2BridgeTests(unittest.TestCase):
         self.assertAlmostEqual(pose.y, 104, delta=1)
         self.assertAlmostEqual(pose.yaw_degrees, -90, delta=8)
         self.assertGreater(pose.confidence, 0.8)
+        self.assertEqual(pose.heading_color, 'white')
+
+        red = Image.new('RGB', (240, 180), (65, 65, 65))
+        draw = ImageDraw.Draw(red)
+        draw.ellipse((97, 77, 113, 91), fill=(245, 210, 40))
+        draw.polygon(((88, 84), (97, 77), (97, 91)), fill=(235, 35, 35))
+        red_pose = detect_player_pose(red)
+        self.assertAlmostEqual(abs(red_pose.yaw_degrees), 180, delta=8)
+        self.assertEqual(red_pose.heading_color, 'red')
+
+    def test_radar_search_bounds_and_temporal_support_reject_false_pose(self):
+        image = Image.new('RGB', (240, 180), (65, 65, 65))
+        draw = ImageDraw.Draw(image)
+        draw.ellipse((97, 77, 113, 91), fill=(245, 210, 40))
+        draw.polygon(((105, 68), (99, 76), (111, 76)), fill=(245, 245, 245))
+        draw.ellipse((197, 137, 219, 159), fill=(245, 210, 40))
+        draw.rectangle((202, 128, 214, 136), fill=(245, 245, 245))
+        pose = detect_player_pose(image, search_bounds=(80, 50, 140, 120))
+        self.assertAlmostEqual(pose.x, 105, delta=1)
+
+        competing = Image.new('RGB', (240, 180), (65, 65, 65))
+        draw = ImageDraw.Draw(competing)
+        draw.ellipse((97, 77, 113, 91), fill=(245, 210, 40))
+        draw.polygon(((105, 68), (99, 76), (111, 76)), fill=(245, 245, 245))
+        draw.ellipse((147, 107, 171, 131), fill=(245, 210, 40))
+        draw.rectangle((152, 96, 166, 106), fill=(235, 35, 35))
+        pose = detect_player_pose(competing)
+        self.assertAlmostEqual(pose.x, 105, delta=1)
+        self.assertEqual(pose.heading_color, 'white')
+
+        rows = []
+        for frame_id, x in ((0, 10), (1, 11), (2, 200), (3, 12), (4, 13)):
+            rows.append({'frame_id': frame_id,
+                         'radar_pose': {'x': x, 'y': 10}})
+        kept, rejected = _temporally_supported(rows, 20, 2)
+        self.assertEqual([row['frame_id'] for row in kept], [0, 1, 3, 4])
+        self.assertEqual([row['frame_id'] for row in rejected], [2])
 
 
 if __name__ == '__main__':

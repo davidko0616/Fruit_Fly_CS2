@@ -36,8 +36,10 @@ before map-specific data collection and training.
   fixed-radar capture. Calibration is explicit and versionable rather than
   embedding guessed Dust II coordinates in code.
 - `tools/capture_cs2_screen.py` records lossless timestamped full frames or radar
-  crops. `tools/extract_dust2_radar.py` detects the compact yellow player marker
-  and adjacent white heading marker without reading game memory.
+  crops and flushes the manifest after every frame. `tools/extract_dust2_radar.py`
+  detects the compact yellow player marker and adjacent white or red heading
+  marker without reading game memory. A visible radar-map search rectangle and
+  temporal-support check reject scenery and menu lookalikes.
 
 ## Install the GSI configuration
 
@@ -65,7 +67,7 @@ walking both spawns, mid, both bombsites, and the connecting routes:
 
 ```powershell
 .\.venv\Scripts\python.exe tools/capture_cs2_screen.py --output artifacts/cs2_bridge/dust2_radar_walk_01 --frames 3000 --interval 0.2 --region 20,10,720,520
-.\.venv\Scripts\python.exe tools/extract_dust2_radar.py --capture artifacts/cs2_bridge/dust2_radar_walk_01 --output artifacts/cs2_bridge/dust2_radar_poses_01.jsonl --origin 20,10
+.\.venv\Scripts\python.exe tools/extract_dust2_radar.py --capture artifacts/cs2_bridge/dust2_radar_walk_01 --output artifacts/cs2_bridge/dust2_radar_poses_01.jsonl --origin 20,10 --search-bounds 180,100,500,400
 .\.venv\Scripts\python.exe tools/calibrate_dust2_bridge.py --input artifacts/cs2_bridge/dust2_radar_poses_01.jsonl --output artifacts/cs2_bridge/dust2_calibration_v1.json
 ```
 
@@ -73,6 +75,13 @@ The walking capture must cover both map axes. The calibration tool adds an
 eight-pixel margin by default and refuses to overwrite an earlier version.
 After capture, inspect its raw bounds and repeat with broader coverage if future
 positions fall outside them.
+
+The first real walk at 2560 x 1440 recorded 3,000 frames over 599.805 seconds
+and recovered 2,987 valid poses (99.57%), with zero timestamp reversals and no
+consecutive localization jump above 40 pixels. Its measured bounds and settings
+are preserved in the [calibration report](../experiments/cs2_dust2_bridge/RADAR_CALIBRATION.md)
+and [versioned calibration](../experiments/cs2_dust2_bridge/dust2_calibration_v1.json).
+Regenerate it after changing resolution, HUD scale, crop, or fixed-radar settings.
 
 ## Bridge-frame contract
 
@@ -121,16 +130,13 @@ been captured from the same controlled session.
 
 Before enabling any action executor:
 
-1. Apply the fixed radar configuration and record a full-map radar calibration
-   walk. Verify marker detection across the intended routes.
-2. Capture timestamped game frames at a fixed rate without changing game input.
-3. Add a visible-player detector and local-clearance estimator, with held-out
+1. Add a visible-player detector and local-clearance estimator, with held-out
    labeled frames measuring detection precision, recall, range error, and false
    positives through walls.
-4. Synchronize perception and GSI, then replay the combined frames through the
+2. Synchronize perception and GSI, then replay the combined frames through the
    policy. Require finite observations, strictly increasing timestamps, explicit
    round resets, and a report of dropped or late frames.
-5. Collect map-specific demonstrations or controlled rewards and train a Dust II
+3. Collect map-specific demonstrations or controlled rewards and train a Dust II
    policy. Keep capture sessions separated between training, validation, and the
    final held-out route evaluation.
 

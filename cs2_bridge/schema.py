@@ -44,7 +44,7 @@ class VisibleTarget:
 
 @dataclass(frozen=True)
 class Dust2Calibration:
-    """Map bounds and observation scale measured in the same units as GSI position."""
+    """Map bounds and observation scale in the coordinate system used by the pose."""
     map_name: str
     min_x: float
     max_x: float
