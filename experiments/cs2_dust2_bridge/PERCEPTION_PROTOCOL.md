@@ -16,15 +16,23 @@ enemy positions, or any other source that can reveal a player behind geometry.
 - Keep Codex, Steam, console, and desktop overlays out of accepted frames.
 
 ```powershell
-.\.venv\Scripts\python.exe tools/capture_cs2_screen.py --output artifacts/cs2_bridge/dust2_visible_players_train_01 --frames 300 --interval 0.2 --region 0,0,2560,1440 --backend dxcam
+.\.venv\Scripts\python.exe tools/capture_cs2_screen.py --output artifacts/cs2_bridge/dust2_visible_players_train_01 --frames 300 --interval 0.2 --region 0,0,2560,1440 --backend dxcam --delay 20 --sound-cues --spoken-prompt "Keep visible players on screen at several distances."
 ```
+
+On Windows, the optional spoken prompt plays before the delay. Three countdown
+tones lead into a distinct start tone; a rising completion sequence and spoken
+completion message indicate that it is safe to return to Codex. A descending
+sequence and failure message report capture errors. No overlay is drawn into
+captured frames.
 
 The first local 300-frame capture validates the DXGI path and includes useful
 full-body and partial-view examples. It also contains display-transition and
 Codex-overlay frames; those frames must remain unlabeled and excluded from model
 data. The first review retained 19 valid enemy boxes: 16 full-body and three
 partial-body examples. This is a pipeline pilot, not enough data to train or
-evaluate a detector.
+evaluate a detector. A subsequent clean Long A session contributed nine evenly
+spaced, audited hard-negative frames containing walls, a car, doors, shadows,
+and no visible player body.
 
 ## Visible-player labels
 

@@ -2,11 +2,73 @@
 import argparse
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import time
 
 from PIL import ImageGrab
 from PIL import Image
+
+
+def _beep(pattern):
+    if os.name != 'nt':
+        return
+    try:
+        import winsound
+        for frequency, duration_ms, pause_seconds in pattern:
+            winsound.Beep(frequency, duration_ms)
+            if pause_seconds:
+                time.sleep(pause_seconds)
+    except (ImportError, RuntimeError):
+        pass
+
+
+def _speak(message):
+    if not message or os.name != 'nt':
+        return
+    try:
+        import comtypes.client
+        voice = comtypes.client.CreateObject('SAPI.SpVoice')
+        voice.Speak(message)
+    except Exception:
+        pass
+
+
+def wait_for_capture(delay, sound_cues=False, spoken_prompt=None):
+    if spoken_prompt:
+        _speak(spoken_prompt)
+    delay = float(delay)
+    if delay <= 0:
+        if sound_cues:
+            _beep(((1100, 250, 0),))
+        return
+    print(f'Capture starts in {delay:g} seconds', flush=True)
+    deadline = time.monotonic() + delay
+    quiet_wait = max(0.0, deadline - time.monotonic() - 3.0)
+    if quiet_wait:
+        time.sleep(quiet_wait)
+    remaining = min(3, int(round(delay)))
+    for count in range(remaining, 0, -1):
+        print(f'{count}...', flush=True)
+        if sound_cues:
+            _beep(((700 + (3 - count) * 150, 180, 0),))
+        next_tick = deadline - (count - 1)
+        time.sleep(max(0.0, next_tick - time.monotonic()))
+    print('Capture started', flush=True)
+    if sound_cues:
+        _beep(((1200, 300, 0),))
+
+
+def notify_capture_complete(sound_cues=False):
+    if sound_cues:
+        _beep(((900, 160, 0.08), (1250, 160, 0.08), (1700, 350, 0),))
+        _speak('Capture complete. You can return to Codex.')
+
+
+def notify_capture_failed(sound_cues=False):
+    if sound_cues:
+        _beep(((900, 220, 0.08), (650, 220, 0.08), (400, 450, 0),))
+        _speak('Capture failed. Please return to Codex.')
 
 
 class ScreenGrabber:
@@ -108,10 +170,22 @@ def main():
                         help='Optional left,top,right,bottom screen crop')
     parser.add_argument('--backend', choices=('auto', 'pillow', 'dxcam'),
                         default='auto')
+    parser.add_argument('--delay', type=float, default=0.0,
+                        help='Seconds before capture, with final countdown')
+    parser.add_argument('--sound-cues', action='store_true',
+                        help='Play countdown, start, and completion tones on Windows')
+    parser.add_argument('--spoken-prompt',
+                        help='Optional Windows speech prompt before the countdown')
     args = parser.parse_args()
-    if args.frames < 1 or args.interval <= 0:
-        raise ValueError('Frames and interval must be positive')
-    rows = capture(args.output, args.frames, args.interval, args.region, args.backend)
+    if args.frames < 1 or args.interval <= 0 or args.delay < 0:
+        raise ValueError('Frames and interval must be positive and delay nonnegative')
+    wait_for_capture(args.delay, args.sound_cues, args.spoken_prompt)
+    try:
+        rows = capture(args.output, args.frames, args.interval, args.region, args.backend)
+    except Exception:
+        notify_capture_failed(args.sound_cues)
+        raise
+    notify_capture_complete(args.sound_cues)
     print(json.dumps({'status': 'complete', 'frames': len(rows),
                       'output': str(args.output), 'region': args.region,
                       'backend': rows[-1]['capture_backend']}, indent=2))
