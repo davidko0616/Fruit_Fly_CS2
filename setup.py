@@ -7,6 +7,7 @@ setup(
     package_data={"visualization": ["viewer.html"]},
     install_requires=[
         "torch>=2.0.0",
+        "torchvision==0.22.1",
         "numpy",
         "scipy",
         "pandas",

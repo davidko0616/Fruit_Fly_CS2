@@ -60,6 +60,12 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
   labels plus source/team/visibility metadata and uses hard links locally to
   avoid duplicating full-resolution captures. A final held-out test route has
   not been captured.
+  A CPU SSDlite320 pilot selected epoch six from a 15-epoch run. Its frozen
+  validation setting reaches 40.0% precision and 54.5% recall at about 40 ms per
+  frame, with no detections on 11 negative frames. Enemy recall is 83.3%, but
+  teammate recall is 20.0% and partial-body recall is 25.0%; targeted training
+  data for those two cases is required before held-out test evaluation. See the
+  [detector pilot report](../experiments/cs2_dust2_bridge/DETECTOR_PILOT.md).
 
 - Partial-observability toy combat: the seed-77 FlyWire controller reached 82.8%
   held-out stochastic hit rate without live through-wall coordinates. A fixed

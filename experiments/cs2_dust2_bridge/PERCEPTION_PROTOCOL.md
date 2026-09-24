@@ -82,6 +82,42 @@ Its size supports an end-to-end detector pilot and error analysis, not a final
 accuracy claim. Freeze the detector configuration before collecting or opening
 the final held-out test route.
 
+## First CPU detector pilot
+
+The first pilot uses TorchVision 0.22.1's SSDlite320 MobileNetV3 detector with
+PyTorch 2.7.1+cpu. Its background/person classifier starts from the matching COCO
+weights; the MobileNet backbone stays frozen. Training uses seed 42, batch size
+two, AdamW at `1e-4`, and selects the best of 15 epochs by fixed-threshold
+validation F1. `tools/train_cs2_detector.py` refuses to overwrite a run and saves
+configuration, environment, history, last, and best checkpoints.
+
+```powershell
+.\.venv\Scripts\python.exe tools/train_cs2_detector.py `
+  --dataset artifacts/cs2_bridge/dust2_detector_player_dataset_v1 `
+  --output artifacts/cs2_bridge/dust2_player_detector_pilot_v2_15epochs `
+  --epochs 15 --batch-size 2 --learning-rate 0.0001 `
+  --weight-decay 0.0001 --seed 42 --cpu-threads 6 `
+  --score-threshold 0.25 --iou-threshold 0.5 --freeze-backbone
+```
+
+Epoch six was selected. Validation-only calibration froze score threshold 0.25,
+NMS threshold 0.30, and IoU threshold 0.50 before any test capture. On the 20
+validation frames, the selected detector has 40.0% precision, 54.5% recall, F1
+0.462, zero detections on 11 negative frames, and about 40 ms mean CPU latency.
+Grouped recall is 83.3% for enemies, 20.0% for teammates, 71.4% for full bodies,
+and 25.0% for partial bodies. These results identify missing teammate and partial
+coverage; they are pilot diagnostics, not held-out test evidence.
+
+Run fixed-threshold validation or test evaluation with:
+
+```powershell
+.\.venv\Scripts\python.exe tools/evaluate_cs2_detector.py `
+  --dataset artifacts/cs2_bridge/dust2_detector_player_dataset_v1 `
+  --checkpoint artifacts/cs2_bridge/dust2_player_detector_pilot_v2_15epochs/best.pt `
+  --split validation --thresholds 0.25 --nms-threshold 0.30 `
+  --iou-threshold 0.50
+```
+
 ## Acceptance before controller use
 
 Freeze the detector configuration before evaluating it on the held-out sessions.

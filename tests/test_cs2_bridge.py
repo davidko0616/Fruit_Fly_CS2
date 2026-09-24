@@ -12,6 +12,7 @@ from PIL import Image, ImageDraw
 
 from cs2_bridge.encoder import Dust2ObservationEncoder
 from cs2_bridge.detector_dataset import export_dataset
+from cs2_bridge.detector import build_player_ssdlite, evaluate_detection_records
 from cs2_bridge.gsi import parse_gsi_payload
 from cs2_bridge.labels import PlayerBox, validate_frame_label
 from cs2_bridge.radar import detect_player_pose
@@ -294,6 +295,35 @@ class CS2BridgeTests(unittest.TestCase):
             self.assertEqual(config['names'], {0: 'enemy', 1: 'friendly', 2: 'unknown'})
             with self.assertRaises(FileExistsError):
                 export_dataset([train], output)
+
+    def test_detector_metrics_count_grouped_recall_and_negative_false_positives(self):
+        records = [{
+            'ground_truth': [[10, 10, 30, 30], [50, 50, 80, 80]],
+            'boxes_metadata': [
+                {'team': 'enemy', 'visibility': 'full'},
+                {'team': 'friendly', 'visibility': 'partial'},
+            ],
+            'predicted_boxes': [[9, 9, 31, 31], [0, 0, 5, 5]],
+            'scores': [0.9, 0.8],
+        }, {
+            'ground_truth': [], 'boxes_metadata': [],
+            'predicted_boxes': [[1, 1, 9, 9]], 'scores': [0.7],
+        }]
+        metrics = evaluate_detection_records(records)
+        self.assertEqual((metrics['true_positives'], metrics['false_positives'],
+                          metrics['false_negatives']), (1, 2, 1))
+        self.assertAlmostEqual(metrics['precision'], 1 / 3)
+        self.assertAlmostEqual(metrics['recall'], 1 / 2)
+        self.assertEqual(metrics['false_positives_per_negative_frame'], 1)
+        self.assertEqual(metrics['grouped_recall']['team:enemy']['recall'], 1)
+        self.assertEqual(metrics['grouped_recall']['visibility:partial']['recall'], 0)
+
+    def test_player_ssdlite_has_background_and_player_outputs(self):
+        model = build_player_ssdlite(pretrained=False)
+        anchors = model.anchor_generator.num_anchors_per_location()
+        for block, anchor_count in zip(
+                model.head.classification_head.module_list, anchors):
+            self.assertEqual(block[1].out_channels, anchor_count * 2)
 
 
 if __name__ == '__main__':
