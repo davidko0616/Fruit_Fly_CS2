@@ -33,13 +33,24 @@ class FlyWireNetwork(nn.Module):
         self.output_proj = nn.Linear(len(output_idx), output_dim)
         
     def forward(self, x):
+        out, _ = self.forward_with_state(x)
+        return out
+
+    def forward_with_state(self, x, previous_state=None, temporal_decay=1.0):
+        """Run connectome steps from an optional cross-decision neuron state."""
         batch_size = x.size(0)
-        
-        # Initialize brain state: (batch_size, num_neurons)
-        state = torch.zeros(batch_size, self.num_neurons, device=x.device)
+        if previous_state is None:
+            state = torch.zeros(batch_size, self.num_neurons, device=x.device, dtype=x.dtype)
+        else:
+            if previous_state.shape != (batch_size, self.num_neurons):
+                raise ValueError('Previous state shape does not match batch and neuron counts')
+            if not 0 <= temporal_decay <= 1:
+                raise ValueError('Temporal decay must be between zero and one')
+            state = torch.tanh(previous_state) * temporal_decay
         
         # 1. Inject sensory input
         sensory_activations = self.input_proj(x)
+        state = state.clone()
         state[:, self.input_idx] = sensory_activations
         
         # 2. Process through biological connectome (Recurrent steps)
@@ -51,4 +62,4 @@ class FlyWireNetwork(nn.Module):
         motor_activations = state[:, self.output_idx]
         out = self.output_proj(motor_activations)
         
-        return out
+        return out, state

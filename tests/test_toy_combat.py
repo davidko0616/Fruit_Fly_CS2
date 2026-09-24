@@ -8,7 +8,8 @@ import torch
 
 from toy_combat.env import (NAVIGATION_REWARD_NAMES, REWARD_NAMES, ToyCombatEnv,
                             integrated_navigation_config, moving_target_config,
-                            navigation_config, scripted_action, scripted_navigation_action)
+                            navigation_config, partial_observability_config,
+                            scripted_action, scripted_navigation_action)
 from training.run_toy_combat import load_policy, run
 from training.train_toy_combat import train
 from tools.verify_combat_recording import verify
@@ -134,6 +135,54 @@ class ToyCombatTests(unittest.TestCase):
             self.assertEqual(metrics['decisions'], 16)
             self.assertEqual(result['decisions'], 16)
             self.assertTrue(result['audit_passed'])
+
+    def test_partial_observability_hides_live_target_and_masks_shaping(self):
+        env = ToyCombatEnv(partial_observability_config())
+        observation, info = env.reset(123)
+        self.assertFalse(info['line_of_sight'])
+        self.assertFalse(info['target_observation_is_live'])
+        self.assertFalse(info['has_last_seen_target'])
+        np.testing.assert_array_equal(observation[4:8], np.zeros(4, dtype=np.float32))
+        self.assertGreater(env._relative()[3], 0)
+
+        last_seen = np.asarray((0, 0), dtype=np.int16)
+        env.last_seen_enemy = last_seen.copy(); env.last_seen_tick = env.tick
+        remembered = env.observation()
+        delta, forward, right, distance = env._relative_to(last_seen)
+        scale = env.config.grid_size - 1
+        expected = np.asarray([np.dot(delta, forward) / scale,
+                               np.dot(delta, right) / scale,
+                               distance / (np.sqrt(2) * scale),
+                               1.0 if distance == 0 else np.dot(delta, forward) / distance],
+                              dtype=np.float32)
+        np.testing.assert_allclose(remembered[4:8], expected, rtol=0, atol=1e-7)
+        self.assertEqual(len(env.privileged_state()), 11)
+
+        for seed in range(100):
+            env.reset(seed)
+            _, _, _, _, outcome = env.step(0)
+            if not outcome['line_of_sight']:
+                self.assertEqual(outcome['reward_components']['aim_progress'], 0)
+                self.assertEqual(outcome['reward_components']['distance_progress'], 0)
+                break
+        else:
+            self.fail('Could not find a still-occluded transition')
+
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / 'partial-observability'
+            metrics = train(directory, seed=12, updates=1, workers=2, horizon=8,
+                            action_repeat=1, ppo_epochs=1, minibatch_size=16,
+                            architecture='flywire',
+                            environment_config=partial_observability_config(),
+                            temporal_state_decay=0.5)
+            result = verify(directory)
+            self.assertEqual(metrics['decisions'], 16)
+            self.assertEqual(result['decisions'], 16)
+            self.assertTrue(result['audit_passed'])
+            with np.load(directory / 'chunks/000000.npz') as chunk:
+                self.assertEqual(chunk['temporal_state_before'].shape, (16, 100))
+                self.assertEqual(chunk['temporal_state_after'].shape, (16, 100))
+                np.testing.assert_array_equal(chunk['temporal_state_before'][:2], 0)
 
     def test_short_parallel_recording_replays_in_separate_code_path(self):
         with tempfile.TemporaryDirectory() as temporary:

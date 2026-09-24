@@ -13,13 +13,15 @@ from training.recording import array, atomic_json, atomic_npz, replace_with_retr
 RESET_CODES = {None: 0, 'hit': 1, 'time_limit': 2}
 
 
-def policy_forward_with_activity(model, observations, action_masks):
+def _policy_forward_with_activity(model, observations, action_masks, previous_state=None,
+                                  temporal_decay=1.0):
     sensory, pre, post, hooks = [], [], [], []
     hooks.append(model.input_proj.register_forward_hook(lambda m, a, out: sensory.append(array(out))))
     hooks.append(model.connectome_layer.register_forward_hook(lambda m, a, out: pre.append(array(out))))
     hooks.append(model.activation.register_forward_hook(lambda m, a, out: post.append(array(out))))
     try:
-        logits = model(observations)
+        logits, final_state = model.forward_with_state(observations, previous_state,
+                                                       temporal_decay)
     finally:
         for hook in hooks:
             hook.remove()
@@ -27,9 +29,21 @@ def policy_forward_with_activity(model, observations, action_masks):
         raise RuntimeError('Unexpected activity sequence')
     masked = logits.masked_fill(~action_masks, torch.finfo(logits.dtype).min)
     probabilities = masked.softmax(1)
-    initial = np.zeros((len(observations), model.num_neurons), dtype=np.float32)
+    initial = (np.zeros((len(observations), model.num_neurons), dtype=np.float32)
+               if previous_state is None else array(torch.tanh(previous_state) * temporal_decay))
     initial[:, model.input_idx] = sensory[0]
-    return logits, probabilities, np.stack([initial, *post], axis=1), np.stack(pre, axis=1), sensory[0]
+    return (logits, probabilities, np.stack([initial, *post], axis=1),
+            np.stack(pre, axis=1), sensory[0], final_state)
+
+
+def policy_forward_with_activity(model, observations, action_masks):
+    return _policy_forward_with_activity(model, observations, action_masks)[:5]
+
+
+def policy_forward_with_memory_activity(model, observations, action_masks, previous_state,
+                                        temporal_decay):
+    return _policy_forward_with_activity(model, observations, action_masks, previous_state,
+                                         temporal_decay)
 
 
 def mlp_forward_with_activity(model, observations, action_masks):

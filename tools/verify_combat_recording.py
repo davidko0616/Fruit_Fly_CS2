@@ -14,6 +14,7 @@ from models.flywire_network import FlyWireNetwork
 from models.mlp_baseline import MLPBaseline
 from toy_combat.env import CombatConfig, ToyCombatEnv
 from toy_combat.recording import RESET_CODES, mlp_forward_with_activity, policy_forward_with_activity
+from toy_combat.recording import policy_forward_with_memory_activity
 
 MODEL_RTOL = 1e-5
 MODEL_ATOL = 5e-6
@@ -52,9 +53,14 @@ def verify(directory):
                                graph['outputs'], config['observation_size'],
                                len(config['action_names']), 3, 'normalized_synapse_count')
     model.eval()
-    environments = {worker: ToyCombatEnv(CombatConfig(**manifest['config']['environment']))
+    environment_config = dict(manifest['config']['environment'])
+    if environment_config.get('scenario') == 'partial_observability_v1':
+        environment_config.setdefault('provide_last_seen_target', True)
+    environments = {worker: ToyCombatEnv(CombatConfig(**environment_config))
                     for worker in range(manifest['config']['workers'])}
     active_episode, observations, infos = {}, {}, {}
+    temporal_decay = config.get('temporal_state_decay')
+    temporal_states = {}
     replayed_hits, loaded_version = 0, None
     for i in range(count):
         worker, episode = int(data['worker_id'][i]), int(data['episode_id'][i])
@@ -71,6 +77,8 @@ def verify(directory):
         if active_episode.get(worker) != episode:
             observations[worker], infos[worker] = env.reset(int(data['episode_seed'][i]))
             active_episode[worker] = episode
+            if temporal_decay is not None:
+                temporal_states[worker] = torch.zeros(1, model.num_neurons)
         np.testing.assert_array_equal(observations[worker], data['observation'][i])
         np.testing.assert_array_equal(infos[worker]['privileged_state'], data['privileged_before'][i])
         np.testing.assert_array_equal(infos[worker]['action_mask'], data['action_mask'][i])
@@ -79,8 +87,15 @@ def verify(directory):
         with torch.no_grad():
             if architecture == 'mlp':
                 logits, probabilities, hidden_pre, hidden_post = mlp_forward_with_activity(model, x, mask)
-            else:
+            elif temporal_decay is None:
                 logits, probabilities, states, pre, sensory = policy_forward_with_activity(model, x, mask)
+            else:
+                np.testing.assert_allclose(temporal_states[worker].numpy()[0],
+                                           data['temporal_state_before'][i],
+                                           rtol=MODEL_RTOL, atol=MODEL_ATOL)
+                logits, probabilities, states, pre, sensory, temporal_after = (
+                    policy_forward_with_memory_activity(
+                        model, x, mask, temporal_states[worker], temporal_decay))
         np.testing.assert_allclose(logits.numpy()[0], data['logits'][i],
                                    rtol=MODEL_RTOL, atol=MODEL_ATOL)
         np.testing.assert_allclose(probabilities.numpy()[0], data['probabilities'][i],
@@ -97,6 +112,11 @@ def verify(directory):
                                        rtol=MODEL_RTOL, atol=MODEL_ATOL)
             np.testing.assert_allclose(sensory[0], data['sensory'][i],
                                        rtol=MODEL_RTOL, atol=MODEL_ATOL)
+            if temporal_decay is not None:
+                np.testing.assert_allclose(temporal_after.numpy()[0],
+                                           data['temporal_state_after'][i],
+                                           rtol=MODEL_RTOL, atol=MODEL_ATOL)
+                temporal_states[worker] = temporal_after.detach()
         action = int(data['executed_action'][i])
         next_observation, reward, terminated, truncated, outcome = env.step(action, manifest['config']['action_repeat'])
         np.testing.assert_allclose(next_observation, data['next_observation'][i], rtol=0, atol=1e-7)

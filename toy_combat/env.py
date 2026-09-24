@@ -11,7 +11,8 @@ ACTION_NAMES = ('wait', 'forward', 'backward', 'strafe_left', 'strafe_right',
 REWARD_NAMES = ('time', 'aim_progress', 'collision', 'shot')
 NAVIGATION_REWARD_NAMES = ('time', 'aim_progress', 'distance_progress',
                            'line_of_sight_progress', 'collision', 'shot')
-NAVIGATION_SCENARIOS = ('navigation_v1', 'moving_target_v1')
+NAVIGATION_SCENARIOS = ('navigation_v1', 'moving_target_v1', 'partial_observability_v1')
+MOVING_TARGET_SCENARIOS = ('moving_target_v1', 'partial_observability_v1')
 
 
 @dataclass(frozen=True)
@@ -35,6 +36,9 @@ class CombatConfig:
     navigation_phase_masking: bool = False
     target_movement_enabled: bool = False
     target_move_interval: int = 1
+    hide_target_when_occluded: bool = False
+    provide_last_seen_target: bool = False
+    mask_occluded_target_shaping: bool = False
 
 
 def navigation_config():
@@ -62,6 +66,17 @@ def moving_target_config():
                         target_movement_enabled=True, target_move_interval=1)
 
 
+def partial_observability_config():
+    """Fourth curriculum: moving target is represented by last-seen state when occluded."""
+    return CombatConfig(grid_size=9, obstacle_count=16, max_ticks=120, movement_enabled=True,
+                        scenario='partial_observability_v1', require_initial_occlusion=True,
+                        aim_progress_scale=0.2, distance_progress_scale=0.1,
+                        line_of_sight_progress_scale=0.2, navigation_phase_masking=False,
+                        miss_penalty=-0.1, hit_reward=3.0, target_movement_enabled=True,
+                        target_move_interval=1, hide_target_when_occluded=True,
+                        provide_last_seen_target=True, mask_occluded_target_shaping=True)
+
+
 class ToyCombatEnv:
     """One agent, one stationary target, deterministic obstacles and transitions."""
     observation_size = 10
@@ -78,13 +93,21 @@ class ToyCombatEnv:
             raise ValueError('Initial occlusion requires at least one obstacle')
         if self.config.scenario in NAVIGATION_SCENARIOS and not self.config.movement_enabled:
             raise ValueError('Navigation scenario requires movement')
-        if self.config.target_movement_enabled != (self.config.scenario == 'moving_target_v1'):
+        if self.config.target_movement_enabled != (self.config.scenario in MOVING_TARGET_SCENARIOS):
             raise ValueError('Target movement must match the moving-target scenario')
+        if self.config.hide_target_when_occluded != (self.config.scenario == 'partial_observability_v1'):
+            raise ValueError('Hidden targets must match the partial-observability scenario')
+        if self.config.provide_last_seen_target and not self.config.hide_target_when_occluded:
+            raise ValueError('Last-seen target input requires hidden target observations')
+        if self.config.mask_occluded_target_shaping and not self.config.hide_target_when_occluded:
+            raise ValueError('Occluded reward masking requires hidden target observations')
         if self.config.target_move_interval < 1:
             raise ValueError('Target movement interval must be positive')
         self.rng = None
         self.episode_seed = None
         self.agent = self.enemy = self.obstacles = None
+        self.last_seen_enemy = None
+        self.last_seen_tick = -1
         self.heading = self.enemy_heading = self.cooldown = self.tick = 0
         self.terminated = self.truncated = False
 
@@ -122,6 +145,8 @@ class ToyCombatEnv:
         if self.config.target_movement_enabled:
             self.enemy_heading = int(self.rng.integers(0, 4))
         self.cooldown = self.tick = 0
+        self.last_seen_enemy = None
+        self.last_seen_tick = -1
         self.terminated = self.truncated = False
         return self.observation(), self.info(reset_reason='episode_start')
 
@@ -159,12 +184,15 @@ class ToyCombatEnv:
     def angle(self):
         return self.heading * math.radians(self.config.turn_degrees)
 
-    def _relative(self):
-        delta = self.enemy.astype(np.float32) - self.agent
+    def _relative_to(self, target):
+        delta = np.asarray(target, dtype=np.float32) - self.agent
         forward = np.array([math.cos(self.angle), math.sin(self.angle)], dtype=np.float32)
         right = np.array([-forward[1], forward[0]], dtype=np.float32)
         distance = float(np.linalg.norm(delta))
         return delta, forward, right, distance
+
+    def _relative(self):
+        return self._relative_to(self.enemy)
 
     def _line_of_sight_from(self, position):
         # Sample cell centers along the ray; endpoints are never obstacles.
@@ -215,14 +243,30 @@ class ToyCombatEnv:
         return 1.0 if distance == 0 else float(np.dot(delta, forward) / distance)
 
     def observation(self):
-        delta, forward, right, distance = self._relative()
+        line_of_sight = self._line_of_sight()
+        perceived_target = self.enemy
+        if self.config.hide_target_when_occluded:
+            if line_of_sight:
+                self.last_seen_enemy = self.enemy.copy()
+                self.last_seen_tick = self.tick
+            perceived_target = (self.last_seen_enemy
+                                if self.config.provide_last_seen_target else None)
+        if perceived_target is None:
+            delta = np.zeros(2, dtype=np.float32)
+            forward = np.array([math.cos(self.angle), math.sin(self.angle)], dtype=np.float32)
+            right = np.array([-forward[1], forward[0]], dtype=np.float32)
+            distance = alignment = 0.0
+        else:
+            delta, forward, right, distance = self._relative_to(perceived_target)
+            alignment = (1.0 if distance == 0 else
+                         float(np.dot(delta, forward) / distance))
         scale = max(1, self.config.grid_size - 1)
         local_forward = float(np.dot(delta, forward) / scale)
         local_right = float(np.dot(delta, right) / scale)
         values = [self.agent[0] / scale, self.agent[1] / scale,
                   forward[0], forward[1], local_forward, local_right,
-                  distance / (math.sqrt(2) * scale), self.aim_alignment(),
-                  float(self._line_of_sight()),
+                  distance / (math.sqrt(2) * scale), alignment,
+                  float(line_of_sight),
                   self.cooldown / max(1, self.config.fire_cooldown_ticks)]
         if self.config.scenario in NAVIGATION_SCENARIOS:
             directions = self._movement_directions()
@@ -246,12 +290,24 @@ class ToyCombatEnv:
                   self.enemy[0], self.enemy[1], self.cooldown, self.tick]
         if self.config.target_movement_enabled:
             values.append(self.enemy_heading)
+        if self.config.hide_target_when_occluded:
+            last_seen = (-1, -1) if self.last_seen_enemy is None else self.last_seen_enemy
+            values.extend((last_seen[0], last_seen[1], self.last_seen_tick))
         return np.asarray(values, dtype=np.int32)
 
     def info(self, **extra):
+        line_of_sight = self._line_of_sight()
+        last_seen_age = (-1 if self.last_seen_tick < 0 else self.tick - self.last_seen_tick)
         return {'tick': self.tick, 'episode_seed': self.episode_seed,
                 'privileged_state': self.privileged_state(),
-                'action_mask': self.action_mask(), 'line_of_sight': self._line_of_sight(),
+                'action_mask': self.action_mask(), 'line_of_sight': line_of_sight,
+                'target_observation_is_live': (line_of_sight or
+                                               not self.config.hide_target_when_occluded),
+                'has_last_seen_target': self.last_seen_enemy is not None,
+                'target_memory_in_observation': bool(
+                    self.config.provide_last_seen_target and not line_of_sight and
+                    self.last_seen_enemy is not None),
+                'last_seen_age': last_seen_age,
                 'aim_alignment': self.aim_alignment(), 'distance': self._relative()[3], **extra}
 
     def _movement_directions(self):
@@ -329,12 +385,18 @@ class ToyCombatEnv:
         self.tick += 1
         target_moved = False if hit else self._move_enemy_if_due()
         if not hit:
-            components['aim_progress'] = self.config.aim_progress_scale * (self.aim_alignment() - before_aim)
+            after_line_of_sight = self._line_of_sight()
+            target_shaping_visible = (not self.config.mask_occluded_target_shaping or
+                                      (before_line_of_sight and after_line_of_sight))
+            if target_shaping_visible:
+                components['aim_progress'] = self.config.aim_progress_scale * (
+                    self.aim_alignment() - before_aim)
             if self.config.scenario in NAVIGATION_SCENARIOS:
-                components['distance_progress'] = self.config.distance_progress_scale * (
-                    before_distance - self._relative()[3])
+                if target_shaping_visible:
+                    components['distance_progress'] = self.config.distance_progress_scale * (
+                        before_distance - self._relative()[3])
                 components['line_of_sight_progress'] = self.config.line_of_sight_progress_scale * (
-                    float(self._line_of_sight()) - float(before_line_of_sight))
+                    float(after_line_of_sight) - float(before_line_of_sight))
         self.terminated = hit
         self.truncated = self.tick >= self.config.max_ticks and not hit
         return components, rejected, hit, miss, collision, target_moved

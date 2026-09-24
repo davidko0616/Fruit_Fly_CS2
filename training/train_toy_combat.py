@@ -14,9 +14,10 @@ import torch.nn as nn
 
 from toy_combat.env import (ACTION_NAMES, CombatConfig, ToyCombatEnv,
                             integrated_navigation_config, moving_target_config,
-                            navigation_config)
+                            navigation_config, partial_observability_config)
 from toy_combat.recording import (CombatRecorder, RESET_CODES, mlp_forward_with_activity,
-                                  policy_forward_with_activity)
+                                  policy_forward_with_activity,
+                                  policy_forward_with_memory_activity)
 from training.recording import array, atomic_json
 from training.run_toy_combat import load_policy
 
@@ -35,17 +36,23 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
           learning_rate=3e-4, ppo_epochs=4, minibatch_size=256, architecture='flywire',
           environment_config=None, entropy_coefficient=0.01,
           final_entropy_coefficient=None, initial_policy_run=None,
-          initial_policy_version=None):
+          initial_policy_version=None, temporal_state_decay=None):
     if updates < 1 or workers < 1 or horizon < 2:
         raise ValueError('Positive updates/workers and horizon >=2 required')
     if entropy_coefficient < 0 or (final_entropy_coefficient is not None and
                                    final_entropy_coefficient < 0):
         raise ValueError('Entropy coefficients must be nonnegative')
+    if temporal_state_decay is not None and not 0 <= temporal_state_decay <= 1:
+        raise ValueError('Temporal state decay must be between zero and one')
+    if temporal_state_decay is not None and architecture == 'mlp':
+        raise ValueError('Temporal connectome state is unavailable for the MLP')
     final_entropy_coefficient = (entropy_coefficient if final_entropy_coefficient is None
                                  else final_entropy_coefficient)
     torch.manual_seed(seed); torch.set_num_threads(4); torch.use_deterministic_algorithms(True)
     environment_config = environment_config or CombatConfig()
-    if environment_config.scenario in ('navigation_v1', 'moving_target_v1') and action_repeat != 1:
+    if (environment_config.scenario in
+            ('navigation_v1', 'moving_target_v1', 'partial_observability_v1') and
+            action_repeat != 1):
         raise ValueError('Navigation scenarios require action_repeat=1 for cell-level control')
     observation_size = ToyCombatEnv.observation_size_for(environment_config)
     policy, source_graph, run_adjacency, hidden_sizes = load_policy(
@@ -88,6 +95,8 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
     episode_seeds = [seed * 100000 + i for i in range(workers)]
     reset = [env.reset(s) for env, s in zip(environments, episode_seeds)]
     observations, infos = [v[0] for v in reset], [v[1] for v in reset]
+    temporal_states = (torch.zeros(workers, policy.num_neurons)
+                       if temporal_state_decay is not None else None)
     episode_returns, episode_return = [], [0.0] * workers
     episode_hits, completed_lengths = [], []
     if architecture == 'mlp':
@@ -118,6 +127,7 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
               'observation_size': observation_size, 'action_names': ACTION_NAMES,
               'reward_names': reward_names, 'environment': environment_config.__dict__}
     config['initial_policy'] = initial_policy
+    config['temporal_state_decay'] = temporal_state_decay
     update_rows, policy_version, global_decision = [], 0, 0
     fixed_structure = [(name, tuple(parameter.shape)) for name, parameter in policy.named_parameters()]
     fixed_indices = (policy.connectome_layer.indices.detach().clone()
@@ -147,6 +157,8 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
                                            (final_entropy_coefficient - entropy_coefficient))
             rollout = {key: [] for key in ('observations', 'masks', 'actions', 'old_log_probabilities',
                                             'rewards', 'dones', 'values')}
+            if temporal_states is not None:
+                rollout['temporal_states'] = []
             for rollout_step in range(horizon):
                 obs_tensor = torch.from_numpy(np.stack(observations))
                 mask_tensor = torch.from_numpy(np.stack([info['action_mask'] for info in infos]))
@@ -154,9 +166,16 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
                     if architecture == 'mlp':
                         logits, probabilities, hidden_pre, hidden_post = mlp_forward_with_activity(
                             policy, obs_tensor, mask_tensor)
-                    else:
+                    elif temporal_states is None:
                         logits, probabilities, states, pre, sensory = policy_forward_with_activity(
                             policy, obs_tensor, mask_tensor)
+                    else:
+                        temporal_before = temporal_states.clone()
+                        logits, probabilities, states, pre, sensory, temporal_after = (
+                            policy_forward_with_memory_activity(
+                                policy, obs_tensor, mask_tensor, temporal_before,
+                                temporal_state_decay))
+                        temporal_states = temporal_after.detach()
                     values = value_model(obs_tensor)
                     actions = torch.multinomial(probabilities, 1, generator=sample_generator).squeeze(1)
                     selected = probabilities.gather(1, actions[:, None]).squeeze(1)
@@ -174,6 +193,9 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
                                 if architecture == 'mlp' else
                                 {'sensory': sensory[worker], 'states': states[worker],
                                  'preactivations': pre[worker]})
+                    if temporal_states is not None:
+                        activity.update(temporal_state_before=array(temporal_before[worker]),
+                                        temporal_state_after=array(temporal_states[worker]))
                     recorder.append(worker_id=worker, episode_id=episode_ids[worker],
                         episode_seed=episode_seeds[worker], decision_index=episode_steps[worker],
                         global_decision=global_decision, policy_version=policy_version,
@@ -197,10 +219,14 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
                         episode_ids[worker] += workers; episode_steps[worker] = 0
                         episode_seeds[worker] = seed * 100000 + episode_ids[worker]
                         observations[worker], infos[worker] = env.reset(episode_seeds[worker])
+                        if temporal_states is not None:
+                            temporal_states[worker].zero_()
                 rollout['observations'].append(obs_tensor); rollout['masks'].append(mask_tensor)
                 rollout['actions'].append(actions); rollout['old_log_probabilities'].append(log_probabilities)
                 rollout['rewards'].append(torch.tensor(step_rewards, dtype=torch.float32))
                 rollout['dones'].append(torch.tensor(step_dones, dtype=torch.float32)); rollout['values'].append(values)
+                if temporal_states is not None:
+                    rollout['temporal_states'].append(temporal_before)
             with torch.no_grad():
                 bootstrap = value_model(torch.from_numpy(np.stack(observations)))
             rewards = torch.stack(rollout['rewards']); dones = torch.stack(rollout['dones'])
@@ -215,14 +241,23 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
             returns = advantages + values
             flat = {key: torch.stack(rollout[key]).reshape(horizon * workers, *torch.stack(rollout[key]).shape[2:])
                     for key in ('observations', 'masks', 'actions', 'old_log_probabilities')}
+            if temporal_states is not None:
+                flat['temporal_states'] = torch.stack(rollout['temporal_states']).reshape(
+                    horizon * workers, policy.num_neurons)
             flat_advantages = advantages.flatten(); flat_returns = returns.flatten()
             flat_advantages = (flat_advantages - flat_advantages.mean()) / (flat_advantages.std() + 1e-8)
             diagnostics = {'policy_loss': [], 'value_loss': [], 'entropy': [], 'approx_kl': [], 'clip_fraction': []}
             before = [p.detach().clone() for p in policy.parameters()]
             for _ in range(ppo_epochs):
                 for indices in torch.randperm(horizon * workers, generator=batch_generator).split(minibatch_size):
-                    new_logits = policy(flat['observations'][indices]).masked_fill(~flat['masks'][indices],
-                                                                                  torch.finfo(torch.float32).min)
+                    if temporal_states is None:
+                        new_logits = policy(flat['observations'][indices])
+                    else:
+                        new_logits, _ = policy.forward_with_state(
+                            flat['observations'][indices], flat['temporal_states'][indices],
+                            temporal_state_decay)
+                    new_logits = new_logits.masked_fill(~flat['masks'][indices],
+                                                        torch.finfo(torch.float32).min)
                     new_log_probs = new_logits.log_softmax(1).gather(1, flat['actions'][indices, None]).squeeze(1)
                     probs = new_logits.softmax(1); entropy = -(probs.clamp_min(1e-30) * probs.clamp_min(1e-30).log()).sum(1).mean()
                     ratio = (new_log_probs - flat['old_log_probabilities'][indices]).exp()
@@ -284,16 +319,19 @@ if __name__ == '__main__':
     parser.add_argument('--horizon', type=int, default=64); parser.add_argument('--action-repeat', type=int, default=2)
     parser.add_argument('--architecture', choices=('flywire', 'random', 'mlp'), default='flywire')
     parser.add_argument('--scenario',
-                        choices=('aiming', 'navigation', 'integrated-navigation', 'moving-target'),
+                        choices=('aiming', 'navigation', 'integrated-navigation', 'moving-target',
+                                 'partial-observability'),
                         default='aiming')
     parser.add_argument('--entropy-coefficient', type=float, default=0.01)
     parser.add_argument('--final-entropy-coefficient', type=float)
     parser.add_argument('--initial-policy-run', type=Path)
     parser.add_argument('--initial-policy-version', type=int)
+    parser.add_argument('--temporal-state-decay', type=float)
     args = parser.parse_args()
     environment = (navigation_config() if args.scenario == 'navigation' else
                    integrated_navigation_config() if args.scenario == 'integrated-navigation' else
                    moving_target_config() if args.scenario == 'moving-target' else
+                   partial_observability_config() if args.scenario == 'partial-observability' else
                    CombatConfig())
     train(args.output, args.seed, args.updates, args.workers,
                                       args.horizon, args.action_repeat, architecture=args.architecture,
@@ -301,4 +339,5 @@ if __name__ == '__main__':
                                       entropy_coefficient=args.entropy_coefficient,
                                       final_entropy_coefficient=args.final_entropy_coefficient,
                                       initial_policy_run=args.initial_policy_run,
-                                      initial_policy_version=args.initial_policy_version)
+                                      initial_policy_version=args.initial_policy_version,
+                                      temporal_state_decay=args.temporal_state_decay)
