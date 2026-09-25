@@ -170,11 +170,10 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Train the FlyWire controller on unrestricted routes with the accepted
-   six-cell NAV waypoint interface. The non-learned waypoint follower solved all
-   16 validation routes; the learned run starts from the selected 16–32-cell
-   version 20 and must improve its own version-0 validation baseline. The
-   held-out route bucket remains unused by learned policies.
+1. Run the frozen planner-enabled FlyWire version 80 once on 64 held-out routes.
+   It improved unrestricted validation hit and acquisition from 43.75% to 87.5%
+   and passed exact replay. Report the final result without further checkpoint
+   selection or tuning on the held-out bucket.
 2. Repeat the combined read-only replay on a denser independent route before
    adding local-practice input execution. Repeat matched actor comparisons only
    when they answer a specific scientific question.

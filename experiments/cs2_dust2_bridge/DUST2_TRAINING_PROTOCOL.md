@@ -204,6 +204,22 @@ on the same 16 validation routes. A trained checkpoint is accepted only if it
 improves stochastic hit or acquisition over version 0. The held-out bucket will
 not be evaluated.
 
+## NAV waypoint FlyWire result and frozen confirmation
+
+The run recorded and replayed all 40,960 decisions exactly. Training completed
+121 episodes with 89 hits, an overall hit rate of 73.6%. On the 16 fixed
+unrestricted validation routes, version 0 reached 43.75% stochastic hit and
+line-of-sight acquisition. Version 20 reached 75.0%, and versions 70 and 80 both
+reached the best rate, 87.5%. Version 80 is selected by its higher mean return,
++9.13 compared with +8.00 for version 70. The planner-only reference remains at
+100%, reported separately from FlyWire performance.
+
+The configuration and checkpoint are now frozen. Final confirmation will run
+version 80 once on 64 held-out route seeds, reporting stochastic and greedy hit,
+line-of-sight acquisition, return, and the scripted oracle. No model or setting
+will be changed in response to that result, and the held-out bucket will not be
+used again for selection.
+
 The environment is a navigation abstraction. It does not model recoil, weapon
 selection, player acceleration, round economy, teammates, or moving opponents.
 Success here establishes map-specific navigation learning, not complete CS2

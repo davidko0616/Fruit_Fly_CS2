@@ -56,7 +56,10 @@ all trained checkpoints were equal or worse. The next stage therefore adds a
 NAV waypoint planner rather than another curriculum-only PPO run. The planner
 keeps the 14-value interface and exposes a collision-free local waypoint only
 while the remembered target is hidden. A reference follower solved all 16 fixed
-unrestricted validation routes through this interface.
+unrestricted validation routes through this interface. Planner-enabled FlyWire
+training then improved stochastic unrestricted validation hit and acquisition
+from 43.75% at version 0 to 87.5% at the selected version 80. The checkpoint is
+frozen for one final 64-route held-out confirmation.
 See the
 [fixed read-only protocol](PROTOCOL.md) and the
 [setup and data contract](../../docs/CS2_DUST2_BRIDGE.md). The capture backend,
