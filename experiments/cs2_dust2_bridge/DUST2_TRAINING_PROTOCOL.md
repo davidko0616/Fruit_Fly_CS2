@@ -127,6 +127,23 @@ The next exploration should use a smaller overlapping 16–32-cell expansion.
 This tests whether the 24-cell lower bound caused too abrupt a distribution
 shift before introducing a map planner or changing the controller interface.
 
+## Overlapping 16–32-cell result
+
+The smaller expansion again started from local-curriculum version 30 and kept
+the same seed, optimizer, masks, and 80-update budget. It recorded and replayed
+all 40,960 decisions exactly. Training completed 170 episodes with 112 hits, an
+overall hit rate of 65.9%.
+
+On the fixed 16-route validation set, the transferred version-0 policy reached
+62.5% stochastic hit and line-of-sight acquisition with mean return +0.40.
+Version 20 improved both primary rates to 68.75% and mean return to +1.12, the
+best stochastic result in the predefined 10-update scan. It is selected for the
+next curriculum stage. The held-out bucket remains unused by learned policies.
+
+The next exploration should retry 24–48-cell routes from this version-20
+checkpoint. This tests gradual curriculum transfer without changing the
+controller, rewards, or action interface.
+
 The environment is a navigation abstraction. It does not model recoil, weapon
 selection, player acceleration, round economy, teammates, or moving opponents.
 Success here establishes map-specific navigation learning, not complete CS2
