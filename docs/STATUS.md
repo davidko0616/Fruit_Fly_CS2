@@ -46,7 +46,7 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
   and map telemetry while discarding authentication and unrequested opponent
   fields. The visibility-gated 14-value encoder, round-scoped last-seen memory,
   calibration tool, offline policy replay, and visible-label contracts are
-  implemented and covered by the passing 55-test project suite (one expected
+  implemented and covered by the passing 56-test project suite (one expected
   CUDA skip). See the
   [setup and contract](CS2_DUST2_BRIDGE.md) and
   [fixed read-only protocol](../experiments/cs2_dust2_bridge/PROTOCOL.md).
@@ -170,23 +170,22 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Integrate the six-cell NAV waypoint planner into the read-only Dust II bridge
-   and replay the frozen stochastic FlyWire version 80 through calibrated player
-   pose and remembered target state. Its one-time held-out result was 51/64 hits
-   (79.7%) and 56/64 line-of-sight acquisitions (87.5%). The held-out bucket is
-   consumed and must not be reused for tuning.
-2. Repeat the combined read-only replay on a denser independent route before
+1. Repeat the combined read-only replay on a denser independent route before
    adding local-practice input execution. Repeat matched actor comparisons only
-   when they answer a specific scientific question.
-3. For stronger scientific conclusions, predeclare harder synthetic tasks,
+   when they answer a specific scientific question. The six-cell planner and
+   frozen stochastic version 80 now pass the sparse 20-frame replay, including
+   four hidden remembered-target frames. Its one-time held-out result was 51/64
+   hits (79.7%) and 56/64 line-of-sight acquisitions (87.5%); that bucket is
+   consumed and must not be reused for tuning.
+2. For stronger scientific conclusions, predeclare harder synthetic tasks,
    independent dataset splits, or less dense circuits. The first comparison
    is close to the accuracy ceiling and uses a single fixed split.
-4. Train the implemented persistent connectome state with sequence batches if a
+3. Train the implemented persistent connectome state with sequence batches if a
    learned memory mechanism is needed beyond the confirmed last-seen scaffold.
-5. Extend replay to feedforward MLP schema-2 recordings if visual comparison
+4. Extend replay to feedforward MLP schema-2 recordings if visual comparison
    is needed. They are fully recorded and numerically audited, but the current
    recurrent viewer intentionally accepts schema 1 only.
-6. Benchmark larger models only when needed. Current experiments run on CPU;
+5. Benchmark larger models only when needed. Current experiments run on CPU;
    NVIDIA laptop results remain historical evidence for a CUDA option.
 
 Do not claim biological advantages from the first classification run. The current

@@ -43,3 +43,21 @@ Local artifacts:
 The next scientific stage is map-specific Dust II training and held-out route
 evaluation. A live practice controller should not be enabled from this replay
 alone.
+
+## Planner-enabled frozen-policy replay
+
+After map-specific training and the one-time held-out evaluation, the frozen
+stochastic FlyWire version 80 was replayed through the same 20 real Dust II
+records with the six-cell NAV waypoint planner enabled. All 20 frames produced
+valid offline decisions. Six frames had a live target, four hidden frames used
+recent target memory and a collision-free waypoint, and no selected action
+violated its mask. The proposed actions were two fire, four forward, six
+strafe-left, and eight turn-left. No input was sent to CS2.
+
+The radar-to-screen target estimate in one frame landed 76.10 NAV-world units
+outside the walkable mask. The planner therefore uses a recorded, configurable
+90-unit maximum correction for remembered target estimates. Player localization
+retains the stricter 30-unit calibration limit. This is an integration result,
+not a gameplay-performance measurement; the sequence is sparse and was already
+used during perception validation. The exact compact result is preserved in
+[`WAYPOINT_BRIDGE_REPLAY_RESULT.json`](WAYPOINT_BRIDGE_REPLAY_RESULT.json).

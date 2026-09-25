@@ -14,6 +14,10 @@ class ObservationResult:
     target_memory_in_observation: bool
     has_last_seen_target: bool
     last_seen_age_ns: int | None
+    waypoint_planner_active: bool
+    waypoint_world: tuple[float, float] | None
+    waypoint_path_remaining: float | None
+    waypoint_target_snap_world: float | None
 
 
 class Dust2ObservationEncoder:
@@ -22,16 +26,20 @@ class Dust2ObservationEncoder:
     observation_size = 14
 
     def __init__(self, calibration: Dust2Calibration,
-                 target_memory_timeout_ns=5_000_000_000):
+                 target_memory_timeout_ns=5_000_000_000,
+                 waypoint_planner=None):
         self.calibration = calibration
         if target_memory_timeout_ns is not None and target_memory_timeout_ns <= 0:
             raise ValueError('Target-memory timeout must be positive or None')
         self.target_memory_timeout_ns = target_memory_timeout_ns
+        self.waypoint_planner = waypoint_planner
         self.last_seen_world = None
         self.last_seen_ns = None
         self.round_id = None
         self.previous_sequence = None
         self.previous_monotonic_ns = None
+        if self.waypoint_planner is not None:
+            self.waypoint_planner.reset()
 
     def reset(self, round_id=None):
         self.last_seen_world = None
@@ -63,6 +71,8 @@ class Dust2ObservationEncoder:
             self.last_seen_world = None
             self.last_seen_ns = None
             self.round_id = frame.round_id
+            if self.waypoint_planner is not None:
+                self.waypoint_planner.reset()
         self._validate_order(frame)
 
         width = self.calibration.max_x - self.calibration.min_x
@@ -76,6 +86,7 @@ class Dust2ObservationEncoder:
         player_world = np.asarray((frame.pose.x, frame.pose.y), dtype=np.float32)
         live = frame.target is not None
         memory_used = False
+        waypoint_plan = None
         if live:
             local_forward, local_right = frame.target.forward, frame.target.right
             self.last_seen_world = (player_world + forward_axis * local_forward +
@@ -89,7 +100,12 @@ class Dust2ObservationEncoder:
             self.last_seen_ns = None
             local_forward = local_right = 0.0
         elif self.last_seen_world is not None:
-            delta = self.last_seen_world - player_world
+            target_world = self.last_seen_world
+            if self.waypoint_planner is not None:
+                waypoint_plan = self.waypoint_planner.plan(
+                    player_world, self.last_seen_world)
+                target_world = np.asarray(waypoint_plan.world, dtype=np.float32)
+            delta = target_world - player_world
             local_forward = float(np.dot(delta, forward_axis))
             local_right = float(np.dot(delta, right_axis))
             memory_used = True
@@ -118,4 +134,10 @@ class Dust2ObservationEncoder:
             target_memory_in_observation=memory_used,
             has_last_seen_target=self.last_seen_world is not None,
             last_seen_age_ns=age,
+            waypoint_planner_active=waypoint_plan is not None,
+            waypoint_world=(None if waypoint_plan is None else waypoint_plan.world),
+            waypoint_path_remaining=(None if waypoint_plan is None else
+                                     waypoint_plan.path_remaining_cells),
+            waypoint_target_snap_world=(None if waypoint_plan is None else
+                                        waypoint_plan.target_snap_world),
         )

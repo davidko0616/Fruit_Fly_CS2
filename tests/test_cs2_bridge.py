@@ -21,6 +21,7 @@ from cs2_bridge.replay import read_frames, replay_frames, write_jsonl
 from cs2_bridge.schema import BridgeFrame, Dust2Calibration, PlayerPose, VisibleTarget
 from cs2_bridge.sync import TimestampMatcher
 from cs2_bridge.target import VisibleTargetCalibration
+from cs2_bridge.waypoint import Dust2WaypointPlanner
 from tools.calibrate_dust2_bridge import calibrate
 from tools.audit_cs2_labels import audit
 from tools.assemble_cs2_bridge_frames import assemble
@@ -79,6 +80,39 @@ class CS2BridgeTests(unittest.TestCase):
         self.assertFalse(result.target_memory_in_observation)
         self.assertFalse(result.has_last_seen_target)
         self.assertIsNone(result.last_seen_age_ns)
+
+    def test_waypoint_planner_replaces_hidden_through_wall_vector(self):
+        mask = Image.new('L', (160, 160), 255)
+        draw = ImageDraw.Draw(mask)
+        draw.rectangle((76, 0, 83, 127), fill=0)
+        draw.rectangle((76, 144, 83, 159), fill=0)
+        clearance = ClearanceCalibration(
+            map_name='de_dust2', screen_scale_x=1, screen_scale_y=1,
+            screen_offset_x=0, screen_offset_y=0,
+            overview_units_per_pixel=1, max_distance_world=24,
+            max_snap_world=30, mask_file='unused.png')
+        planner = Dust2WaypointPlanner(
+            clearance, mask, grid_step=4, lookahead_cells=6)
+        calibration = Dust2Calibration(
+            'de_dust2', 0, 160, 0, 160, 160)
+        encoder = Dust2ObservationEncoder(
+            calibration, target_memory_timeout_ns=1_000, waypoint_planner=planner)
+        live = encoder.encode(BridgeFrame(
+            0, 1, 'de_dust2:1', 'de_dust2', PlayerPose(20, 80, 0),
+            (1, 1, 1, 1), VisibleTarget(100, 0)))
+        hidden = encoder.encode(BridgeFrame(
+            1, 2, 'de_dust2:1', 'de_dust2', PlayerPose(72, 80, 0),
+            (1, 1, 1, 1)))
+        self.assertFalse(live.waypoint_planner_active)
+        self.assertTrue(hidden.target_memory_in_observation)
+        self.assertTrue(hidden.waypoint_planner_active)
+        self.assertIsNotNone(hidden.waypoint_world)
+        self.assertGreater(hidden.waypoint_path_remaining, 0)
+        self.assertNotAlmostEqual(hidden.observation[5], 0.0)
+        reset = encoder.encode(BridgeFrame(
+            2, 3, 'de_dust2:2', 'de_dust2', PlayerPose(72, 80, 0),
+            (1, 1, 1, 1)))
+        self.assertFalse(reset.waypoint_planner_active)
 
     def test_timestamp_matcher_prefers_nearest_and_rejects_stale_rows(self):
         matcher = TimestampMatcher([

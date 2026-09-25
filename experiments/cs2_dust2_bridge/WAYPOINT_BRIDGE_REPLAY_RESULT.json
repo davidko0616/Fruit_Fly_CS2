@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "execution": "offline_replay_only",
+  "frames": 20,
+  "decisions": 20,
+  "live_target_frames": 6,
+  "memory_frames": 4,
+  "waypoint_frames": 4,
+  "policy_run_id": "10a40610-4f86-4fad-9872-f9b55072da84",
+  "policy_version": 80,
+  "mode": "stochastic",
+  "seed": 9200000,
+  "target_memory_ms": 5000.0,
+  "waypoint_target_max_snap_world": 90.0,
+  "max_observed_target_snap_world": 76.0972271960494,
+  "action_counts": {
+    "fire": 2,
+    "forward": 4,
+    "strafe_left": 6,
+    "turn_left": 8
+  },
+  "masked_action_violations": 0,
+  "calibration_sha256": "7019b7361b61e30abf7b2bba5efc624ee414f92cc622934dab650ac6f0134f37",
+  "frame_file_sha256": "760c8b8339c6eb71c3b986fea61b186b1732d4acb4681409920a6fc8e272f565",
+  "waypoint_calibration_sha256": "dce327306fbfe6f366e09009c0b65ca12d65d9a24967ce50011515f821980c8b"
+}

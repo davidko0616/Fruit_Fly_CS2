@@ -32,6 +32,12 @@ before map-specific data collection and training.
   probabilities, complete connectome activity, memory status, and proposed
   actions. Every row is marked
   `offline_replay_only`; no executor is present in this stage.
+- Planner-enabled policies require `--waypoint-calibration`. While a target is
+  hidden, the bridge replaces its direct remembered vector with a collision-free
+  waypoint up to six NAV cells ahead. Live visible-target vectors are unchanged.
+  Target corrections to walkable space are recorded and limited by
+  `--waypoint-target-max-snap-world` (90 by default); player pose retains the
+  stricter limit stored in the clearance calibration.
 - `tools/calibrate_dust2_bridge.py` derives provisional bounds from a walking
   fixed-radar capture. Calibration is explicit and versionable rather than
   embedding guessed Dust II coordinates in code.
@@ -139,14 +145,17 @@ Run the fixture against the confirmed policy:
 The fixture and calibration are synthetic interface tests, not Dust II training
 evidence. The real 20-frame acceptance replay is documented separately above.
 
+The frozen planner-enabled policy can be reproduced with:
+
+```powershell
+.\.venv\Scripts\python.exe tools/run_cs2_bridge_replay.py --frames artifacts/cs2_bridge/dust2_validation_bridge_frames_v1.jsonl --calibration experiments/cs2_dust2_bridge/dust2_calibration_v1.json --waypoint-calibration artifacts/cs2_bridge/dust2_clearance_calibration_v1.json --policy-run artifacts/toy_combat/dust2_nav_flywire_seed_84_exploratory_v9_waypoint_full_map --policy-version 80 --output artifacts/cs2_bridge/dust2_validation_flywire_waypoint_v80_stochastic.jsonl --mode stochastic --seed 9200000
+```
+
 ## Next acceptance run
 
 Before enabling any action executor:
 
-1. Collect map-specific demonstrations or controlled rewards and train a Dust II
-   policy. Keep capture sessions separated between training, validation, and the
-   final held-out route evaluation.
-2. Repeat the combined read-only replay on a denser independent route before any
+1. Repeat the combined read-only replay on a denser independent route before any
    live practice control test.
 
 Only after this read-only run passes should proposed actions be mapped to local

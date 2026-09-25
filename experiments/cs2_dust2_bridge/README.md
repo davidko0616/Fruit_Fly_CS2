@@ -5,7 +5,7 @@ implemented. The bridge records own-player/map GSI, encodes visibility-gated
 Dust II frames with last-seen target memory, and replays them through the
 confirmed 100-neuron FlyWire policy without game input.
 
-The full 55-test suite passes (with one expected CUDA skip), and the committed
+The full 56-test suite passes (with one expected CUDA skip), and the committed
 three-frame fixture completes an
 end-to-end replay through policy version 100. This validates interfaces and
 memory transformations only; it is not Dust II training or performance evidence.
@@ -62,6 +62,12 @@ from 43.75% at version 0 to 87.5% at the selected version 80. The checkpoint is
 frozen for one final 64-route held-out confirmation. On that confirmation, the
 stochastic actor hit 51 of 64 routes (79.7%) and acquired line of sight on 56
 (87.5%); the greedy actor hit 14 (21.9%), and the oracle solved all 64.
+The frozen stochastic version 80 now also completes the real 20-frame read-only
+bridge replay with the NAV planner: six frames use live target geometry, four
+hidden frames use planned remembered-target waypoints, every proposed action is
+allowed by its mask, and no game input is emitted. This establishes that the
+trained hybrid controller crosses the real bridge interface; it does not yet
+measure live Dust II control performance.
 See the
 [fixed read-only protocol](PROTOCOL.md) and the
 [setup and data contract](../../docs/CS2_DUST2_BRIDGE.md). The capture backend,
