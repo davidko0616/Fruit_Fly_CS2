@@ -5,7 +5,8 @@ implemented. The bridge records own-player/map GSI, encodes visibility-gated
 Dust II frames with last-seen target memory, and replays them through the
 confirmed 100-neuron FlyWire policy without game input.
 
-Eleven bridge tests pass, and the committed three-frame fixture completes an
+The full 50-test suite passes (with one expected CUDA skip), and the committed
+three-frame fixture completes an
 end-to-end replay through policy version 100. This validates interfaces and
 memory transformations only; it is not Dust II training or performance evidence.
 
@@ -20,8 +21,10 @@ accuracy or enable firing. The
 [visible-target calibration](VISIBLE_TARGET_CALIBRATION.md) now converts a
 screen-visible enemy box to local bearing and range with 7.56 radar-pixel range
 RMSE and 3.01-degree bearing RMSE on its controlled calibration pairs. Red
-question-mark cues are excluded from live targets. The next required artifact
-is a static Dust II walkability mask. The first
+question-mark cues are excluded from live targets. The
+[local-clearance estimator](LOCAL_CLEARANCE.md) now derives a static Dust II
+walkability mask from the version-matched game NAV mesh and emits normalized
+forward, backward, left, and right ray casts. The first
 [local-clearance route](LOCAL_CLEARANCE_CAPTURE.md) supplies 882 clean validation
 frames with 100% own-pose recovery after excluding one 18-frame desktop-overlay
 interval. The

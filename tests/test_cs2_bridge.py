@@ -11,6 +11,7 @@ import yaml
 from PIL import Image, ImageDraw
 
 from cs2_bridge.encoder import Dust2ObservationEncoder
+from cs2_bridge.clearance import ClearanceCalibration, Dust2ClearanceEstimator
 from cs2_bridge.detector_dataset import export_dataset
 from cs2_bridge.detector import build_player_ssdlite, evaluate_detection_records
 from cs2_bridge.gsi import parse_gsi_payload
@@ -205,6 +206,31 @@ class CS2BridgeTests(unittest.TestCase):
         red_pose = detect_player_pose(red)
         self.assertAlmostEqual(abs(red_pose.yaw_degrees), 180, delta=8)
         self.assertEqual(red_pose.heading_color, 'red')
+
+    def test_nav_mask_clearance_follows_heading_and_snaps_small_pose_error(self):
+        mask = Image.new('L', (100, 100), 0)
+        draw = ImageDraw.Draw(mask)
+        draw.rectangle((10, 20, 89, 79), fill=255)
+        calibration = ClearanceCalibration(
+            map_name='de_dust2', screen_scale_x=2, screen_scale_y=2,
+            screen_offset_x=5, screen_offset_y=7,
+            overview_units_per_pixel=10, max_distance_world=500,
+            max_snap_world=30, mask_file='unused.png')
+        estimator = Dust2ClearanceEstimator(calibration, mask)
+        pose = PlayerPose(5 + 50 * 2, 7 + 50 * 2, 0)
+        forward, backward, left, right = estimator.estimate(pose)
+        self.assertAlmostEqual(forward, 39 / 50, delta=.02)
+        self.assertAlmostEqual(backward, 40 / 50, delta=.02)
+        self.assertAlmostEqual(left, 30 / 50, delta=.02)
+        self.assertAlmostEqual(right, 29 / 50, delta=.02)
+
+        snapped = estimator.estimate_with_details(PlayerPose(
+            5 + 50 * 2, 7 + 18 * 2, 90))
+        self.assertLessEqual(snapped['snap_world'], 30)
+        with self.assertRaisesRegex(ValueError, 'too far'):
+            estimator.estimate(PlayerPose(5 + 50 * 2, 7 + 5 * 2, 90))
+        with self.assertRaisesRegex(ValueError, 'schema version'):
+            ClearanceCalibration.from_dict({'schema_version': 2})
 
     def test_radar_search_bounds_and_temporal_support_reject_false_pose(self):
         image = Image.new('RGB', (240, 180), (65, 65, 65))

@@ -15,8 +15,9 @@ import torch
 from torchvision.transforms.functional import pil_to_tensor
 
 from cs2_bridge.detector import build_player_ssdlite
+from cs2_bridge.clearance import Dust2ClearanceEstimator
 from cs2_bridge.radar import detect_player_pose
-from cs2_bridge.schema import Dust2Calibration
+from cs2_bridge.schema import Dust2Calibration, PlayerPose
 from cs2_bridge.sync import TimestampMatcher
 from cs2_bridge.target import VisibleTargetCalibration
 
@@ -52,7 +53,8 @@ def build_replay(capture, checkpoint_path, gsi_path, calibration_path, output,
                  score_threshold=0.15, nms_threshold=0.30,
                  radar_search_bounds=(180, 100, 500, 400),
                  max_gsi_delta_ns=15_000_000_000, batch_size=2,
-                 cpu_threads=6, target_calibration_path=None):
+                 cpu_threads=6, target_calibration_path=None,
+                 clearance_calibration_path=None):
     capture, output = Path(capture), Path(output)
     summary_path = output.with_suffix(output.suffix + '.summary.json')
     if output.exists() or summary_path.exists():
@@ -69,6 +71,10 @@ def build_replay(capture, checkpoint_path, gsi_path, calibration_path, output,
     if target_calibration_path is not None:
         target_calibration = VisibleTargetCalibration.from_dict(json.loads(
             Path(target_calibration_path).read_text(encoding='utf-8')))
+    clearance_estimator = None
+    if clearance_calibration_path is not None:
+        clearance_estimator = Dust2ClearanceEstimator.from_json(
+            clearance_calibration_path)
 
     torch.set_num_threads(cpu_threads)
     checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
@@ -113,6 +119,14 @@ def build_replay(capture, checkpoint_path, gsi_path, calibration_path, output,
                     calibration.min_y <= radar_pose.y <= calibration.max_y):
                 drops['radar_pose_out_of_calibration'] += 1
                 continue
+            local_clearances = None
+            if clearance_estimator is not None:
+                try:
+                    local_clearances = clearance_estimator.estimate(PlayerPose(
+                        radar_pose.x, radar_pose.y, radar_pose.yaw_degrees))
+                except ValueError:
+                    drops['clearance_pose_failure'] += 1
+                    continue
 
             keep = prediction['scores'] >= score_threshold
             boxes = prediction['boxes'][keep].cpu().tolist()
@@ -160,6 +174,8 @@ def build_replay(capture, checkpoint_path, gsi_path, calibration_path, output,
                 'gsi_sequence': int(gsi['sequence']),
                 'gsi_snapshot': snapshot,
                 'radar_pose': radar_pose.to_dict(),
+                'local_clearances': (None if local_clearances is None else
+                                     list(local_clearances)),
                 'detections': detections,
                 'primary_visible_target': primary_target,
                 'enemy_candidates': sum(
@@ -193,6 +209,9 @@ def build_replay(capture, checkpoint_path, gsi_path, calibration_path, output,
         'calibration': str(calibration_path),
         'target_calibration': (None if target_calibration_path is None else
                                str(target_calibration_path)),
+        'clearance_calibration': (
+            None if clearance_calibration_path is None else
+            str(clearance_calibration_path)),
     }
     summary_path.write_text(
         json.dumps(summary, indent=2) + '\n', encoding='utf-8')
@@ -206,6 +225,7 @@ def main():
     parser.add_argument('--gsi', type=Path, required=True)
     parser.add_argument('--calibration', type=Path, required=True)
     parser.add_argument('--target-calibration', type=Path)
+    parser.add_argument('--clearance-calibration', type=Path)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--labels', type=Path)
     parser.add_argument('--start-frame', type=int, default=0)
@@ -231,7 +251,7 @@ def main():
         args.start_frame, args.end_frame, args.stride,
         args.score_threshold, args.nms_threshold, bounds,
         int(args.max_gsi_delta_ms * 1e6), args.batch_size, args.cpu_threads,
-        args.target_calibration)
+        args.target_calibration, args.clearance_calibration)
     print(json.dumps(summary, indent=2))
 
 

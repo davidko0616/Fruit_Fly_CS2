@@ -4,15 +4,19 @@
 
 This milestone combines previously recorded screen frames, fixed-radar pose,
 and sanitized GSI state by monotonic timestamp. It is read-only: the output
-contains no proposed or executed keyboard or mouse input. Detector boxes remain
-screen-space evidence; they are not converted into controller target distance
-before range calibration exists.
+contains no proposed or executed keyboard or mouse input. Raw detector boxes
+remain screen-space evidence; the primary enemy target is derived only through
+the separately validated visible-target calibration.
 
-The replay uses the 20 independently labeled validation frames, the team-aware
+The current replay uses the 20 independently labeled validation frames, the team-aware
 SSDLite320 epoch-five checkpoint, the real Dust II radar calibration, and the
 continuously recorded GSI stream. GSI matching is causal: each image receives
 the latest state at or before its capture time. A 15-second maximum age covers
 the event-driven GSI heartbeat without using future state.
+
+Version four also applies the screen-only visible-target calibration and the
+NAV-derived local-clearance calibration. This produces the target and navigation
+fields needed by the policy without reading opponent state from GSI.
 
 ## Result
 
@@ -24,7 +28,9 @@ the event-driven GSI heartbeat without using future state.
 - radar confidence from 0.85 to 1.00;
 - 11 visible-player detections across the replay;
 - six frames with at least one enemy candidate;
-- about 38 ms detector inference per frame on CPU;
+- six frames with a primary screen-visible target;
+- four finite local-clearance values on every emitted frame;
+- about 31 ms detector inference per frame on CPU in the version-four run;
 - no authentication data retained;
 - every row explicitly marked `read_only: true`.
 
@@ -38,14 +44,17 @@ Reproduce the artifact with:
   --checkpoint artifacts/cs2_bridge/dust2_team_detector_pilot_v3_threshold_015/best.pt `
   --gsi artifacts/cs2_bridge/dust2_gsi_walk_01.jsonl `
   --calibration experiments/cs2_dust2_bridge/dust2_calibration_v1.json `
-  --output artifacts/cs2_bridge/dust2_validation_perception_replay_v3.jsonl `
+  --target-calibration experiments/cs2_dust2_bridge/dust2_visible_target_calibration_v1.json `
+  --clearance-calibration artifacts/cs2_bridge/dust2_clearance_calibration_v1.json `
+  --output artifacts/cs2_bridge/dust2_validation_perception_replay_v4.jsonl `
   --score-threshold 0.15 --nms-threshold 0.30 `
   --radar-search-bounds 180,100,500,400 --max-gsi-delta-ms 15000
 ```
 
-## Remaining bridge inputs
+## Remaining integration
 
-The synchronized records do not yet satisfy `BridgeFrame`. A visible enemy box
-still needs a calibrated bearing and distance, and the four local-clearance
-values must come from a static Dust II map mask plus radar pose. Until both are
-validated, the replay must not populate `VisibleTarget` or feed live actions.
+The perception record now contains own pose, four clearances, screen-derived
+target state when visible, and causal round/player state. The next stage is a
+deterministic adapter into `BridgeFrame`, including fire cooldown and action-mask
+rules, followed by an offline policy replay. It must remain read-only until that
+combined replay has been audited.
