@@ -59,7 +59,9 @@ while the remembered target is hidden. A reference follower solved all 16 fixed
 unrestricted validation routes through this interface. Planner-enabled FlyWire
 training then improved stochastic unrestricted validation hit and acquisition
 from 43.75% at version 0 to 87.5% at the selected version 80. The checkpoint is
-frozen for one final 64-route held-out confirmation.
+frozen for one final 64-route held-out confirmation. On that confirmation, the
+stochastic actor hit 51 of 64 routes (79.7%) and acquired line of sight on 56
+(87.5%); the greedy actor hit 14 (21.9%), and the oracle solved all 64.
 See the
 [fixed read-only protocol](PROTOCOL.md) and the
 [setup and data contract](../../docs/CS2_DUST2_BRIDGE.md). The capture backend,

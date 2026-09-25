@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "run_id": "10a40610-4f86-4fad-9872-f9b55072da84",
+  "policy_version": 80,
+  "route_split": "heldout",
+  "episode_seed_start": 9200000,
+  "episode_seed_end": 9200063,
+  "episodes": 64,
+  "stochastic": {
+    "hits": 51,
+    "hit_rate": 0.796875,
+    "line_of_sight_acquisitions": 56,
+    "line_of_sight_acquisition_rate": 0.875,
+    "return_mean": 8.840920756881154,
+    "length_mean": 336.9375,
+    "fire_actions": 51
+  },
+  "greedy": {
+    "hits": 14,
+    "hit_rate": 0.21875,
+    "line_of_sight_acquisitions": 16,
+    "line_of_sight_acquisition_rate": 0.25,
+    "return_mean": -12.42613438120906,
+    "length_mean": 433.3125,
+    "fire_actions": 14
+  },
+  "scripted_oracle": {
+    "hits": 64,
+    "hit_rate": 1.0,
+    "length_mean": 200.1875,
+    "length_max": 370
+  },
+  "selection_status": "final_frozen_confirmation",
+  "heldout_reuse_allowed": false
+}

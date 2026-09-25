@@ -220,6 +220,24 @@ line-of-sight acquisition, return, and the scripted oracle. No model or setting
 will be changed in response to that result, and the held-out bucket will not be
 used again for selection.
 
+## Final held-out result
+
+The one-time held-out evaluation used route seeds 9,200,000 through 9,200,063.
+The stochastic FlyWire actor hit on 51 of 64 routes, 79.7%, and acquired line of
+sight on 56 of 64, 87.5%. Mean return was +8.84 and mean episode length was
+336.9 decisions. It fired 51 times, and every permitted shot hit; five routes
+acquired sight but timed out before firing.
+
+The greedy actor hit on 14 of 64 routes, 21.9%, and acquired sight on 16 of 64,
+25.0%, with mean return -12.43. The scripted oracle remained at 100%, with mean
+length 200.2 and maximum 370 decisions. The execution policy for this controller
+is therefore stochastic, matching PPO training and checkpoint selection.
+
+This is the final result for the frozen configuration. The held-out bucket is
+consumed and will not be reused for tuning or selection. The result establishes
+map-specific navigation in the abstraction; it does not yet establish live CS2
+input control.
+
 The environment is a navigation abstraction. It does not model recoil, weapon
 selection, player acceleration, round economy, teammates, or moving opponents.
 Success here establishes map-specific navigation learning, not complete CS2

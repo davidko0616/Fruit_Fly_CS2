@@ -170,10 +170,11 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Run the frozen planner-enabled FlyWire version 80 once on 64 held-out routes.
-   It improved unrestricted validation hit and acquisition from 43.75% to 87.5%
-   and passed exact replay. Report the final result without further checkpoint
-   selection or tuning on the held-out bucket.
+1. Integrate the six-cell NAV waypoint planner into the read-only Dust II bridge
+   and replay the frozen stochastic FlyWire version 80 through calibrated player
+   pose and remembered target state. Its one-time held-out result was 51/64 hits
+   (79.7%) and 56/64 line-of-sight acquisitions (87.5%). The held-out bucket is
+   consumed and must not be reused for tuning.
 2. Repeat the combined read-only replay on a denser independent route before
    adding local-practice input execution. Repeat matched actor comparisons only
    when they answer a specific scientific question.
