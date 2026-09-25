@@ -49,7 +49,9 @@ route bucket remains unused by learned policies. A subsequent 24–48-cell
 curriculum tied its 62.5% transferred stochastic validation hit rate but did not
 improve it, so it was also rejected. A smaller 16–32-cell expansion succeeded:
 version 20 improved stochastic validation hit and acquisition from 62.5% to
-68.75% and was selected for the next curriculum stage.
+68.75% and was selected for the next curriculum stage. It retained 68.75% when
+transferred to 24–48-cell validation routes, although further training did not
+improve that rate.
 See the
 [fixed read-only protocol](PROTOCOL.md) and the
 [setup and data contract](../../docs/CS2_DUST2_BRIDGE.md). The capture backend,

@@ -170,11 +170,11 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Retry the 24–48-cell Dust II curriculum from the selected 16–32-cell version
-   20. The overlapping stage improved stochastic validation hit and acquisition
-   from 62.5% to 68.75%; the earlier direct 24–48 transfer did not improve. The
-   held-out route bucket remains unused by learned policies for a later frozen
-   confirmation.
+1. Measure the selected 16–32-cell version 20 as the unrestricted-route baseline
+   before adding a map planner. It retained 68.75% stochastic validation hit and
+   acquisition when transferred to 24–48-cell routes, but further training did
+   not improve that rate. The held-out route bucket remains unused by learned
+   policies for a later frozen confirmation.
 2. Repeat the combined read-only replay on a denser independent route before
    adding local-practice input execution. Repeat matched actor comparisons only
    when they answer a specific scientific question.

@@ -144,6 +144,24 @@ The next exploration should retry 24–48-cell routes from this version-20
 checkpoint. This tests gradual curriculum transfer without changing the
 controller, rewards, or action interface.
 
+## Gradual 24–48-cell result
+
+The retry started from the selected 16–32-cell version 20 and kept all other
+training settings fixed. It recorded and replayed all 40,960 decisions exactly.
+Training completed 122 episodes with 57 hits, an overall hit rate of 46.7%.
+
+The transferred version-0 policy reached 68.75% stochastic validation hit and
+line-of-sight acquisition with mean return +1.11. Versions 20 and 70 tied both
+primary rates; version 70 had the best mean return at +1.28. Because no trained
+checkpoint improved the primary rate, this training stage is rejected under the
+same rule used for the earlier 24–48-cell run. The result still shows that the
+selected 16–32-cell policy transfers to 24–48-cell routes without losing its
+validation hit rate.
+
+The next exploration should measure that selected 16–32-cell checkpoint as the
+version-0 baseline on unrestricted routes before deciding whether to add a map
+planner. The held-out bucket remains unused by learned policies.
+
 The environment is a navigation abstraction. It does not model recoil, weapon
 selection, player acceleration, round economy, teammates, or moving opponents.
 Success here establishes map-specific navigation learning, not complete CS2
