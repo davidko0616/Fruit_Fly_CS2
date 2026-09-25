@@ -21,8 +21,12 @@ class Dust2ObservationEncoder:
 
     observation_size = 14
 
-    def __init__(self, calibration: Dust2Calibration):
+    def __init__(self, calibration: Dust2Calibration,
+                 target_memory_timeout_ns=5_000_000_000):
         self.calibration = calibration
+        if target_memory_timeout_ns is not None and target_memory_timeout_ns <= 0:
+            raise ValueError('Target-memory timeout must be positive or None')
+        self.target_memory_timeout_ns = target_memory_timeout_ns
         self.last_seen_world = None
         self.last_seen_ns = None
         self.round_id = None
@@ -77,6 +81,13 @@ class Dust2ObservationEncoder:
             self.last_seen_world = (player_world + forward_axis * local_forward +
                                     right_axis * local_right)
             self.last_seen_ns = frame.monotonic_ns
+        elif (self.last_seen_ns is not None and
+              self.target_memory_timeout_ns is not None and
+              frame.monotonic_ns - self.last_seen_ns >
+              self.target_memory_timeout_ns):
+            self.last_seen_world = None
+            self.last_seen_ns = None
+            local_forward = local_right = 0.0
         elif self.last_seen_world is not None:
             delta = self.last_seen_world - player_world
             local_forward = float(np.dot(delta, forward_axis))

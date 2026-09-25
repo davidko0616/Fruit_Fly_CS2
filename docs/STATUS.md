@@ -1,4 +1,4 @@
-# Project handoff — updated September 24, 2026
+# Project handoff — updated September 25, 2026
 
 ## Current PC: partial-observability milestone complete
 
@@ -46,7 +46,8 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
   and map telemetry while discarding authentication and unrequested opponent
   fields. The visibility-gated 14-value encoder, round-scoped last-seen memory,
   calibration tool, offline policy replay, and visible-label contracts are
-  implemented and covered by eleven tests. See the
+  implemented and covered by the passing 52-test project suite (one expected
+  CUDA skip). See the
   [setup and contract](CS2_DUST2_BRIDGE.md) and
   [fixed read-only protocol](../experiments/cs2_dust2_bridge/PROTOCOL.md).
   A live probe found that active-player GSI omits position and facing in the
@@ -75,6 +76,15 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
   were active Dust II play, no rows dropped, timestamps were strictly ordered,
   and every pose stayed inside the real calibration. See the
   [synchronized replay report](../experiments/cs2_dust2_bridge/SYNCHRONIZED_REPLAY.md).
+  The version-matched Dust II NAV mesh now supplies four directional clearance
+  rays. Its held-out radar registration placed 410 of 441 poses directly inside
+  walkable space, and bounded edge correction accepted all 882 clean poses. A
+  real 20-frame `BridgeFrame` replay then completed with six live-target frames,
+  four finite-horizon memory frames, conservative movement/fire masks, and 20
+  valid offline FlyWire decisions. No game input was emitted. See the
+  [clearance](../experiments/cs2_dust2_bridge/LOCAL_CLEARANCE.md) and
+  [offline replay](../experiments/cs2_dust2_bridge/OFFLINE_POLICY_REPLAY.md)
+  reports.
 
 - Partial-observability toy combat: the seed-77 FlyWire controller reached 82.8%
   held-out stochastic hit rate without live through-wall coordinates. A fixed
@@ -160,12 +170,12 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Calibrate visible-box bearing and distance, then derive and manually validate
-   four local-clearance rays from a static Dust II map mask and radar pose.
-2. Convert the completed synchronized perception records into `BridgeFrame`
-   observations and validate offline policy replay before adding local-practice
-   input execution or map-specific training. Repeat
-   matched actor comparisons when they answer a specific scientific question.
+1. Build a map-specific Dust II training environment from the registered NAV
+   mask and calibrated observation model, then train on CPU with separate
+   capture/training, validation, and final held-out routes.
+2. Repeat the combined read-only replay on a denser independent route before
+   adding local-practice input execution. Repeat matched actor comparisons only
+   when they answer a specific scientific question.
 3. For stronger scientific conclusions, predeclare harder synthetic tasks,
    independent dataset splits, or less dense circuits. The first comparison
    is close to the accuracy ceiling and uses a single fixed split.

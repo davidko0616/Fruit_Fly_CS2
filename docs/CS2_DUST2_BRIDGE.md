@@ -102,17 +102,20 @@ the current CS2 build omits own-player pose while actively playing. GSI therefor
 supplies map, round, health, and weapon state; the visible fixed radar supplies
 pose. The team-aware CPU visible-player pilot now supplies the first read-only
 detector baseline; its validation result is documented in the
-[detector report](../experiments/cs2_dust2_bridge/DETECTOR_PILOT.md). The next
-increment must calibrate visible-box bearing/range and add local-clearance
-estimation. Opponent coordinates from observer feeds, server
+[detector report](../experiments/cs2_dust2_bridge/DETECTOR_PILOT.md). Visible-box
+bearing/range and NAV-derived local clearance are now calibrated for the
+read-only bridge. Opponent coordinates from observer feeds, server
 plugins, demos, or `allplayers` may be retained separately as evaluation labels
 only; they must never populate the policy observation.
 
-The first [synchronized perception replay](../experiments/cs2_dust2_bridge/SYNCHRONIZED_REPLAY.md)
+The current [synchronized perception replay](../experiments/cs2_dust2_bridge/SYNCHRONIZED_REPLAY.md)
 now combines causal GSI snapshots, same-frame radar pose, and team-aware visible
-detections for all 20 selected validation frames without drops. It deliberately
-stops before `BridgeFrame`: visible-box range and the four clearance rays still
-require calibration.
+detections for all 20 selected validation frames without drops. All rows include
+four local clearances, and visible enemy detections include calibrated local
+target geometry. The subsequent
+[offline policy replay](../experiments/cs2_dust2_bridge/OFFLINE_POLICY_REPLAY.md)
+converts all 20 records to `BridgeFrame` and proposes masked FlyWire actions
+without executing input.
 
 ## Verified synthetic bridge replay
 
@@ -134,22 +137,17 @@ Run the fixture against the confirmed policy:
 ```
 
 The fixture and calibration are synthetic interface tests, not Dust II training
-evidence. The first real acceptance run begins after GSI and screen frames have
-been captured from the same controlled session.
+evidence. The real 20-frame acceptance replay is documented separately above.
 
 ## Next acceptance run
 
 Before enabling any action executor:
 
-1. Complete visible-box range calibration and a local-clearance estimator, with
-   held-out measurements of range and ray-cast error.
-2. Convert synchronized perception and GSI into controller observations, then
-   replay the combined frames through the
-   policy. Require finite observations, strictly increasing timestamps, explicit
-   round resets, and a report of dropped or late frames.
-3. Collect map-specific demonstrations or controlled rewards and train a Dust II
+1. Collect map-specific demonstrations or controlled rewards and train a Dust II
    policy. Keep capture sessions separated between training, validation, and the
    final held-out route evaluation.
+2. Repeat the combined read-only replay on a denser independent route before any
+   live practice control test.
 
 Only after this read-only run passes should proposed actions be mapped to local
 practice controls behind an explicit enable flag and immediate stop control.

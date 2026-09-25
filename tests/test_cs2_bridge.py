@@ -23,6 +23,7 @@ from cs2_bridge.sync import TimestampMatcher
 from cs2_bridge.target import VisibleTargetCalibration
 from tools.calibrate_dust2_bridge import calibrate
 from tools.audit_cs2_labels import audit
+from tools.assemble_cs2_bridge_frames import assemble
 from tools.extract_dust2_radar import _temporally_supported
 from tools.extract_dust2_enemy_markers import _temporally_supported_markers
 from tools.label_cs2_frames import LabelSet
@@ -61,6 +62,23 @@ class CS2BridgeTests(unittest.TestCase):
         reset = encoder.encode(frames[2])
         self.assertFalse(reset.has_last_seen_target)
         np.testing.assert_array_equal(reset.observation[4:8], np.zeros(4, dtype=np.float32))
+
+    def test_target_memory_expires_after_configured_horizon(self):
+        encoder = Dust2ObservationEncoder(
+            self.calibration, target_memory_timeout_ns=100)
+        visible = BridgeFrame(0, 1, 'de_dust2:1', 'de_dust2',
+                              PlayerPose(1, 1, 0), (1, 1, 1, 1),
+                              VisibleTarget(1, 0))
+        recent = BridgeFrame(1, 101, 'de_dust2:1', 'de_dust2',
+                             PlayerPose(1, 1, 0), (1, 1, 1, 1))
+        expired = BridgeFrame(2, 102, 'de_dust2:1', 'de_dust2',
+                              PlayerPose(1, 1, 0), (1, 1, 1, 1))
+        encoder.encode(visible)
+        self.assertTrue(encoder.encode(recent).target_memory_in_observation)
+        result = encoder.encode(expired)
+        self.assertFalse(result.target_memory_in_observation)
+        self.assertFalse(result.has_last_seen_target)
+        self.assertIsNone(result.last_seen_age_ns)
 
     def test_timestamp_matcher_prefers_nearest_and_rejects_stale_rows(self):
         matcher = TimestampMatcher([
@@ -131,6 +149,36 @@ class CS2BridgeTests(unittest.TestCase):
             self.assertEqual(len(output.read_text().splitlines()), 3)
             with self.assertRaises(FileExistsError):
                 write_jsonl(output, decisions)
+
+    def test_perception_adapter_gates_walls_and_unaligned_fire(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            perception = root / 'perception.jsonl'
+            rows = []
+            for index, target in enumerate((
+                    {'forward': 100, 'right': 0, 'confidence': .8},
+                    {'forward': 0, 'right': 100, 'confidence': .8}, None)):
+                rows.append({
+                    'monotonic_ns': index + 1, 'active_play': True,
+                    'gsi_snapshot': {'map_name': 'de_dust2',
+                                     'round_id': 'de_dust2:1'},
+                    'radar_pose': {'x': 10 + index, 'y': 20,
+                                   'yaw_degrees': 0},
+                    'local_clearances': [.02, .04, .5, 1],
+                    'primary_visible_target': target,
+                })
+            perception.write_text(
+                '\n'.join(json.dumps(row) for row in rows) + '\n')
+            output = root / 'frames.jsonl'
+            summary = assemble(perception, output)
+            frames = read_frames(output)
+            self.assertEqual(summary['emitted_frames'], 3)
+            self.assertEqual(summary['fire_allowed_frames'], 1)
+            self.assertEqual(frames[0].action_mask,
+                             (True, False, True, True, True, True, True, True))
+            self.assertFalse(frames[1].action_mask[7])
+            self.assertFalse(frames[2].action_mask[7])
+            self.assertIsNone(frames[2].target)
 
     def test_gsi_recorder_drops_auth_and_unrequested_privileged_fields(self):
         with tempfile.TemporaryDirectory() as temporary:

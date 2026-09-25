@@ -5,7 +5,7 @@ implemented. The bridge records own-player/map GSI, encodes visibility-gated
 Dust II frames with last-seen target memory, and replays them through the
 confirmed 100-neuron FlyWire policy without game input.
 
-The full 50-test suite passes (with one expected CUDA skip), and the committed
+The full 52-test suite passes (with one expected CUDA skip), and the committed
 three-frame fixture completes an
 end-to-end replay through policy version 100. This validates interfaces and
 memory transformations only; it is not Dust II training or performance evidence.
@@ -32,7 +32,12 @@ interval. The
 that active-player GSI omits pose, so localization uses the visible fixed radar.
 The [first synchronized replay](SYNCHRONIZED_REPLAY.md) emitted all 20 selected
 validation frames with causal GSI state, in-calibration radar poses, detector
-outputs, and no drops or input execution.
+outputs, visible-target estimates, local clearances, and no drops or input
+execution. The [first real policy replay](OFFLINE_POLICY_REPLAY.md) then converted
+all 20 records to `BridgeFrame`, applied wall and visible-fire masks plus a
+five-second target-memory horizon, and produced 20 valid offline FlyWire
+decisions. This verifies the integration path; it does not establish Dust II
+policy performance.
 See the
 [fixed read-only protocol](PROTOCOL.md) and the
 [setup and data contract](../../docs/CS2_DUST2_BRIDGE.md). The capture backend,
