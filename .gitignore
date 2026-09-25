@@ -25,5 +25,6 @@ artifacts/zluda/
 artifacts/synthetic/
 artifacts/toy_combat/
 artifacts/cs2_bridge/
+Fruit_Fly_CS2_storage_backup_*.tar.zst
 experiments/toy_combat_aiming_seed_42/
 experiments/toy_combat_aiming_seed_42_v2/
