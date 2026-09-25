@@ -108,6 +108,25 @@ next exploration should add an intermediate 24–48-cell curriculum or a planner
 hierarchy before another unrestricted-map transfer. No live-control claim follows
 from the local-route result.
 
+## Intermediate 24–48-cell result
+
+The overlapping curriculum was initialized from local-curriculum version 30 and
+kept the same seed, optimizer, bridge-matched masks, and 80-update budget. It
+recorded and replayed all 40,960 decisions exactly. Training completed 119
+episodes with 53 hits, an overall hit rate of 44.5%.
+
+On the same 16 hash-disjoint validation routes, the transferred version-0 policy
+reached 62.5% stochastic hit and line-of-sight acquisition with mean return
++0.44. Versions 10, 20, and 80 also reached 62.5%; version 10 had the best mean
+return at +0.56. No trained checkpoint improved the primary stochastic hit or
+acquisition rate, and the remaining checkpoints were worse. The 24–48-cell
+stage is therefore rejected rather than promoted to full-map transfer. The
+held-out bucket remains unused by learned policies.
+
+The next exploration should use a smaller overlapping 16–32-cell expansion.
+This tests whether the 24-cell lower bound caused too abrupt a distribution
+shift before introducing a map planner or changing the controller interface.
+
 The environment is a navigation abstraction. It does not model recoil, weapon
 selection, player acceleration, round economy, teammates, or moving opponents.
 Success here establishes map-specific navigation learning, not complete CS2

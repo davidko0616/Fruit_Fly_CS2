@@ -45,7 +45,9 @@ CPU smoke update passed exact replay. The first exploratory Dust II run is
 documented there. The local 8–24-cell curriculum reached 93.75% stochastic
 validation hit rate at version 30. Its unrestricted full-map transfer failed to
 improve the 37.5% transferred baseline, so that run was rejected and the held-out
-route bucket remains unused.
+route bucket remains unused by learned policies. A subsequent 24–48-cell
+curriculum tied its 62.5% transferred stochastic validation hit rate but did not
+improve it, so it was also rejected.
 See the
 [fixed read-only protocol](PROTOCOL.md) and the
 [setup and data contract](../../docs/CS2_DUST2_BRIDGE.md). The capture backend,
