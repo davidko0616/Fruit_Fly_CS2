@@ -170,10 +170,11 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Measure the selected 16–32-cell version 20 as the unrestricted-route baseline
-   before adding a map planner. It retained 68.75% stochastic validation hit and
-   acquisition when transferred to 24–48-cell routes, but further training did
-   not improve that rate. The held-out route bucket remains unused by learned
+1. Add a NAV waypoint planner that converts remembered target position and map
+   geometry into a local waypoint direction for the FlyWire controller. The
+   selected curriculum policy fell to 25.0% hit on unrestricted routes, and all
+   trained checkpoints were equal or worse. Keep planner and controller effects
+   separately measurable; the held-out route bucket remains unused by learned
    policies for a later frozen confirmation.
 2. Repeat the combined read-only replay on a denser independent route before
    adding local-practice input execution. Repeat matched actor comparisons only

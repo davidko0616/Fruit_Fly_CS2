@@ -162,6 +162,26 @@ The next exploration should measure that selected 16–32-cell checkpoint as the
 version-0 baseline on unrestricted routes before deciding whether to add a map
 planner. The held-out bucket remains unused by learned policies.
 
+## Gradual unrestricted-map result
+
+The unrestricted run started from the selected 16–32-cell version 20 and kept
+the established 80-update protocol. It recorded and replayed all 40,960
+decisions exactly. Training completed 88 episodes with 15 hits, an overall hit
+rate of 17.0%.
+
+On the fixed full-map validation routes, version 0 reached 25.0% stochastic hit,
+31.25% line-of-sight acquisition, and mean return -1.03. Version 10 tied the hit
+rate but fell to 25.0% acquisition and -2.15 mean return. Every other checkpoint
+had a lower hit rate. The run is rejected, and the selected 16–32-cell policy
+remains limited to local and intermediate routes. The privileged oracle stayed
+at 100%, so route solvability is not the failure.
+
+Further curriculum-only PPO runs are not justified by these results. The next
+stage should add a NAV waypoint planner that converts remembered target position
+and map geometry into a local waypoint direction. The FlyWire policy will still
+choose movement, aim, and fire actions; the planner's contribution must be
+reported separately. The held-out bucket remains unused by learned policies.
+
 The environment is a navigation abstraction. It does not model recoil, weapon
 selection, player acceleration, round economy, teammates, or moving opponents.
 Success here establishes map-specific navigation learning, not complete CS2

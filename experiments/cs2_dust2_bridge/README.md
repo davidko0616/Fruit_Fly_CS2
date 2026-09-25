@@ -51,7 +51,9 @@ improve it, so it was also rejected. A smaller 16–32-cell expansion succeeded:
 version 20 improved stochastic validation hit and acquisition from 62.5% to
 68.75% and was selected for the next curriculum stage. It retained 68.75% when
 transferred to 24–48-cell validation routes, although further training did not
-improve that rate.
+improve that rate. On unrestricted routes it fell to a 25.0% hit baseline, and
+all trained checkpoints were equal or worse. The next stage therefore adds a
+NAV waypoint planner rather than another curriculum-only PPO run.
 See the
 [fixed read-only protocol](PROTOCOL.md) and the
 [setup and data contract](../../docs/CS2_DUST2_BRIDGE.md). The capture backend,
