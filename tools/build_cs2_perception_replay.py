@@ -18,6 +18,7 @@ from cs2_bridge.detector import build_player_ssdlite
 from cs2_bridge.radar import detect_player_pose
 from cs2_bridge.schema import Dust2Calibration
 from cs2_bridge.sync import TimestampMatcher
+from cs2_bridge.target import VisibleTargetCalibration
 
 
 def _read_jsonl(path):
@@ -51,7 +52,7 @@ def build_replay(capture, checkpoint_path, gsi_path, calibration_path, output,
                  score_threshold=0.15, nms_threshold=0.30,
                  radar_search_bounds=(180, 100, 500, 400),
                  max_gsi_delta_ns=15_000_000_000, batch_size=2,
-                 cpu_threads=6):
+                 cpu_threads=6, target_calibration_path=None):
     capture, output = Path(capture), Path(output)
     summary_path = output.with_suffix(output.suffix + '.summary.json')
     if output.exists() or summary_path.exists():
@@ -64,6 +65,10 @@ def build_replay(capture, checkpoint_path, gsi_path, calibration_path, output,
     gsi_matcher = TimestampMatcher(gsi_rows, 'received_monotonic_ns')
     calibration = Dust2Calibration.from_dict(json.loads(
         Path(calibration_path).read_text(encoding='utf-8')))
+    target_calibration = None
+    if target_calibration_path is not None:
+        target_calibration = VisibleTargetCalibration.from_dict(json.loads(
+            Path(target_calibration_path).read_text(encoding='utf-8')))
 
     torch.set_num_threads(cpu_threads)
     checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
@@ -122,10 +127,21 @@ def build_replay(capture, checkpoint_path, gsi_path, calibration_path, output,
                     box[0] + origin[0], box[1] + origin[1],
                     box[2] + origin[0], box[3] + origin[1],
                 ]
-                detections.append({
+                detection = {
                     'class_id': int(class_id), 'class_name': name,
                     'score': float(score), 'screen_box': screen_box,
-                })
+                }
+                if target_calibration is not None and name == 'enemy':
+                    target = target_calibration.target_from_box(
+                        screen_box, confidence=float(score))
+                    detection['visible_target'] = {
+                        'forward': target.forward, 'right': target.right,
+                        'confidence': target.confidence,
+                    }
+                detections.append(detection)
+            primary_target = next(
+                (detection['visible_target'] for detection in detections
+                 if 'visible_target' in detection), None)
             snapshot = gsi.get('snapshot') or {}
             active = (snapshot.get('map_name') == calibration.map_name and
                       snapshot.get('round_id') is not None and
@@ -145,6 +161,7 @@ def build_replay(capture, checkpoint_path, gsi_path, calibration_path, output,
                 'gsi_snapshot': snapshot,
                 'radar_pose': radar_pose.to_dict(),
                 'detections': detections,
+                'primary_visible_target': primary_target,
                 'enemy_candidates': sum(
                     detection['class_name'] == 'enemy'
                     for detection in detections),
@@ -174,6 +191,8 @@ def build_replay(capture, checkpoint_path, gsi_path, calibration_path, output,
         'nms_threshold': nms_threshold,
         'class_names': list(class_names),
         'calibration': str(calibration_path),
+        'target_calibration': (None if target_calibration_path is None else
+                               str(target_calibration_path)),
     }
     summary_path.write_text(
         json.dumps(summary, indent=2) + '\n', encoding='utf-8')
@@ -186,6 +205,7 @@ def main():
     parser.add_argument('--checkpoint', type=Path, required=True)
     parser.add_argument('--gsi', type=Path, required=True)
     parser.add_argument('--calibration', type=Path, required=True)
+    parser.add_argument('--target-calibration', type=Path)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--labels', type=Path)
     parser.add_argument('--start-frame', type=int, default=0)
@@ -210,7 +230,8 @@ def main():
         args.labels,
         args.start_frame, args.end_frame, args.stride,
         args.score_threshold, args.nms_threshold, bounds,
-        int(args.max_gsi_delta_ms * 1e6), args.batch_size, args.cpu_threads)
+        int(args.max_gsi_delta_ms * 1e6), args.batch_size, args.cpu_threads,
+        args.target_calibration)
     print(json.dumps(summary, indent=2))
 
 

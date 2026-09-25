@@ -2,7 +2,8 @@
 
 from .encoder import Dust2ObservationEncoder, ObservationResult
 from .gsi import GSISnapshot, parse_gsi_payload
-from .radar import RadarPose, detect_player_pose
+from .radar import RadarEnemyMarker, RadarPose, detect_enemy_markers, detect_player_pose
+from .target import VisibleTargetCalibration
 from .schema import BridgeFrame, Dust2Calibration, PlayerPose, VisibleTarget
 
 __all__ = [

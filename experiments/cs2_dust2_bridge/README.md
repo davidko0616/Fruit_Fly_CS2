@@ -16,8 +16,12 @@ The [real calibration walk](RADAR_CALIBRATION.md) recovered 2,987 of 3,000 poses
 63.6% overall precision and recall, 71.4% enemy precision, and 83.3% enemy recall
 at about 36 ms/frame, with no detections on 11 negative frames. It is sufficient
 to test the read-only integration path but not to claim final perception
-accuracy or enable firing. The next required artifacts are visible-box range
-calibration and a local-clearance perception set. The
+accuracy or enable firing. The
+[visible-target calibration](VISIBLE_TARGET_CALIBRATION.md) now converts a
+screen-visible enemy box to local bearing and range with 7.56 radar-pixel range
+RMSE and 3.01-degree bearing RMSE on its controlled calibration pairs. Red
+question-mark cues are excluded from live targets. The next required artifact
+is a local-clearance perception set. The
 [live GSI probe](GSI_POSE_PROBE.md) showed
 that active-player GSI omits pose, so localization uses the visible fixed radar.
 The [first synchronized replay](SYNCHRONIZED_REPLAY.md) emitted all 20 selected

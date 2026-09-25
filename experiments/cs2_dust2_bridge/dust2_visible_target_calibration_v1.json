@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "map_name": "de_dust2",
+  "source": {
+    "capture": "artifacts\\cs2_bridge\\dust2_single_enemy_range_calibration_03",
+    "labels": "artifacts\\cs2_bridge\\dust2_single_enemy_range_calibration_03_labels.json",
+    "enemy_markers": "artifacts\\cs2_bridge\\dust2_single_enemy_range_calibration_03_enemy_markers_v4.jsonl",
+    "confirmed_pairs": 19,
+    "excluded": [
+      {
+        "frame_id": 0,
+        "reason": "requires_one_enemy_and_confirmed_marker"
+      }
+    ]
+  },
+  "model": {
+    "image_width": 2560,
+    "image_height": 1440,
+    "horizontal_half_fov_degrees": 53.13,
+    "inverse_height_scale": 7779.447153774069,
+    "range_offset": 0.07305979866301951,
+    "min_box_height": 71.28712871287132,
+    "max_box_height": 761.980198019802,
+    "min_range": 13.03948016827015,
+    "max_range": 111.10556418334355
+  },
+  "validation": {
+    "range": {
+      "rmse": 7.561715542302812,
+      "mae": 6.497486427078107,
+      "max_abs_error": 14.467477582519109,
+      "r_squared": 0.9318217399669113
+    },
+    "bearing": {
+      "rmse": 3.0050213745865824,
+      "mae": 2.736043004187648,
+      "max_abs_error": 4.891661234573243,
+      "pairs": 15,
+      "minimum_radar_range": 25.0,
+      "mean_signed_error": 2.0571281209616954
+    }
+  },
+  "pairs": [
+    {
+      "frame_id": 15,
+      "radar_range": 111.10556418334355,
+      "box_height": 71.28712871287132,
+      "radar_bearing_degrees": -6.0613181609628555,
+      "screen_bearing_degrees": -4.622752828335178,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 30,
+      "radar_range": 74.87666049343588,
+      "box_height": 125.14851485148517,
+      "radar_bearing_degrees": -2.697291120963598,
+      "screen_bearing_degrees": -0.09454705325100539,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 45,
+      "radar_range": 53.6727414324872,
+      "box_height": 171.08910891089113,
+      "radar_bearing_degrees": -2.9945069230055594,
+      "screen_bearing_degrees": 0.09454705325100539,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 60,
+      "radar_range": 18.179660168317096,
+      "box_height": 529.1089108910891,
+      "radar_bearing_degrees": 0.09894213422924736,
+      "screen_bearing_degrees": -5.888377226584975,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 75,
+      "radar_range": 17.09218267797125,
+      "box_height": 731.8811881188119,
+      "radar_bearing_degrees": 104.94534920958318,
+      "screen_bearing_degrees": -9.783954385000957,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 90,
+      "radar_range": 46.23244660898197,
+      "box_height": 128.3168316831683,
+      "radar_bearing_degrees": -0.7932677909781205,
+      "screen_bearing_degrees": 1.134417410110958,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 105,
+      "radar_range": 28.078023012140243,
+      "box_height": 229.70297029702976,
+      "radar_bearing_degrees": 3.2847812955276083,
+      "screen_bearing_degrees": -1.6068799390456343,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 120,
+      "radar_range": 15.934333931381065,
+      "box_height": 261.3861386138615,
+      "radar_bearing_degrees": -39.78944943952217,
+      "screen_bearing_degrees": -38.6424048000772,
+      "visibility": "partial"
+    },
+    {
+      "frame_id": 135,
+      "radar_range": 58.735405130613664,
+      "box_height": 140.99009900990097,
+      "radar_bearing_degrees": -0.5561327886807703,
+      "screen_bearing_degrees": -0.7563331783021766,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 150,
+      "radar_range": 37.17202820063673,
+      "box_height": 191.6831683168317,
+      "radar_bearing_degrees": -0.496171278115213,
+      "screen_bearing_degrees": 2.456718941405645,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 165,
+      "radar_range": 42.3571848337576,
+      "box_height": 161.58415841584156,
+      "radar_bearing_degrees": -8.197324606933535,
+      "screen_bearing_degrees": -4.763624043499487,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 180,
+      "radar_range": 38.303528054133686,
+      "box_height": 175.8415841584158,
+      "radar_bearing_degrees": -3.3824934962318594,
+      "screen_bearing_degrees": 1.1816716677530545,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 195,
+      "radar_range": 33.753731690128184,
+      "box_height": 212.27722772277218,
+      "radar_bearing_degrees": 1.3159805492477972,
+      "screen_bearing_degrees": 4.575783222265382,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 210,
+      "radar_range": 86.73349010935284,
+      "box_height": 93.46534653465346,
+      "radar_bearing_degrees": -2.879858166520819,
+      "screen_bearing_degrees": -0.3781830640638638,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 225,
+      "radar_range": 93.21007496529973,
+      "box_height": 76.039603960396,
+      "radar_bearing_degrees": -1.621206252954579,
+      "screen_bearing_degrees": 0.18909359159790023,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 240,
+      "radar_range": 95.9337130488979,
+      "box_height": 91.8811881188119,
+      "radar_bearing_degrees": -1.930646087374896,
+      "screen_bearing_degrees": 1.134417410110958,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 255,
+      "radar_range": 48.20252675251854,
+      "box_height": 177.42574257425747,
+      "radar_bearing_degrees": -3.621292573561732,
+      "screen_bearing_degrees": -2.456718941405645,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 270,
+      "radar_range": 29.369385233314098,
+      "box_height": 308.910891089109,
+      "radar_bearing_degrees": 2.9165959041450833,
+      "screen_bearing_degrees": 7.055160068470467,
+      "visibility": "full"
+    },
+    {
+      "frame_id": 285,
+      "radar_range": 13.03948016827015,
+      "box_height": 761.980198019802,
+      "radar_bearing_degrees": 0.12212432196605505,
+      "screen_bearing_degrees": -8.955600034696584,
+      "visibility": "full"
+    }
+  ]
+}

@@ -144,6 +144,12 @@ The target field must be null whenever no body is visibly detected, even if the
 radar retains a spotted-player icon. Last-seen memory may continue only through
 the bridge's existing round-scoped memory path.
 
+The controlled one-enemy calibration distinguishes the bright red confirmed
+diamond from the red last-known question mark. Only confirmed diamonds may
+supply calibration truth. The runtime conversion in
+[`VISIBLE_TARGET_CALIBRATION.md`](VISIBLE_TARGET_CALIBRATION.md) uses the visible
+screen box alone; question-mark positions never become live targets.
+
 Local clearance will be evaluated separately from a static Dust II radar mask
 and the already calibrated own-player pose. It cannot use opponent markers and
 must report ray-cast error at manually checked locations before supplying the

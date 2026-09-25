@@ -15,13 +15,15 @@ from cs2_bridge.detector_dataset import export_dataset
 from cs2_bridge.detector import build_player_ssdlite, evaluate_detection_records
 from cs2_bridge.gsi import parse_gsi_payload
 from cs2_bridge.labels import PlayerBox, validate_frame_label
-from cs2_bridge.radar import detect_player_pose
+from cs2_bridge.radar import detect_enemy_markers, detect_player_pose
 from cs2_bridge.replay import read_frames, replay_frames, write_jsonl
 from cs2_bridge.schema import BridgeFrame, Dust2Calibration, PlayerPose, VisibleTarget
 from cs2_bridge.sync import TimestampMatcher
+from cs2_bridge.target import VisibleTargetCalibration
 from tools.calibrate_dust2_bridge import calibrate
 from tools.audit_cs2_labels import audit
 from tools.extract_dust2_radar import _temporally_supported
+from tools.extract_dust2_enemy_markers import _temporally_supported_markers
 from tools.label_cs2_frames import LabelSet
 from http.server import ThreadingHTTPServer
 from tools.serve_cs2_gsi import GSIRecorder, make_handler
@@ -231,6 +233,66 @@ class CS2BridgeTests(unittest.TestCase):
         kept, rejected = _temporally_supported(rows, 20, 2)
         self.assertEqual([row['frame_id'] for row in kept], [0, 1, 3, 4])
         self.assertEqual([row['frame_id'] for row in rejected], [2])
+
+    def test_radar_enemy_diamond_and_last_known_question_mark_are_distinct(self):
+        image = Image.new('RGB', (240, 180), (90, 90, 90))
+        draw = ImageDraw.Draw(image)
+        draw.polygon(((80, 50), (92, 59), (80, 68), (68, 59)),
+                     fill=(240, 28, 28))
+        draw.rectangle((130, 50, 152, 65), fill=(240, 28, 28))
+        draw.arc((170, 48, 186, 64), 190, 520, fill=(190, 110, 100), width=4)
+        draw.line(((178, 61), (178, 66)), fill=(190, 110, 100), width=4)
+        draw.rectangle((176, 70, 180, 74), fill=(190, 110, 100))
+
+        markers = detect_enemy_markers(image)
+        self.assertEqual([marker.state for marker in markers],
+                         ['confirmed', 'last_known'])
+        confirmed = next(marker for marker in markers
+                         if marker.state == 'confirmed')
+        last_known = next(marker for marker in markers
+                          if marker.state == 'last_known')
+        self.assertAlmostEqual(confirmed.x, 80, delta=1)
+        self.assertAlmostEqual(last_known.x, 178, delta=2)
+        self.assertTrue(all(abs(marker.x - 141) > 8 for marker in markers))
+
+        bounded = detect_enemy_markers(image, origin=(10, 20),
+                                       search_bounds=(65, 60, 105, 100))
+        self.assertEqual(len(bounded), 1)
+        self.assertEqual(bounded[0].state, 'confirmed')
+        self.assertAlmostEqual(bounded[0].x, 90, delta=1)
+
+        rows = [
+            {'frame_id': 0, 'enemy_markers': [
+                {'x': 80, 'y': 60, 'state': 'confirmed'}]},
+            {'frame_id': 1, 'enemy_markers': [
+                {'x': 81, 'y': 60, 'state': 'last_known'},
+                {'x': 180, 'y': 130, 'state': 'last_known'}]},
+            {'frame_id': 2, 'enemy_markers': [
+                {'x': 82, 'y': 61, 'state': 'confirmed'}]},
+        ]
+        filtered, rejected = _temporally_supported_markers(rows, 10, 2)
+        self.assertEqual(rejected, 1)
+        self.assertEqual([len(row['enemy_markers']) for row in filtered], [1, 1, 1])
+
+    def test_visible_target_calibration_uses_screen_box_only(self):
+        calibration = VisibleTargetCalibration(
+            image_width=2560, image_height=1440,
+            horizontal_half_fov_degrees=53.13,
+            inverse_height_scale=7800, range_offset=0,
+            min_box_height=70, max_box_height=760,
+            min_range=10, max_range=115,
+        )
+        centered = calibration.target_from_box((1200, 500, 1360, 700), 0.8)
+        self.assertAlmostEqual(centered.forward, 39, delta=0.1)
+        self.assertAlmostEqual(centered.right, 0, delta=0.1)
+        self.assertEqual(centered.confidence, 0.8)
+        right = calibration.target_from_box((1840, 500, 2000, 700))
+        self.assertGreater(right.right, 0)
+        self.assertLess(right.forward, centered.forward)
+        clipped = calibration.target_from_box((1200, 100, 1360, 1400))
+        self.assertAlmostEqual(clipped.forward, 7800 / 760, delta=0.1)
+        with self.assertRaisesRegex(ValueError, 'inside'):
+            calibration.target_from_box((-1, 0, 10, 20))
 
     def test_visible_player_labels_require_in_frame_positive_boxes(self):
         label = validate_frame_label({
