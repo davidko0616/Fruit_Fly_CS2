@@ -21,7 +21,10 @@ accuracy or enable firing. The
 screen-visible enemy box to local bearing and range with 7.56 radar-pixel range
 RMSE and 3.01-degree bearing RMSE on its controlled calibration pairs. Red
 question-mark cues are excluded from live targets. The next required artifact
-is a local-clearance perception set. The
+is a static Dust II walkability mask. The first
+[local-clearance route](LOCAL_CLEARANCE_CAPTURE.md) supplies 882 clean validation
+frames with 100% own-pose recovery after excluding one 18-frame desktop-overlay
+interval. The
 [live GSI probe](GSI_POSE_PROBE.md) showed
 that active-player GSI omits pose, so localization uses the visible fixed radar.
 The [first synchronized replay](SYNCHRONIZED_REPLAY.md) emitted all 20 selected

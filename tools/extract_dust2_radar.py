@@ -35,15 +35,20 @@ def _temporally_supported(rows, max_step_pixels, max_gap_frames):
 
 
 def extract(capture_directory, output, origin=(0, 0), search_bounds=None,
-            max_step_pixels=20.0, max_gap_frames=2):
+            max_step_pixels=20.0, max_gap_frames=2, excluded_frames=()):
     capture_directory = Path(capture_directory)
     output = Path(output)
     if output.exists():
         raise FileExistsError(f'Refusing to overwrite {output}')
     rows, failures = [], []
+    excluded_frames = set(excluded_frames)
+    skipped = 0
     for line_number, line in enumerate(
             (capture_directory / 'frames.jsonl').read_text().splitlines(), 1):
         frame = json.loads(line)
+        if int(frame['frame_id']) in excluded_frames:
+            skipped += 1
+            continue
         try:
             pose = detect_player_pose(Image.open(capture_directory / frame['file']),
                                       origin, search_bounds)
@@ -67,6 +72,7 @@ def extract(capture_directory, output, origin=(0, 0), search_bounds=None,
         'frames': frame_count, 'raw_poses': raw_pose_count, 'poses': len(rows),
         'detection_failures': len(failures),
         'temporal_rejections': len(temporal_rejections),
+        'excluded_frames': skipped,
         'failure_examples': failures[:20],
         'raw_pose_rate': raw_pose_count / frame_count if frame_count else None,
         'pose_rate': len(rows) / frame_count if frame_count else None,
@@ -81,6 +87,8 @@ def main():
     parser.add_argument('--search-bounds', help='Global min_x,min_y,max_x,max_y')
     parser.add_argument('--max-step-pixels', type=float, default=20.0)
     parser.add_argument('--max-gap-frames', type=int, default=2)
+    parser.add_argument('--exclude-range', action='append', default=[],
+                        help='Inclusive frame range START-END; may be repeated')
     args = parser.parse_args()
     origin = tuple(int(part) for part in args.origin.split(','))
     if len(origin) != 2:
@@ -95,9 +103,18 @@ def main():
             raise ValueError('Search bounds must have positive width and height')
     if args.max_step_pixels < 0 or args.max_gap_frames < 1:
         raise ValueError('Temporal filter values must be nonnegative and positive')
+    excluded = set()
+    for value in args.exclude_range:
+        try:
+            start, end = (int(part) for part in value.split('-', 1))
+        except ValueError as error:
+            raise ValueError('Excluded range must be START-END') from error
+        if start < 0 or end < start:
+            raise ValueError('Excluded range must be nonnegative and ordered')
+        excluded.update(range(start, end + 1))
     print(json.dumps(extract(
         args.capture, args.output, origin, search_bounds,
-        args.max_step_pixels, args.max_gap_frames), indent=2))
+        args.max_step_pixels, args.max_gap_frames, excluded), indent=2))
 
 
 if __name__ == '__main__':
