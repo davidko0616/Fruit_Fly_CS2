@@ -8,7 +8,8 @@ import torch
 from PIL import Image, ImageDraw
 
 from dust2_training.env import (Dust2CombatConfig, Dust2CombatEnv,
-                                scripted_dust2_action)
+                                scripted_dust2_action,
+                                scripted_waypoint_action)
 from toy_combat.env import (NAVIGATION_REWARD_NAMES, REWARD_NAMES, ToyCombatEnv,
                             integrated_navigation_config, moving_target_config,
                             navigation_config, partial_observability_config,
@@ -74,7 +75,8 @@ class ToyCombatTests(unittest.TestCase):
             directory = root / 'dust2-smoke'
             config = Dust2CombatConfig(
                 str(mask), 'train', grid_step=4, max_ticks=64,
-                minimum_route_cells=8)
+                minimum_route_cells=8, waypoint_planner_enabled=True,
+                waypoint_lookahead_cells=5)
             metrics = train(
                 directory, seed=84, updates=1, workers=2, horizon=8,
                 action_repeat=1, ppo_epochs=1, minibatch_size=16,
@@ -83,6 +85,47 @@ class ToyCombatTests(unittest.TestCase):
             self.assertEqual(metrics['decisions'], 16)
             self.assertEqual(result['decisions'], 16)
             self.assertTrue(result['audit_passed'])
+
+    def test_dust2_waypoint_planner_routes_memory_around_geometry(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            mask = Path(temporary) / 'mask.png'
+            self._dust2_test_mask(mask)
+            config = Dust2CombatConfig(
+                str(mask), 'validation', grid_step=4, max_ticks=256,
+                minimum_route_cells=8, waypoint_planner_enabled=True,
+                waypoint_lookahead_cells=5)
+            environment = Dust2CombatEnv(config)
+            observation, info = environment.reset(0)
+            waypoint = np.asarray(info['waypoint'])
+            self.assertTrue(info['waypoint_planner_active'])
+            self.assertFalse(info['line_of_sight'])
+            self.assertFalse(np.array_equal(waypoint, environment.enemy))
+            self.assertTrue(environment._line_is_walkable(
+                environment.agent, waypoint))
+            scale = max(environment.height - 1, environment.width - 1)
+            delta, forward, right, distance = environment._relative_to(waypoint)
+            self.assertAlmostEqual(observation[4], np.dot(delta, forward) / scale)
+            self.assertAlmostEqual(observation[5], np.dot(delta, right) / scale)
+            self.assertAlmostEqual(observation[6],
+                                   distance / (np.sqrt(2) * scale))
+            remaining = info['waypoint_path_remaining']
+            initial_position = environment.agent.copy()
+            for _ in range(64):
+                _, _, terminated, truncated, info = environment.step(
+                    scripted_dust2_action(environment))
+                self.assertFalse(terminated or truncated)
+                if not np.array_equal(environment.agent, initial_position):
+                    break
+            self.assertFalse(np.array_equal(environment.agent, initial_position))
+            self.assertLess(info['waypoint_path_remaining'], remaining)
+            follower = Dust2CombatEnv(config)
+            follower.reset(0)
+            for _ in range(config.max_ticks):
+                _, _, terminated, truncated, outcome = follower.step(
+                    scripted_waypoint_action(follower))
+                if terminated or truncated:
+                    break
+            self.assertTrue(outcome['hit'])
 
     def test_comparison_policies_match_declared_budget_and_recurrent_io_initialization(self):
         flywire, _, flywire_adjacency, _ = load_policy(42, 'flywire')

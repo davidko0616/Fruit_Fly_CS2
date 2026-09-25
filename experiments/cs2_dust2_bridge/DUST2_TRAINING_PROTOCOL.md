@@ -182,6 +182,28 @@ and map geometry into a local waypoint direction. The FlyWire policy will still
 choose movement, aim, and fire actions; the planner's contribution must be
 reported separately. The held-out bucket remains unused by learned policies.
 
+## NAV waypoint planner protocol
+
+The planner preserves the 14-value policy interface. When a target is hidden but
+remembered, A* searches the registered walkability grid and replaces the direct
+through-wall target vector with a collision-free waypoint up to six path cells
+ahead. Live targets retain their direct geometry. Movement masks, visible-fire
+gating, and the FlyWire action outputs are unchanged. While the planner is
+active, shaping measures progress along the planned path instead of Euclidean
+distance through geometry.
+
+A non-learned reference follower using only the exposed waypoint and action mask
+solved all 16 fixed unrestricted validation routes. It acquired line of sight
+and hit on every route, with mean length 122.1 decisions and maximum 225. This
+measures planner sufficiency separately from learned-controller performance.
+
+The exploratory FlyWire run will start from the selected 16–32-cell version 20,
+use unrestricted training routes, six-cell lookahead, seed 84, and the established
+80-update PPO settings. Version 0 and fixed 10-update checkpoints will be tested
+on the same 16 validation routes. A trained checkpoint is accepted only if it
+improves stochastic hit or acquisition over version 0. The held-out bucket will
+not be evaluated.
+
 The environment is a navigation abstraction. It does not model recoil, weapon
 selection, player acceleration, round economy, teammates, or moving opponents.
 Success here establishes map-specific navigation learning, not complete CS2

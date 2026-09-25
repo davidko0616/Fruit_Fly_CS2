@@ -46,7 +46,7 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
   and map telemetry while discarding authentication and unrequested opponent
   fields. The visibility-gated 14-value encoder, round-scoped last-seen memory,
   calibration tool, offline policy replay, and visible-label contracts are
-  implemented and covered by the passing 54-test project suite (one expected
+  implemented and covered by the passing 55-test project suite (one expected
   CUDA skip). See the
   [setup and contract](CS2_DUST2_BRIDGE.md) and
   [fixed read-only protocol](../experiments/cs2_dust2_bridge/PROTOCOL.md).
@@ -170,12 +170,11 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Add a NAV waypoint planner that converts remembered target position and map
-   geometry into a local waypoint direction for the FlyWire controller. The
-   selected curriculum policy fell to 25.0% hit on unrestricted routes, and all
-   trained checkpoints were equal or worse. Keep planner and controller effects
-   separately measurable; the held-out route bucket remains unused by learned
-   policies for a later frozen confirmation.
+1. Train the FlyWire controller on unrestricted routes with the accepted
+   six-cell NAV waypoint interface. The non-learned waypoint follower solved all
+   16 validation routes; the learned run starts from the selected 16–32-cell
+   version 20 and must improve its own version-0 validation baseline. The
+   held-out route bucket remains unused by learned policies.
 2. Repeat the combined read-only replay on a denser independent route before
    adding local-practice input execution. Repeat matched actor comparisons only
    when they answer a specific scientific question.

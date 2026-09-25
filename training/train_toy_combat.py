@@ -333,6 +333,8 @@ if __name__ == '__main__':
                         default='train')
     parser.add_argument('--minimum-route-cells', type=int, default=24)
     parser.add_argument('--maximum-route-cells', type=int)
+    parser.add_argument('--waypoint-planner', action='store_true')
+    parser.add_argument('--waypoint-lookahead-cells', type=int, default=6)
     parser.add_argument('--entropy-coefficient', type=float, default=0.01)
     parser.add_argument('--final-entropy-coefficient', type=float)
     parser.add_argument('--initial-policy-run', type=Path)
@@ -344,7 +346,9 @@ if __name__ == '__main__':
     environment = (Dust2CombatConfig(
                        str(args.dust2_mask), args.route_split,
                        minimum_route_cells=args.minimum_route_cells,
-                       maximum_route_cells=args.maximum_route_cells)
+                       maximum_route_cells=args.maximum_route_cells,
+                       waypoint_planner_enabled=args.waypoint_planner,
+                       waypoint_lookahead_cells=args.waypoint_lookahead_cells)
                    if args.scenario == 'dust2-navigation' else
                    navigation_config() if args.scenario == 'navigation' else
                    integrated_navigation_config() if args.scenario == 'integrated-navigation' else

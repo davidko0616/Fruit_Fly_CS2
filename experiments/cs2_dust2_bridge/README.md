@@ -5,7 +5,7 @@ implemented. The bridge records own-player/map GSI, encodes visibility-gated
 Dust II frames with last-seen target memory, and replays them through the
 confirmed 100-neuron FlyWire policy without game input.
 
-The full 54-test suite passes (with one expected CUDA skip), and the committed
+The full 55-test suite passes (with one expected CUDA skip), and the committed
 three-frame fixture completes an
 end-to-end replay through policy version 100. This validates interfaces and
 memory transformations only; it is not Dust II training or performance evidence.
@@ -53,7 +53,10 @@ version 20 improved stochastic validation hit and acquisition from 62.5% to
 transferred to 24–48-cell validation routes, although further training did not
 improve that rate. On unrestricted routes it fell to a 25.0% hit baseline, and
 all trained checkpoints were equal or worse. The next stage therefore adds a
-NAV waypoint planner rather than another curriculum-only PPO run.
+NAV waypoint planner rather than another curriculum-only PPO run. The planner
+keeps the 14-value interface and exposes a collision-free local waypoint only
+while the remembered target is hidden. A reference follower solved all 16 fixed
+unrestricted validation routes through this interface.
 See the
 [fixed read-only protocol](PROTOCOL.md) and the
 [setup and data contract](../../docs/CS2_DUST2_BRIDGE.md). The capture backend,

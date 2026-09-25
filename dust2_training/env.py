@@ -2,6 +2,7 @@
 from collections import deque
 from dataclasses import dataclass
 import hashlib
+import heapq
 import math
 from pathlib import Path
 
@@ -42,6 +43,8 @@ class Dust2CombatConfig:
     target_movement_enabled: bool = False
     hide_target_when_occluded: bool = True
     provide_last_seen_target: bool = True
+    waypoint_planner_enabled: bool = False
+    waypoint_lookahead_cells: int = 6
 
     def __post_init__(self):
         if self.scenario != 'dust2_navigation_v1':
@@ -56,6 +59,8 @@ class Dust2CombatConfig:
             raise ValueError('Cooldown must be nonnegative and memory positive')
         if self.minimum_route_cells < 1:
             raise ValueError('Minimum route length must be positive')
+        if self.waypoint_lookahead_cells < 1:
+            raise ValueError('Waypoint lookahead must be positive')
         if (self.maximum_route_cells is not None and
                 self.maximum_route_cells < self.minimum_route_cells):
             raise ValueError('Maximum route length must not be below minimum')
@@ -92,6 +97,8 @@ class Dust2CombatEnv:
         self.last_seen_tick = None
         self.route_id = None
         self._scripted_path = None
+        self._planner_path = None
+        self._planner_target = None
 
     @staticmethod
     def observation_size_for(config):
@@ -142,18 +149,24 @@ class Dust2CombatEnv:
         self.last_seen_tick = (0 if self.config.initialize_target_memory else None)
         self.route_id = self._route_hash(self.agent, self.enemy)
         self._scripted_path = None
+        self._planner_path = None
+        self._planner_target = None
         return self.observation(), self.info()
 
     def _cell_is_walkable(self, point):
         y, x = (int(point[0]), int(point[1]))
         return 0 <= y < self.height and 0 <= x < self.width and self.grid[y, x]
 
-    def _line_of_sight_from(self, position):
-        delta = self.enemy.astype(float) - np.asarray(position, dtype=float)
+    def _line_is_walkable(self, start, target):
+        start = np.asarray(start, dtype=float)
+        delta = np.asarray(target, dtype=float) - start
         steps = max(1, int(math.ceil(np.max(np.abs(delta)) * 2)))
-        samples = np.rint(np.asarray(position)[None] +
+        samples = np.rint(start[None] +
                           np.linspace(0, 1, steps + 1)[:, None] * delta).astype(int)
         return all(self._cell_is_walkable(point) for point in samples)
+
+    def _line_of_sight_from(self, position):
+        return self._line_is_walkable(position, self.enemy)
 
     def _line_of_sight(self):
         return self._line_of_sight_from(self.agent)
@@ -174,6 +187,73 @@ class Dust2CombatEnv:
         delta, forward, _, distance = self._relative_to(self.enemy)
         return 1.0 if distance == 0 else float(np.dot(delta, forward) / distance)
 
+    @staticmethod
+    def _neighbors(point):
+        y, x = point
+        for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1),
+                       (-1, -1), (-1, 1), (1, -1), (1, 1)):
+            yield (y + dy, x + dx), dy, dx
+
+    def _shortest_path(self, target):
+        start = tuple(int(value) for value in self.agent)
+        goal = tuple(int(value) for value in target)
+        frontier = [(0.0, start)]
+        parents = {start: None}
+        costs = {start: 0.0}
+        while frontier:
+            _, current = heapq.heappop(frontier)
+            if current == goal:
+                break
+            current_cost = costs[current]
+            for candidate, dy, dx in self._neighbors(current):
+                if not self._cell_is_walkable(candidate):
+                    continue
+                diagonal = abs(dy) + abs(dx) == 2
+                if diagonal and (not self._cell_is_walkable((current[0] + dy, current[1])) or
+                                 not self._cell_is_walkable((current[0], current[1] + dx))):
+                    continue
+                new_cost = current_cost + (math.sqrt(2) if diagonal else 1.0)
+                if candidate in costs and new_cost >= costs[candidate]:
+                    continue
+                costs[candidate] = new_cost
+                parents[candidate] = current
+                delta_y, delta_x = goal[0] - candidate[0], goal[1] - candidate[1]
+                heuristic = math.hypot(delta_y, delta_x)
+                heapq.heappush(frontier, (new_cost + heuristic, candidate))
+        if goal not in parents:
+            return None
+        path, current = [], goal
+        while current is not None:
+            path.append(current)
+            current = parents[current]
+        return list(reversed(path))
+
+    def _path_to_remembered_target(self, target):
+        target_tuple = tuple(int(value) for value in target)
+        agent_tuple = tuple(int(value) for value in self.agent)
+        if self._planner_target != target_tuple or self._planner_path is None:
+            self._planner_path = self._shortest_path(target_tuple)
+            self._planner_target = target_tuple
+        elif agent_tuple in self._planner_path:
+            self._planner_path = self._planner_path[
+                self._planner_path.index(agent_tuple):]
+        else:
+            self._planner_path = self._shortest_path(target_tuple)
+        return self._planner_path
+
+    def _planner_waypoint(self, target):
+        path = self._path_to_remembered_target(target)
+        if not path:
+            return np.asarray(target, dtype=np.int16), 0.0
+        maximum_index = min(len(path) - 1, self.config.waypoint_lookahead_cells)
+        waypoint_index = 1 if len(path) > 1 else 0
+        for index in range(maximum_index, 0, -1):
+            if self._line_is_walkable(self.agent, path[index]):
+                waypoint_index = index
+                break
+        return (np.asarray(path[waypoint_index], dtype=np.int16),
+                float(len(path) - 1))
+
     def _visible_or_remembered_target(self):
         if self._line_of_sight():
             self.last_seen_enemy = self.enemy.copy()
@@ -184,6 +264,24 @@ class Dust2CombatEnv:
                 self.tick - self.last_seen_tick <= self.config.memory_ticks):
             return self.last_seen_enemy, False, True
         return None, False, False
+
+    def _control_target(self):
+        target, live, memory = self._visible_or_remembered_target()
+        planner_active = bool(self.config.waypoint_planner_enabled and memory)
+        remaining = None
+        if planner_active:
+            target, remaining = self._planner_waypoint(target)
+        return target, live, memory, planner_active, remaining
+
+    def _control_geometry(self):
+        target, live, memory, planner_active, remaining = self._control_target()
+        if target is None:
+            return target, live, memory, planner_active, remaining, 0.0, 0.0
+        delta, forward, _, distance = self._relative_to(target)
+        alignment = 1.0 if distance == 0 else float(np.dot(delta, forward) / distance)
+        progress_distance = remaining if planner_active else distance
+        return (target, live, memory, planner_active, remaining,
+                alignment, float(progress_distance))
 
     def _clearance(self, direction, maximum=24):
         direction = np.asarray(direction, dtype=float)
@@ -204,7 +302,7 @@ class Dust2CombatEnv:
                 self._clearance(-right), self._clearance(right))
 
     def observation(self):
-        target, live, memory = self._visible_or_remembered_target()
+        target, live, memory, _, _ = self._control_target()
         forward_axis, _ = self._axes()
         if target is None:
             local_forward = local_right = distance = alignment = 0.0
@@ -247,6 +345,7 @@ class Dust2CombatEnv:
                self.tick - self.last_seen_tick)
         memory = (not line_of_sight and self.last_seen_enemy is not None and
                   age <= self.config.memory_ticks)
+        control_target, _, _, planner_active, remaining = self._control_target()
         value = {
             'action_mask': self.action_mask(),
             'privileged_state': self.privileged_state(),
@@ -254,6 +353,10 @@ class Dust2CombatEnv:
             'aim_alignment': self.aim_alignment(),
             'target_observation_is_live': line_of_sight,
             'target_memory_in_observation': memory,
+            'waypoint_planner_active': planner_active,
+            'waypoint': (None if not planner_active else
+                         [int(value) for value in control_target]),
+            'waypoint_path_remaining': (-1.0 if remaining is None else remaining),
             'has_last_seen_target': self.last_seen_enemy is not None,
             'last_seen_age': -1 if age is None else age,
             'route_id': self.route_id,
@@ -294,9 +397,8 @@ class Dust2CombatEnv:
         hit = miss = collision = False
         applied = 0
         for _ in range(repeat):
-            before_distance = float(np.linalg.norm(
-                self.enemy.astype(float) - self.agent.astype(float)))
-            before_alignment = self.aim_alignment()
+            (_, _, _, _, _, before_alignment,
+             before_distance) = self._control_geometry()
             before_los = self._line_of_sight()
             before_memory = (self.last_seen_tick is not None and
                              self.tick - self.last_seen_tick <=
@@ -323,9 +425,8 @@ class Dust2CombatEnv:
                 self.cooldown = self.config.fire_cooldown_ticks + 1
             self.tick += 1
             applied += 1
-            after_distance = float(np.linalg.norm(
-                self.enemy.astype(float) - self.agent.astype(float)))
-            after_alignment = self.aim_alignment()
+            (_, _, _, _, _, after_alignment,
+             after_distance) = self._control_geometry()
             after_los = self._line_of_sight()
             after_memory = (self.last_seen_tick is not None and
                             self.tick - self.last_seen_tick <=
@@ -416,4 +517,32 @@ def scripted_dust2_action(env: Dust2CombatEnv):
     if path is None or len(path) < 2:
         raise RuntimeError('Dust II route has no path to target visibility')
     delta = np.asarray(path[1]) - env.agent
+    return _turn_toward(env, delta)
+
+
+def scripted_waypoint_action(env: Dust2CombatEnv):
+    """Reference controller that follows only the exposed waypoint interface."""
+    target, live, _, planner_active, _ = env._control_target()
+    if target is None:
+        return 0
+    delta = np.asarray(target, dtype=float) - env.agent.astype(float)
+    if live and not planner_active:
+        action = _turn_toward(env, delta)
+        if action != 1:
+            return action
+        tolerance = math.cos(math.radians(env.config.hit_tolerance_degrees))
+        if env.aim_alignment() >= tolerance:
+            return 7
+    current_distance = float(np.linalg.norm(delta))
+    candidates = []
+    mask = env.action_mask()
+    for action in range(1, 5):
+        candidate = env._movement_target(action) if mask[action] else None
+        if candidate is not None:
+            candidates.append((float(np.linalg.norm(
+                np.asarray(target, dtype=float) - candidate)), action))
+    if candidates:
+        distance, action = min(candidates)
+        if distance + 1e-9 < current_distance:
+            return action
     return _turn_toward(env, delta)
