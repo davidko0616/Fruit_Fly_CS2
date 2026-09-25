@@ -5,7 +5,7 @@ implemented. The bridge records own-player/map GSI, encodes visibility-gated
 Dust II frames with last-seen target memory, and replays them through the
 confirmed 100-neuron FlyWire policy without game input.
 
-The full 52-test suite passes (with one expected CUDA skip), and the committed
+The full 54-test suite passes (with one expected CUDA skip), and the committed
 three-frame fixture completes an
 end-to-end replay through policy version 100. This validates interfaces and
 memory transformations only; it is not Dust II training or performance evidence.
@@ -38,6 +38,14 @@ all 20 records to `BridgeFrame`, applied wall and visible-fire masks plus a
 five-second target-memory horizon, and produced 20 valid offline FlyWire
 decisions. This verifies the integration path; it does not establish Dust II
 policy performance.
+The [map-specific training protocol](DUST2_TRAINING_PROTOCOL.md) now fixes
+hash-disjoint training, validation, and held-out route sets on the NAV mask. A
+privileged oracle solved 50 of 50 routes in every split, and a recorded FlyWire
+CPU smoke update passed exact replay. The first exploratory Dust II run is
+documented there. The local 8–24-cell curriculum reached 93.75% stochastic
+validation hit rate at version 30. Its unrestricted full-map transfer failed to
+improve the 37.5% transferred baseline, so that run was rejected and the held-out
+route bucket remains unused.
 See the
 [fixed read-only protocol](PROTOCOL.md) and the
 [setup and data contract](../../docs/CS2_DUST2_BRIDGE.md). The capture backend,

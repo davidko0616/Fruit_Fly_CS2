@@ -12,6 +12,7 @@ import scipy.sparse as sp
 import torch
 import torch.nn as nn
 
+from dust2_training.env import Dust2CombatConfig, Dust2CombatEnv
 from toy_combat.env import (ACTION_NAMES, CombatConfig, ToyCombatEnv,
                             integrated_navigation_config, moving_target_config,
                             navigation_config, partial_observability_config)
@@ -50,13 +51,17 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
                                  else final_entropy_coefficient)
     torch.manual_seed(seed); torch.set_num_threads(4); torch.use_deterministic_algorithms(True)
     environment_config = environment_config or CombatConfig()
+    environment_class = (Dust2CombatEnv
+                         if environment_config.scenario == 'dust2_navigation_v1'
+                         else ToyCombatEnv)
     if (environment_config.scenario in
-            ('navigation_v1', 'moving_target_v1', 'partial_observability_v1') and
+            ('navigation_v1', 'moving_target_v1', 'partial_observability_v1',
+             'dust2_navigation_v1') and
             action_repeat != 1):
         raise ValueError('Navigation scenarios require action_repeat=1 for cell-level control')
-    observation_size = ToyCombatEnv.observation_size_for(environment_config)
+    observation_size = environment_class.observation_size_for(environment_config)
     policy, source_graph, run_adjacency, hidden_sizes = load_policy(
-        seed, architecture, observation_size, ToyCombatEnv.action_size)
+        seed, architecture, observation_size, environment_class.action_size)
     initial_policy = None
     if initial_policy_run is not None:
         initial_policy_run = Path(initial_policy_run)
@@ -64,7 +69,7 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
         source_config = source_manifest['config']
         if (source_config.get('architecture', 'flywire') != architecture or
                 source_config['observation_size'] != observation_size or
-                len(source_config['action_names']) != ToyCombatEnv.action_size):
+                len(source_config['action_names']) != environment_class.action_size):
             raise ValueError('Initial policy architecture or interface does not match this run')
         if initial_policy_version is None:
             initial_policy_version = max(
@@ -89,7 +94,7 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
     optimizer = torch.optim.Adam([*policy.parameters(), *value_model.parameters()], lr=learning_rate, foreach=False)
     sample_generator = torch.Generator().manual_seed(seed + 1)
     batch_generator = torch.Generator().manual_seed(seed + 2)
-    environments = [ToyCombatEnv(environment_config) for _ in range(workers)]
+    environments = [environment_class(environment_config) for _ in range(workers)]
     reward_names = environments[0].reward_names
     episode_ids, episode_steps = list(range(workers)), [0] * workers
     episode_seeds = [seed * 100000 + i for i in range(workers)]
@@ -140,6 +145,7 @@ def train(output, seed=42, updates=80, workers=8, horizon=64, action_repeat=2,
         sp.save_npz(Path(output) / 'adjacency.npz', run_adjacency)
         provenance_paths = (Path(__file__), ROOT / 'training/run_toy_combat.py',
                             ROOT / 'toy_combat/env.py',
+                            ROOT / 'dust2_training/env.py',
                             ROOT / 'toy_combat/recording.py', ROOT / 'models/flywire_network.py',
                             ROOT / 'models/sparse_layer.py',
                             ROOT / 'models/random_sparse.py', ROOT / 'models/mlp_baseline.py',
@@ -320,15 +326,27 @@ if __name__ == '__main__':
     parser.add_argument('--architecture', choices=('flywire', 'random', 'mlp'), default='flywire')
     parser.add_argument('--scenario',
                         choices=('aiming', 'navigation', 'integrated-navigation', 'moving-target',
-                                 'partial-observability'),
+                                 'partial-observability', 'dust2-navigation'),
                         default='aiming')
+    parser.add_argument('--dust2-mask', type=Path)
+    parser.add_argument('--route-split', choices=('train', 'validation', 'heldout'),
+                        default='train')
+    parser.add_argument('--minimum-route-cells', type=int, default=24)
+    parser.add_argument('--maximum-route-cells', type=int)
     parser.add_argument('--entropy-coefficient', type=float, default=0.01)
     parser.add_argument('--final-entropy-coefficient', type=float)
     parser.add_argument('--initial-policy-run', type=Path)
     parser.add_argument('--initial-policy-version', type=int)
     parser.add_argument('--temporal-state-decay', type=float)
     args = parser.parse_args()
-    environment = (navigation_config() if args.scenario == 'navigation' else
+    if args.scenario == 'dust2-navigation' and args.dust2_mask is None:
+        parser.error('--dust2-mask is required for dust2-navigation')
+    environment = (Dust2CombatConfig(
+                       str(args.dust2_mask), args.route_split,
+                       minimum_route_cells=args.minimum_route_cells,
+                       maximum_route_cells=args.maximum_route_cells)
+                   if args.scenario == 'dust2-navigation' else
+                   navigation_config() if args.scenario == 'navigation' else
                    integrated_navigation_config() if args.scenario == 'integrated-navigation' else
                    moving_target_config() if args.scenario == 'moving-target' else
                    partial_observability_config() if args.scenario == 'partial-observability' else

@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from models.flywire_network import FlyWireNetwork
 from models.mlp_baseline import MLPBaseline
+from dust2_training.env import Dust2CombatConfig, Dust2CombatEnv
 from toy_combat.env import CombatConfig, ToyCombatEnv
 from toy_combat.recording import RESET_CODES, mlp_forward_with_activity, policy_forward_with_activity
 from toy_combat.recording import policy_forward_with_memory_activity
@@ -56,8 +57,15 @@ def verify(directory):
     environment_config = dict(manifest['config']['environment'])
     if environment_config.get('scenario') == 'partial_observability_v1':
         environment_config.setdefault('provide_last_seen_target', True)
-    environments = {worker: ToyCombatEnv(CombatConfig(**environment_config))
-                    for worker in range(manifest['config']['workers'])}
+    if environment_config.get('scenario') == 'dust2_navigation_v1':
+        environment_class = Dust2CombatEnv
+        parsed_environment_config = Dust2CombatConfig(**environment_config)
+    else:
+        environment_class = ToyCombatEnv
+        parsed_environment_config = CombatConfig(**environment_config)
+    environments = {
+        worker: environment_class(parsed_environment_config)
+        for worker in range(manifest['config']['workers'])}
     active_episode, observations, infos = {}, {}, {}
     temporal_decay = config.get('temporal_state_decay')
     temporal_states = {}

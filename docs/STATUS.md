@@ -46,7 +46,7 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
   and map telemetry while discarding authentication and unrequested opponent
   fields. The visibility-gated 14-value encoder, round-scoped last-seen memory,
   calibration tool, offline policy replay, and visible-label contracts are
-  implemented and covered by the passing 52-test project suite (one expected
+  implemented and covered by the passing 54-test project suite (one expected
   CUDA skip). See the
   [setup and contract](CS2_DUST2_BRIDGE.md) and
   [fixed read-only protocol](../experiments/cs2_dust2_bridge/PROTOCOL.md).
@@ -170,9 +170,10 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Build a map-specific Dust II training environment from the registered NAV
-   mask and calibrated observation model, then train on CPU with separate
-   capture/training, validation, and final held-out routes.
+1. Add an intermediate 24–48-cell Dust II curriculum before retrying full-map
+   transfer. The local curriculum reached 93.75% stochastic validation hit rate,
+   while unrestricted transfer degraded its 37.5% baseline; the held-out route
+   bucket remains unused for a later frozen confirmation.
 2. Repeat the combined read-only replay on a denser independent route before
    adding local-practice input execution. Repeat matched actor comparisons only
    when they answer a specific scientific question.

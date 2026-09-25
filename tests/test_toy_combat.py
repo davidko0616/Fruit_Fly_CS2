@@ -5,7 +5,10 @@ import unittest
 
 import numpy as np
 import torch
+from PIL import Image, ImageDraw
 
+from dust2_training.env import (Dust2CombatConfig, Dust2CombatEnv,
+                                scripted_dust2_action)
 from toy_combat.env import (NAVIGATION_REWARD_NAMES, REWARD_NAMES, ToyCombatEnv,
                             integrated_navigation_config, moving_target_config,
                             navigation_config, partial_observability_config,
@@ -16,6 +19,71 @@ from tools.verify_combat_recording import verify
 
 
 class ToyCombatTests(unittest.TestCase):
+    @staticmethod
+    def _dust2_test_mask(path):
+        image = Image.new('L', (160, 160), 255)
+        draw = ImageDraw.Draw(image)
+        draw.rectangle((76, 0, 83, 127), fill=0)
+        draw.rectangle((76, 144, 83, 159), fill=0)
+        image.save(path)
+
+    def test_dust2_routes_are_split_deterministic_occluded_and_solvable(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            mask = Path(temporary) / 'mask.png'
+            self._dust2_test_mask(mask)
+            route_sets = []
+            for split in ('train', 'validation', 'heldout'):
+                config = Dust2CombatConfig(
+                    str(mask), split, grid_step=4, max_ticks=256,
+                    minimum_route_cells=8)
+                route_ids = set()
+                for seed in range(5):
+                    first = Dust2CombatEnv(config)
+                    second = Dust2CombatEnv(config)
+                    observation, info = first.reset(seed)
+                    other_observation, other_info = second.reset(seed)
+                    np.testing.assert_array_equal(observation, other_observation)
+                    self.assertEqual(info['route_id'], other_info['route_id'])
+                    self.assertFalse(info['line_of_sight'])
+                    self.assertTrue(info['target_memory_in_observation'])
+                    self.assertFalse(info['action_mask'][7])
+                    self.assertEqual(observation.shape, (14,))
+                    if seed == 0:
+                        delta = first.enemy.astype(float) - first.agent.astype(float)
+                        desired = np.degrees(np.arctan2(delta[0], delta[1])) % 360
+                        first.yaw_degrees = (desired + first.config.turn_degrees) % 360
+                        _, _, _, _, shaped = first.step(5)
+                        self.assertGreater(shaped['reward_components']['aim_progress'], 0)
+                    route_ids.add(info['route_id'])
+                    for _ in range(config.max_ticks):
+                        _, _, terminated, truncated, outcome = first.step(
+                            scripted_dust2_action(first))
+                        if terminated or truncated:
+                            break
+                    self.assertTrue(outcome['hit'])
+                route_sets.append(route_ids)
+            self.assertFalse(route_sets[0] & route_sets[1])
+            self.assertFalse(route_sets[0] & route_sets[2])
+            self.assertFalse(route_sets[1] & route_sets[2])
+
+    def test_dust2_training_smoke_replays_losslessly(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            mask = root / 'mask.png'
+            self._dust2_test_mask(mask)
+            directory = root / 'dust2-smoke'
+            config = Dust2CombatConfig(
+                str(mask), 'train', grid_step=4, max_ticks=64,
+                minimum_route_cells=8)
+            metrics = train(
+                directory, seed=84, updates=1, workers=2, horizon=8,
+                action_repeat=1, ppo_epochs=1, minibatch_size=16,
+                architecture='flywire', environment_config=config)
+            result = verify(directory)
+            self.assertEqual(metrics['decisions'], 16)
+            self.assertEqual(result['decisions'], 16)
+            self.assertTrue(result['audit_passed'])
+
     def test_comparison_policies_match_declared_budget_and_recurrent_io_initialization(self):
         flywire, _, flywire_adjacency, _ = load_policy(42, 'flywire')
         random, _, random_adjacency, _ = load_policy(42, 'random')
