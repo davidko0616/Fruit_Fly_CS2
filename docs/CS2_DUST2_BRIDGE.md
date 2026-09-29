@@ -155,14 +155,17 @@ The frozen planner-enabled policy can be reproduced with:
 
 ## Next acceptance run
 
-The independent dense route now passes the combined offline replay after strict
-filtering, but 221 of 579 retained images failed radar or clearance calibration
-and 23 remembered target estimates were rejected by the bounded planner. Before
-enabling any action executor:
+The first independent dense-route attempt is invalid for acceptance. Opening
+settings changed radar zoom persistently, so post-settings coordinates no longer
+matched the frozen calibration; single-frame detection also switched among
+friendly bot markers from the start. Deleting menu images did not repair either
+problem. Strict candidate reanalysis rejected all 579 retained images as
+ambiguous and accepted zero. Before enabling
+any action executor:
 
-1. Review and reduce these localization failures, then run the controller as a
-   live read-only shadow that displays and records proposed actions without
-   sending input.
+1. Restore `exec flywire_radar`, remove friendly bots, repeat the independent
+   capture, and validate temporal player-marker identity. Then run the controller
+   as a live read-only shadow that records proposed actions without sending input.
 
 Only after this read-only run passes should proposed actions be mapped to local
 practice controls behind an explicit enable flag and immediate stop control.

@@ -62,7 +62,7 @@ not a gameplay-performance measurement; the sequence is sparse and was already
 used during perception validation. The exact compact result is preserved in
 [`WAYPOINT_BRIDGE_REPLAY_RESULT.json`](WAYPOINT_BRIDGE_REPLAY_RESULT.json).
 
-## Independent dense-route replay
+## Invalidated dense-route replay
 
 After freezing the planner and policy, a new practice route captured 600
 full-screen frames and synchronized GSI state. Frames 71 through 91 were deleted
@@ -71,14 +71,21 @@ frames with their original IDs and timestamps. The fixed perception pipeline
 emitted 358 active-play records. It rejected 157 clearance-pose failures and 64
 radar poses outside the existing calibration rather than clipping them.
 
-All 358 accepted records became bridge frames and completed the stochastic
-version-80 replay. There were 168 live-target frames, 75 hidden frames with a
-valid six-cell NAV waypoint, and 23 hidden frames where the remembered target
-could not be mapped within the fixed 90-unit bound. Those 23 memories were
-cleared and recorded instead of aborting the replay or exposing an unsafe target
-vector. Every proposed action respected its mask; no input was sent to CS2.
+The resulting 358-record replay is invalid for acceptance. Direct radar review
+showed that the single-frame detector switched among several friendly bot
+markers from the beginning. The settings interval also changed radar zoom
+persistently beginning at frame 92, so the frozen radar-to-NAV calibration does
+not apply to those later images. Some incorrect poses happened to land inside
+NAV bounds. Deleting
+the visible menu frames could not repair those semantic errors.
 
-This validates the dense offline interface and exposes two remaining real-world
-problems: localization coverage and noisy screen-to-world target estimates. The
-exact compact result is preserved in
+A corrected strict reanalysis enumerated all radar candidates and rejected all
+579 retained images because each contained multiple white-heading friendly
+markers. It accepted zero frames, confirming that the earlier 358-row replay was
+based on an unsafe single-frame selection rather than a valid player track.
+
+The run remains a diagnostic artifact: it exposed the need to fingerprint radar
+geometry, enumerate player-marker candidates, and use temporal identity checks.
+Its policy outputs must not be interpreted as a valid dense-route result. The
+compact invalidation record is preserved in
 [`DENSE_ROUTE_REPLAY_RESULT.json`](DENSE_ROUTE_REPLAY_RESULT.json).

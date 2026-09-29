@@ -68,14 +68,16 @@ hidden frames use planned remembered-target waypoints, every proposed action is
 allowed by its mask, and no game input is emitted. This establishes that the
 trained hybrid controller crosses the real bridge interface; it does not yet
 measure live Dust II control performance.
-An independent 600-frame route was then captured after the policy was frozen.
-Frames 71–91 were deleted because they contained the scoreboard or settings,
-leaving 579 gameplay images. Strict synchronization retained 358 active-play
-frames: 168 had a live enemy candidate and 190 hid the target. The planner used
-bounded remembered-target waypoints on 75 frames and safely cleared 23 estimates
-that could not be mapped to nearby walkable space. Every frame produced an
-offline decision and no selected action violated its mask. The 221 localization
-drops and 23 memory rejections must be investigated before input execution.
+An independent 600-frame route was captured after the policy was frozen, but it
+is invalid for acceptance. Frames 71–91 showed the scoreboard or settings, and
+the settings change persisted by changing radar zoom from frame 92 onward.
+Direct review also found single-frame localization switching among friendly bot
+markers from the start.
+Although 358 rows passed the old numeric bounds and completed offline inference,
+their radar coordinates are not consistently in the frozen calibration. The run
+is retained only as a diagnostic. Strict candidate reanalysis rejected all 579
+retained images as ambiguous and accepted zero. No input executor may use its
+results.
 See the
 [fixed read-only protocol](PROTOCOL.md) and the
 [setup and data contract](../../docs/CS2_DUST2_BRIDGE.md). The capture backend,

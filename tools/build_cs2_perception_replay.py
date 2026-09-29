@@ -16,7 +16,8 @@ from torchvision.transforms.functional import pil_to_tensor
 
 from cs2_bridge.detector import build_player_ssdlite
 from cs2_bridge.clearance import Dust2ClearanceEstimator
-from cs2_bridge.radar import detect_player_pose
+from cs2_bridge.radar import (
+    detect_player_pose_candidates, select_unambiguous_player_pose)
 from cs2_bridge.schema import Dust2Calibration, PlayerPose
 from cs2_bridge.sync import TimestampMatcher
 from cs2_bridge.target import VisibleTargetCalibration
@@ -110,10 +111,15 @@ def build_replay(capture, checkpoint_path, gsi_path, calibration_path, output,
             region = frame.get('region', [0, 0, frame['width'], frame['height']])
             origin = (int(region[0]), int(region[1]))
             try:
-                radar_pose = detect_player_pose(
+                radar_candidates = detect_player_pose_candidates(
                     image, origin=origin, search_bounds=radar_search_bounds)
             except ValueError:
                 drops['radar_pose_failure'] += 1
+                continue
+            try:
+                radar_pose = select_unambiguous_player_pose(radar_candidates)
+            except ValueError:
+                drops['ambiguous_radar_pose'] += 1
                 continue
             if not (calibration.min_x <= radar_pose.x <= calibration.max_x and
                     calibration.min_y <= radar_pose.y <= calibration.max_y):

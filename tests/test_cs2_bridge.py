@@ -16,7 +16,9 @@ from cs2_bridge.detector_dataset import export_dataset
 from cs2_bridge.detector import build_player_ssdlite, evaluate_detection_records
 from cs2_bridge.gsi import parse_gsi_payload
 from cs2_bridge.labels import PlayerBox, validate_frame_label
-from cs2_bridge.radar import detect_enemy_markers, detect_player_pose
+from cs2_bridge.radar import (
+    detect_enemy_markers, detect_player_pose, detect_player_pose_candidates,
+    select_unambiguous_player_pose)
 from cs2_bridge.replay import read_frames, replay_frames, write_jsonl
 from cs2_bridge.schema import BridgeFrame, Dust2Calibration, PlayerPose, VisibleTarget
 from cs2_bridge.sync import TimestampMatcher
@@ -306,6 +308,7 @@ class CS2BridgeTests(unittest.TestCase):
         self.assertAlmostEqual(pose.yaw_degrees, -90, delta=8)
         self.assertGreater(pose.confidence, 0.8)
         self.assertEqual(pose.heading_color, 'white')
+        self.assertEqual(len(detect_player_pose_candidates(image)), 1)
 
         red = Image.new('RGB', (240, 180), (65, 65, 65))
         draw = ImageDraw.Draw(red)
@@ -359,6 +362,16 @@ class CS2BridgeTests(unittest.TestCase):
         pose = detect_player_pose(competing)
         self.assertAlmostEqual(pose.x, 105, delta=1)
         self.assertEqual(pose.heading_color, 'white')
+        self.assertEqual(len(detect_player_pose_candidates(competing)), 2)
+        selected = select_unambiguous_player_pose(
+            detect_player_pose_candidates(competing))
+        self.assertEqual(selected.heading_color, 'white')
+
+        draw.ellipse((37, 107, 53, 121), fill=(245, 210, 40))
+        draw.polygon(((45, 98), (39, 106), (51, 106)), fill=(245, 245, 245))
+        with self.assertRaisesRegex(ValueError, 'Multiple white-heading'):
+            select_unambiguous_player_pose(
+                detect_player_pose_candidates(competing))
 
         rows = []
         for frame_id, x in ((0, 10), (1, 11), (2, 200), (3, 12), (4, 13)):

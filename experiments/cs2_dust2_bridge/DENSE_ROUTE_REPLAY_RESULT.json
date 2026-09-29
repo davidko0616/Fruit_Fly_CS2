@@ -1,6 +1,20 @@
 {
   "schema_version": 1,
+  "status": "invalidated",
+  "valid_for_acceptance": false,
   "execution": "offline_replay_only",
+  "invalidation": {
+    "reason": "Single-frame localization can switch between friendly bot markers from the start, and the in-game settings interval also changed radar zoom persistently after frame 91.",
+    "first_affected_frame": 0,
+    "discovered_by": "per-frame localization audit and direct radar review",
+    "required_action": "Restore flywire_radar settings and repeat with no friendly bots before using this route for acceptance."
+  },
+  "strict_reanalysis": {
+    "retained_frames": 579,
+    "ambiguous_radar_pose_frames": 579,
+    "accepted_frames": 0,
+    "rule": "Reject frames with multiple white-heading player markers instead of selecting one by single-frame score."
+  },
   "capture": {
     "raw_frames": 600,
     "removed_frame_ids": [

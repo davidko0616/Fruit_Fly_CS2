@@ -199,8 +199,8 @@ def detect_enemy_markers(image, origin=(0, 0), search_bounds=None,
     return sorted(markers, key=lambda marker: marker.confidence, reverse=True)
 
 
-def detect_player_pose(image, origin=(0, 0), search_bounds=None):
-    """Find the local player's yellow marker and adjacent heading arrow.
+def detect_player_pose_candidates(image, origin=(0, 0), search_bounds=None):
+    """Find candidate yellow player markers with adjacent heading arrows.
 
     Coordinates use image axes: x increases right and y increases down. A fixed,
     non-rotating radar is required for these coordinates to represent map pose.
@@ -262,17 +262,37 @@ def detect_player_pose(image, origin=(0, 0), search_bounds=None):
                 break
     if not matched:
         raise ValueError('No white or red heading marker found beside player marker')
-    _, _, _, marker, heading, heading_color = max(
-        matched, key=lambda item: item[:3])
-    marker_y, marker_x = marker.mean(0)
-    heading_y, heading_x = heading.mean(0)
-    dx, dy = heading_x - marker_x, heading_y - marker_y
-    yaw = math.degrees(math.atan2(dy, dx))
-    marker_score = min(1.0, len(marker) / 150)
-    heading_score = min(1.0, len(heading) / 40)
-    return RadarPose(
-        x=float(marker_x + origin[0]), y=float(marker_y + origin[1]),
-        yaw_degrees=float(yaw), confidence=float((marker_score + heading_score) / 2),
-        marker_pixels=int(len(marker)), heading_pixels=int(len(heading)),
-        heading_color=heading_color,
-    )
+    poses = []
+    for _, _, _, marker, heading, heading_color in sorted(
+            matched, key=lambda item: item[:3], reverse=True):
+        marker_y, marker_x = marker.mean(0)
+        heading_y, heading_x = heading.mean(0)
+        dx, dy = heading_x - marker_x, heading_y - marker_y
+        yaw = math.degrees(math.atan2(dy, dx))
+        marker_score = min(1.0, len(marker) / 150)
+        heading_score = min(1.0, len(heading) / 40)
+        poses.append(RadarPose(
+            x=float(marker_x + origin[0]), y=float(marker_y + origin[1]),
+            yaw_degrees=float(yaw),
+            confidence=float((marker_score + heading_score) / 2),
+            marker_pixels=int(len(marker)), heading_pixels=int(len(heading)),
+            heading_color=heading_color,
+        ))
+    return poses
+
+
+def detect_player_pose(image, origin=(0, 0), search_bounds=None):
+    """Return the strongest single-frame player-pose candidate."""
+    return detect_player_pose_candidates(image, origin, search_bounds)[0]
+
+
+def select_unambiguous_player_pose(candidates):
+    """Select one local-player candidate without choosing among teammates."""
+    white = [pose for pose in candidates if pose.heading_color == 'white']
+    if len(white) == 1:
+        return white[0]
+    if len(white) > 1:
+        raise ValueError('Multiple white-heading player markers are visible')
+    if len(candidates) == 1:
+        return candidates[0]
+    raise ValueError('Multiple player markers are visible')
