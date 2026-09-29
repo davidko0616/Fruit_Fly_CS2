@@ -78,6 +78,7 @@ def replay_frames(frames, encoder: Dust2ObservationEncoder, model, mode='greedy'
             'waypoint_world': encoded.waypoint_world,
             'waypoint_path_remaining': encoded.waypoint_path_remaining,
             'waypoint_target_snap_world': encoded.waypoint_target_snap_world,
+            'waypoint_planner_rejection': encoded.waypoint_planner_rejection,
             'action_mask': list(frame.action_mask),
             'logits': logits.cpu().numpy().tolist(),
             'probabilities': probabilities.tolist(),

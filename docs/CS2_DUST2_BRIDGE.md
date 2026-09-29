@@ -37,7 +37,9 @@ before map-specific data collection and training.
   waypoint up to six NAV cells ahead. Live visible-target vectors are unchanged.
   Target corrections to walkable space are recorded and limited by
   `--waypoint-target-max-snap-world` (90 by default); player pose retains the
-  stricter limit stored in the clearance calibration.
+  stricter limit stored in the clearance calibration. A remembered target that
+  cannot be mapped within this bound is cleared, recorded as a planner
+  rejection, and never supplied to the policy.
 - `tools/calibrate_dust2_bridge.py` derives provisional bounds from a walking
   fixed-radar capture. Calibration is explicit and versionable rather than
   embedding guessed Dust II coordinates in code.
@@ -153,10 +155,14 @@ The frozen planner-enabled policy can be reproduced with:
 
 ## Next acceptance run
 
-Before enabling any action executor:
+The independent dense route now passes the combined offline replay after strict
+filtering, but 221 of 579 retained images failed radar or clearance calibration
+and 23 remembered target estimates were rejected by the bounded planner. Before
+enabling any action executor:
 
-1. Repeat the combined read-only replay on a denser independent route before any
-   live practice control test.
+1. Review and reduce these localization failures, then run the controller as a
+   live read-only shadow that displays and records proposed actions without
+   sending input.
 
 Only after this read-only run passes should proposed actions be mapped to local
 practice controls behind an explicit enable flag and immediate stop control.

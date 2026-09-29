@@ -114,6 +114,32 @@ class CS2BridgeTests(unittest.TestCase):
             (1, 1, 1, 1)))
         self.assertFalse(reset.waypoint_planner_active)
 
+    def test_waypoint_planner_discards_unmappable_target_memory(self):
+        mask = Image.new('L', (64, 64), 255)
+        clearance = ClearanceCalibration(
+            map_name='de_dust2', screen_scale_x=1, screen_scale_y=1,
+            screen_offset_x=0, screen_offset_y=0,
+            overview_units_per_pixel=1, max_distance_world=24,
+            max_snap_world=10, mask_file='unused.png')
+        planner = Dust2WaypointPlanner(
+            clearance, mask, grid_step=4, lookahead_cells=6,
+            target_max_snap_world=10)
+        calibration = Dust2Calibration('de_dust2', 0, 64, 0, 64, 64)
+        encoder = Dust2ObservationEncoder(
+            calibration, target_memory_timeout_ns=1_000,
+            waypoint_planner=planner)
+        encoder.encode(BridgeFrame(
+            0, 1, 'de_dust2:1', 'de_dust2', PlayerPose(20, 20, 0),
+            (1, 1, 1, 1), VisibleTarget(100, 0)))
+        hidden = encoder.encode(BridgeFrame(
+            1, 2, 'de_dust2:1', 'de_dust2', PlayerPose(21, 20, 0),
+            (1, 1, 1, 1)))
+        self.assertFalse(hidden.target_memory_in_observation)
+        self.assertFalse(hidden.has_last_seen_target)
+        self.assertIsNotNone(hidden.waypoint_planner_rejection)
+        self.assertEqual(hidden.observation[4], 0)
+        self.assertEqual(hidden.observation[5], 0)
+
     def test_timestamp_matcher_prefers_nearest_and_rejects_stale_rows(self):
         matcher = TimestampMatcher([
             {'time': 100, 'value': 'earlier'},

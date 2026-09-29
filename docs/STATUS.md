@@ -46,7 +46,7 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
   and map telemetry while discarding authentication and unrequested opponent
   fields. The visibility-gated 14-value encoder, round-scoped last-seen memory,
   calibration tool, offline policy replay, and visible-label contracts are
-  implemented and covered by the passing 56-test project suite (one expected
+  implemented and covered by the passing 57-test project suite (one expected
   CUDA skip). See the
   [setup and contract](CS2_DUST2_BRIDGE.md) and
   [fixed read-only protocol](../experiments/cs2_dust2_bridge/PROTOCOL.md).
@@ -170,22 +170,27 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Repeat the combined read-only replay on a denser independent route before
-   adding local-practice input execution. Repeat matched actor comparisons only
-   when they answer a specific scientific question. The six-cell planner and
-   frozen stochastic version 80 now pass the sparse 20-frame replay, including
-   four hidden remembered-target frames. Its one-time held-out result was 51/64
-   hits (79.7%) and 56/64 line-of-sight acquisitions (87.5%); that bucket is
-   consumed and must not be reused for tuning.
-2. For stronger scientific conclusions, predeclare harder synthetic tasks,
+1. Improve real-route localization before adding any input executor. The new
+   independent capture retained 579 gameplay images after deleting frames
+   71–91, which contained the scoreboard and settings. Strict synchronization
+   emitted 358 active-play frames; 157 failed clearance pose mapping and 64 had
+   radar poses outside calibration. The frozen stochastic version 80 completed
+   all 358 offline decisions with 75 planned memory frames, 23 bounded memory
+   rejections, and zero action-mask violations. Build a live read-only shadow
+   next and keep proposed actions fully recorded without sending game input.
+2. Repeat matched actor comparisons only when they answer a specific scientific
+   question. The one-time held-out FlyWire result was 51/64 hits (79.7%) and
+   56/64 line-of-sight acquisitions (87.5%); that bucket is consumed and must
+   not be reused for tuning.
+3. For stronger scientific conclusions, predeclare harder synthetic tasks,
    independent dataset splits, or less dense circuits. The first comparison
    is close to the accuracy ceiling and uses a single fixed split.
-3. Train the implemented persistent connectome state with sequence batches if a
+4. Train the implemented persistent connectome state with sequence batches if a
    learned memory mechanism is needed beyond the confirmed last-seen scaffold.
-4. Extend replay to feedforward MLP schema-2 recordings if visual comparison
+5. Extend replay to feedforward MLP schema-2 recordings if visual comparison
    is needed. They are fully recorded and numerically audited, but the current
    recurrent viewer intentionally accepts schema 1 only.
-5. Benchmark larger models only when needed. Current experiments run on CPU;
+6. Benchmark larger models only when needed. Current experiments run on CPU;
    NVIDIA laptop results remain historical evidence for a CUDA option.
 
 Do not claim biological advantages from the first classification run. The current

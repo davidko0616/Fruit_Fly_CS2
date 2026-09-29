@@ -5,7 +5,7 @@ implemented. The bridge records own-player/map GSI, encodes visibility-gated
 Dust II frames with last-seen target memory, and replays them through the
 confirmed 100-neuron FlyWire policy without game input.
 
-The full 56-test suite passes (with one expected CUDA skip), and the committed
+The full 57-test suite passes (with one expected CUDA skip), and the committed
 three-frame fixture completes an
 end-to-end replay through policy version 100. This validates interfaces and
 memory transformations only; it is not Dust II training or performance evidence.
@@ -68,6 +68,14 @@ hidden frames use planned remembered-target waypoints, every proposed action is
 allowed by its mask, and no game input is emitted. This establishes that the
 trained hybrid controller crosses the real bridge interface; it does not yet
 measure live Dust II control performance.
+An independent 600-frame route was then captured after the policy was frozen.
+Frames 71–91 were deleted because they contained the scoreboard or settings,
+leaving 579 gameplay images. Strict synchronization retained 358 active-play
+frames: 168 had a live enemy candidate and 190 hid the target. The planner used
+bounded remembered-target waypoints on 75 frames and safely cleared 23 estimates
+that could not be mapped to nearby walkable space. Every frame produced an
+offline decision and no selected action violated its mask. The 221 localization
+drops and 23 memory rejections must be investigated before input execution.
 See the
 [fixed read-only protocol](PROTOCOL.md) and the
 [setup and data contract](../../docs/CS2_DUST2_BRIDGE.md). The capture backend,

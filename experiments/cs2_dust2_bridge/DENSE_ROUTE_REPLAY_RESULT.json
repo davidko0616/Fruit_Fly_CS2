@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "execution": "offline_replay_only",
+  "capture": {
+    "raw_frames": 600,
+    "removed_frame_ids": [
+      71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81,
+      82, 83, 84, 85, 86, 87, 88, 89, 90, 91
+    ],
+    "removal_reason": "in_game_settings_or_scoreboard_overlay",
+    "retained_gameplay_frames": 579,
+    "gsi_rows": 62,
+    "manifest_sha256": "d2c221b819364c2c2d190046ffcaf06546ecd112a6ec6a57c4f785a1241d21a6",
+    "gsi_sha256": "3ed35a8a25e52cb484d480e1d383cde399c85cb82be419596cf5e304cfb5b181"
+  },
+  "perception": {
+    "emitted_active_play_frames": 358,
+    "live_target_frames": 168,
+    "hidden_target_frames": 190,
+    "detections": 597,
+    "drops": {
+      "clearance_pose_failure": 157,
+      "radar_pose_out_of_calibration": 64
+    },
+    "max_abs_gsi_delta_ms": 9992.0,
+    "detector_latency_ms_per_frame": 32.85830880828451,
+    "perception_sha256": "839dbfbac47b3c6987ef0eabbf52b09adbb67d3766d0dc1ad6fa628d95160c7d",
+    "bridge_frames_sha256": "05885d9b9a1a68cc8512696a2a404a5b069f6e15e5c35b67b36e3976b0ed72d3"
+  },
+  "policy": {
+    "run_id": "10a40610-4f86-4fad-9872-f9b55072da84",
+    "version": 80,
+    "mode": "stochastic",
+    "seed": 9200100,
+    "decisions": 358,
+    "memory_frames": 75,
+    "waypoint_frames": 75,
+    "planner_rejections": 23,
+    "waypoint_target_max_snap_world": 90.0,
+    "max_observed_target_snap_world": 87.27916695951146,
+    "action_counts": {
+      "fire": 76,
+      "forward": 28,
+      "strafe_left": 19,
+      "strafe_right": 1,
+      "turn_left": 233,
+      "turn_right": 1
+    },
+    "masked_action_violations": 0,
+    "decisions_sha256": "797774751c665b31f271ddcaadba175e8ba0762935de9a66564dbdaf9a1d2d0b"
+  }
+}
