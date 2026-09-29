@@ -170,16 +170,16 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Repeat the dense capture after restoring `exec flywire_radar`, with enemy bots
-   but no friendly bots. The September 29 route is invalid for acceptance: its
-   single-frame localizer switched among friendly bot markers from the start,
-   and its settings interval changed radar zoom persistently from frame 92. The
-   358-row policy replay
-   is diagnostic only even though its numeric checks passed. Strict reanalysis
-   rejected all 579 retained images as ambiguous and accepted zero. Candidate
-   enumeration and per-frame localization auditing are now implemented; add
-   temporal identity tracking on a correctly configured capture before building
-   the live read-only shadow. Do not add an input executor yet.
+1. Build the continuous live read-only shadow around the corrected dense route.
+   The replacement September 29 capture used fixed radar settings, no friendly
+   bots, and five enemy bots. Strict localization accepted 386 of 600 frames and
+   rejected 75 ambiguous radar poses plus 139 out-of-NAV poses. All accepted
+   frames passed the perception adapter and frozen-policy replay: 155 contained
+   a live target, 163 hidden frames used remembered target state and NAV
+   waypoints, and zero actions violated their masks. The next session should
+   measure continuous shadow latency, drop rate, and proposal stability while a
+   human plays. Keep it read-only; do not add an input executor yet. See the
+   [corrected dense result](../experiments/cs2_dust2_bridge/DENSE_ROUTE_REPLAY_RESULT_V2.json).
 2. Repeat matched actor comparisons only when they answer a specific scientific
    question. The one-time held-out FlyWire result was 51/64 hits (79.7%) and
    56/64 line-of-sight acquisitions (87.5%); that bucket is consumed and must

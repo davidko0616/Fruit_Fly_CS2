@@ -89,3 +89,28 @@ geometry, enumerate player-marker candidates, and use temporal identity checks.
 Its policy outputs must not be interpreted as a valid dense-route result. The
 compact invalidation record is preserved in
 [`DENSE_ROUTE_REPLAY_RESULT.json`](DENSE_ROUTE_REPLAY_RESULT.json).
+
+## Corrected dense-route replay
+
+The replacement September 29 capture restored `exec flywire_radar`, removed all
+friendly bots, and used five enemy CT bots. A five-frame preflight first verified
+one unambiguous local-player marker per image, direct placement inside the NAV
+mask without snapping, and causal GSI alignment. The full capture then recorded
+600 normal-gameplay frames across Long, A/Short, Mid, tunnels, and B without a
+console, settings screen, or Codex overlay in the reviewed samples.
+
+The strict localizer accepted 386 frames. It rejected 75 frames with transient
+radar-marker ambiguity and 139 frames outside the 30-world-unit player-to-NAV
+correction bound instead of guessing. All 386 accepted frames remained active
+Dust II play and became valid `BridgeFrame` rows. They contained 155 live-target
+frames and 231 hidden-target frames; the maximum causal GSI age was 10.289
+seconds and CPU detector inference averaged 32.98 ms per source frame.
+
+Frozen stochastic policy version 80 produced 386 offline decisions. Target
+memory and the six-cell NAV waypoint planner were active on 163 hidden-target
+frames. Eight remembered targets were rejected because they could not be mapped
+safely, the largest accepted target correction was 67.02 world units, and no
+selected action violated its mask. These results validate the corrected dense
+read-only shadow path. They do not demonstrate live gameplay competence and do
+not enable keyboard or mouse output. Exact counts and hashes are preserved in
+[`DENSE_ROUTE_REPLAY_RESULT_V2.json`](DENSE_ROUTE_REPLAY_RESULT_V2.json).

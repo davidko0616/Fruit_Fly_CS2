@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "valid_for_shadow_acceptance": true,
+  "valid_for_live_control": false,
+  "execution": "offline_replay_only",
+  "capture": {
+    "raw_frames": 600,
+    "duration_seconds": 219.43,
+    "raw_png_bytes": 2698371287,
+    "friendly_bots": 0,
+    "enemy_bots": 5,
+    "gsi_rows": 43,
+    "visual_review_frame_ids": [0, 52, 98, 100, 200, 248, 300, 341, 400, 500, 599],
+    "visual_review_result": "normal_gameplay_no_console_settings_or_codex_overlay",
+    "manifest_sha256": "114d9ef8fdf9f21dc1c0066eed1ed0cfdc08c0266d49648d05e72b1a6086ef55",
+    "gsi_sha256": "89b72f87e80240a8da5dd8a387c181f02d3b506dbd3645b1e19afe08d2610844"
+  },
+  "localization": {
+    "accepted_frames": 386,
+    "ambiguous_radar_pose_frames": 75,
+    "clearance_pose_failure_frames": 139,
+    "selection_rule": "Accept one unambiguous local-player marker and reject all uncertain or out-of-NAV frames.",
+    "preflight": {
+      "frames": 5,
+      "accepted_frames": 5,
+      "maximum_snap_world": 0
+    }
+  },
+  "perception": {
+    "emitted_active_play_frames": 386,
+    "live_target_frames": 155,
+    "hidden_target_frames": 231,
+    "fire_allowed_frames": 59,
+    "detections": 371,
+    "drops": {
+      "ambiguous_radar_pose": 75,
+      "clearance_pose_failure": 139
+    },
+    "max_abs_gsi_delta_ms": 10289.0,
+    "detector_latency_ms_per_frame": 32.9761030000221,
+    "perception_sha256": "c459fdc5dcb2f7bdb8c7ccdef48ff374f0eac86aaa8a5cd8f57e0df6fa605424",
+    "bridge_frames_sha256": "4fbc309e7be5517135f2c457919381740da672909cf97e79a784c064e361cdd9"
+  },
+  "policy": {
+    "run_id": "10a40610-4f86-4fad-9872-f9b55072da84",
+    "version": 80,
+    "mode": "stochastic",
+    "seed": 9200200,
+    "decisions": 386,
+    "memory_frames": 163,
+    "waypoint_frames": 163,
+    "planner_rejections": 8,
+    "waypoint_target_max_snap_world": 90.0,
+    "max_observed_target_snap_world": 67.01715128600881,
+    "action_counts": {
+      "backward": 1,
+      "fire": 59,
+      "forward": 72,
+      "strafe_left": 45,
+      "strafe_right": 2,
+      "turn_left": 206,
+      "turn_right": 1
+    },
+    "masked_action_violations": 0,
+    "decisions_sha256": "a927bbb762101af6ac6d95bb856ee9fe735dd98616ed77ce6006671d8b1d0136"
+  },
+  "interpretation": "The corrected route validates the read-only perception-to-policy shadow pipeline under dense visible, hidden, and reacquired enemy observations. It does not establish live gameplay competence and does not authorize an input executor."
+}
