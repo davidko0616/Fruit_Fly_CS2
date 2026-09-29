@@ -153,22 +153,46 @@ The frozen planner-enabled policy can be reproduced with:
 .\.venv\Scripts\python.exe tools/run_cs2_bridge_replay.py --frames artifacts/cs2_bridge/dust2_validation_bridge_frames_v1.jsonl --calibration experiments/cs2_dust2_bridge/dust2_calibration_v1.json --waypoint-calibration artifacts/cs2_bridge/dust2_clearance_calibration_v1.json --policy-run artifacts/toy_combat/dust2_nav_flywire_seed_84_exploratory_v9_waypoint_full_map --policy-version 80 --output artifacts/cs2_bridge/dust2_validation_flywire_waypoint_v80_stochastic.jsonl --mode stochastic --seed 9200000
 ```
 
-## Next acceptance run
+## Continuous live shadow
 
-The first independent dense-route attempt is invalid for acceptance. Opening
-settings changed radar zoom persistently, so post-settings coordinates no longer
-matched the frozen calibration; single-frame detection also switched among
-friendly bot markers from the start. Deleting menu images did not repair either
-problem. Strict candidate reanalysis rejected all 579 retained images as
-ambiguous and accepted zero. Before enabling
-any action executor:
+`tools/run_cs2_shadow.py` runs the complete bridge continuously while a human
+plays. It captures each screen frame in memory, matches only an earlier GSI row,
+localizes the player on the fixed radar, estimates NAV clearance, detects visible
+enemies, updates round-scoped target memory and the waypoint planner, and records
+the frozen policy's proposed action. It contains no keyboard or mouse output and
+marks every evidence row and the summary with `input_emitted: false`.
 
-1. Restore `exec flywire_radar`, remove friendly bots, repeat the independent
-   capture, and validate temporal player-marker identity. Then run the controller
-   as a live read-only shadow that records proposed actions without sending input.
+The default output is compact: `shadow.jsonl`, sanitized `gsi.jsonl`, and
+`summary.json`. Full-resolution images are not retained. `--audit-every N` can
+save a sparse JPEG sample for visual audit. Run a short preflight with:
 
-Only after this read-only run passes should proposed actions be mapped to local
-practice controls behind an explicit enable flag and immediate stop control.
+```powershell
+.\.venv\Scripts\python.exe -u tools\run_cs2_shadow.py `
+  --output artifacts\cs2_bridge\dust2_live_shadow_preflight_20260929_01 `
+  --checkpoint artifacts\cs2_bridge\dust2_team_detector_pilot_v3_threshold_015\best.pt `
+  --calibration experiments\cs2_dust2_bridge\dust2_calibration_v1.json `
+  --target-calibration experiments\cs2_dust2_bridge\dust2_visible_target_calibration_v1.json `
+  --clearance-calibration artifacts\cs2_bridge\dust2_clearance_calibration_v1.json `
+  --waypoint-calibration artifacts\cs2_bridge\dust2_clearance_calibration_v1.json `
+  --policy-run artifacts\toy_combat\dust2_nav_flywire_seed_84_exploratory_v9_waypoint_full_map `
+  --policy-version 80 --mode greedy --duration-seconds 15 --hz 4 `
+  --backend dxcam --region 0,0,2560,1440 `
+  --radar-search-bounds 180,100,500,400 --delay 5 --sound-cues `
+  --audit-every 20
+```
+
+Keep `exec flywire_radar` active, play on `de_dust2`, and keep friendly bots
+removed so their radar markers cannot be mistaken for the player marker. The
+summary reports accepted and dropped frames, causal GSI volume, action counts,
+mask violations, target-memory and waypoint use, capture latency, processing
+latency, and effective frame rate.
+
+The corrected independent dense route is the fixed offline acceptance baseline:
+strict localization accepted 386 of 600 frames, including 155 live-target
+frames, and the frozen-policy replay produced zero masked-action violations.
+The live preflight is the next acceptance run. Only after a longer read-only run
+passes should proposed actions be mapped to local practice controls behind an
+explicit enable flag and immediate stop control.
 
 Visible-player captures and labels follow the separate
 [perception protocol](../experiments/cs2_dust2_bridge/PERCEPTION_PROTOCOL.md).

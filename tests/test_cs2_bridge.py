@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import tempfile
 import threading
+import time
 import unittest
 
 import numpy as np
@@ -19,7 +20,7 @@ from cs2_bridge.labels import PlayerBox, validate_frame_label
 from cs2_bridge.radar import (
     detect_enemy_markers, detect_player_pose, detect_player_pose_candidates,
     select_unambiguous_player_pose)
-from cs2_bridge.replay import read_frames, replay_frames, write_jsonl
+from cs2_bridge.replay import PolicyRunner, read_frames, replay_frames, write_jsonl
 from cs2_bridge.schema import BridgeFrame, Dust2Calibration, PlayerPose, VisibleTarget
 from cs2_bridge.sync import TimestampMatcher
 from cs2_bridge.target import VisibleTargetCalibration
@@ -32,6 +33,7 @@ from tools.extract_dust2_enemy_markers import _temporally_supported_markers
 from tools.label_cs2_frames import LabelSet
 from http.server import ThreadingHTTPServer
 from tools.serve_cs2_gsi import GSIRecorder, make_handler
+from tools.run_cs2_shadow import ShadowProcessor
 
 
 FIXTURES = Path(__file__).parent / 'fixtures'
@@ -41,6 +43,15 @@ class FixedPolicy(torch.nn.Module):
     def forward(self, observations):
         logits = torch.arange(8, dtype=observations.dtype).repeat(len(observations), 1)
         return logits
+
+
+class FixedDetector(torch.nn.Module):
+    def forward(self, images):
+        return [{
+            'boxes': torch.tensor([[90., 20., 150., 140.]]),
+            'scores': torch.tensor([.9]),
+            'labels': torch.tensor([1]),
+        } for _ in images]
 
 
 class CS2BridgeTests(unittest.TestCase):
@@ -212,6 +223,49 @@ class CS2BridgeTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 write_jsonl(output, decisions)
 
+    def test_live_shadow_proposes_action_without_emitting_input(self):
+        image = Image.new('RGB', (240, 180), (65, 65, 65))
+        draw = ImageDraw.Draw(image)
+        draw.ellipse((97, 77, 113, 91), fill=(245, 210, 40))
+        draw.polygon(((105, 68), (99, 76), (111, 76)),
+                     fill=(245, 245, 245))
+        clearance_calibration = ClearanceCalibration(
+            map_name='de_dust2', screen_scale_x=1, screen_scale_y=1,
+            screen_offset_x=0, screen_offset_y=0,
+            overview_units_per_pixel=1, max_distance_world=100,
+            max_snap_world=30, mask_file='unused.png')
+        calibration = Dust2Calibration(
+            'de_dust2', 0, 240, 0, 180, 240)
+        target_calibration = VisibleTargetCalibration(
+            image_width=240, image_height=180,
+            horizontal_half_fov_degrees=53.13,
+            inverse_height_scale=2400, range_offset=0,
+            min_box_height=20, max_box_height=160,
+            min_range=10, max_range=100)
+        runner = PolicyRunner(
+            Dust2ObservationEncoder(calibration), FixedPolicy(),
+            execution='live_shadow_read_only')
+        processor = ShadowProcessor(
+            FixedDetector(), ('enemy',), calibration, target_calibration,
+            Dust2ClearanceEstimator(
+                clearance_calibration, Image.new('L', (240, 180), 255)),
+            runner, radar_search_bounds=(0, 0, 239, 179))
+        record = processor.process(image, 1_000_000_000, {
+            'sequence': 3,
+            'received_monotonic_ns': 900_000_000,
+            'snapshot': {
+                'map_name': 'de_dust2', 'round_id': 'de_dust2:1',
+                'player_activity': 'playing', 'health': 100,
+            },
+        })
+        self.assertEqual(record['status'], 'accepted')
+        self.assertFalse(record['input_emitted'])
+        self.assertEqual(record['decision']['execution'],
+                         'live_shadow_read_only')
+        self.assertTrue(record['decision']['target_observation_is_live'])
+        self.assertTrue(record['decision']['action_mask'][
+            record['decision']['action']])
+
     def test_perception_adapter_gates_walls_and_unaligned_fire(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -257,6 +311,26 @@ class CS2BridgeTests(unittest.TestCase):
             self.assertNotIn('auth', row['retained_payload'])
             self.assertNotIn('allplayers', row['retained_payload'])
             self.assertEqual(row['discarded_top_level_fields'], ['allplayers'])
+
+    def test_gsi_recorder_exposes_only_causal_recent_rows(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / 'gsi.jsonl'
+            recorder = GSIRecorder(output)
+            first = recorder.append({
+                'map': {'name': 'de_dust2', 'round': 1},
+                'player': {'activity': 'playing'},
+            })
+            time.sleep(.02)
+            second = recorder.append({
+                'map': {'name': 'de_dust2', 'round': 2},
+                'player': {'activity': 'playing'},
+            })
+            self.assertIs(recorder.latest(), second)
+            self.assertIs(recorder.latest_before(
+                first['received_monotonic_ns']), first)
+            self.assertIsNone(recorder.latest_before(
+                first['received_monotonic_ns'] - 1))
+            recorder.close()
 
     def test_loopback_gsi_http_endpoint_records_authenticated_post(self):
         with tempfile.TemporaryDirectory() as temporary:

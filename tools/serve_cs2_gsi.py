@@ -1,5 +1,6 @@
 """Record read-only CS2 Game State Integration POSTs on loopback."""
 import argparse
+from collections import deque
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -20,6 +21,8 @@ class GSIRecorder:
         self.output = Path(output)
         self.token = token
         self.sequence = 0
+        self.latest_row = None
+        self.recent_rows = deque(maxlen=32)
         self.lock = threading.Lock()
         self.output.parent.mkdir(parents=True, exist_ok=True)
         self.file = self.output.open('x', encoding='utf-8', newline='\n')
@@ -32,6 +35,18 @@ class GSIRecorder:
             raise ValueError('GSI payload must be an object')
         with self.lock:
             return self._append_locked(payload)
+
+    def latest(self):
+        """Return the newest sanitized row received by this recorder."""
+        with self.lock:
+            return self.latest_row
+
+    def latest_before(self, monotonic_ns):
+        """Return the latest retained row at or before a frame timestamp."""
+        monotonic_ns = int(monotonic_ns)
+        with self.lock:
+            return next((row for row in reversed(self.recent_rows)
+                         if row['received_monotonic_ns'] <= monotonic_ns), None)
 
     def _append_locked(self, payload):
         supplied = (payload.get('auth') or {}).get('token')
@@ -62,6 +77,8 @@ class GSIRecorder:
             'discarded_top_level_fields': discarded_fields,
         }
         self.sequence += 1
+        self.latest_row = row
+        self.recent_rows.append(row)
         self.file.write(json.dumps(row, separators=(',', ':')) + '\n')
         self.file.flush()
         os.fsync(self.file.fileno())

@@ -28,23 +28,31 @@ def read_frames(path):
     return frames
 
 
-def replay_frames(frames, encoder: Dust2ObservationEncoder, model, mode='greedy', seed=0):
-    """Return fully inspectable decisions for synchronized recorded frames."""
-    if mode not in ('greedy', 'stochastic'):
-        raise ValueError('Replay mode must be greedy or stochastic')
-    rng = np.random.default_rng(seed)
-    decisions = []
-    model.eval()
-    for frame in frames:
-        encoded = encoder.encode(frame)
+class PolicyRunner:
+    """Stateful, read-only policy inference shared by replay and live shadow."""
+
+    def __init__(self, encoder: Dust2ObservationEncoder, model,
+                 mode='greedy', seed=0, execution='offline_replay_only'):
+        if mode not in ('greedy', 'stochastic'):
+            raise ValueError('Replay mode must be greedy or stochastic')
+        self.encoder = encoder
+        self.model = model
+        self.mode = mode
+        self.rng = np.random.default_rng(seed)
+        self.execution = execution
+        self.model.eval()
+
+    def decide(self, frame: BridgeFrame):
+        encoded = self.encoder.encode(frame)
         observation = encoded.observation
         mask = torch.tensor(frame.action_mask, dtype=torch.bool)
         with torch.no_grad():
             observation_tensor = torch.from_numpy(observation)[None]
-            if all(hasattr(model, name) for name in
+            if all(hasattr(self.model, name) for name in
                    ('input_proj', 'connectome_layer', 'activation', 'num_neurons')):
                 logits_batch, probabilities_batch, states, preactivations, sensory = (
-                    policy_forward_with_activity(model, observation_tensor, mask[None]))
+                    policy_forward_with_activity(
+                        self.model, observation_tensor, mask[None]))
                 logits = logits_batch[0]
                 probabilities = probabilities_batch[0].cpu().numpy()
                 activity = {
@@ -53,16 +61,16 @@ def replay_frames(frames, encoder: Dust2ObservationEncoder, model, mode='greedy'
                     'neuron_preactivations': preactivations[0].tolist(),
                 }
             else:
-                logits = model(observation_tensor)[0]
+                logits = self.model(observation_tensor)[0]
                 masked = logits.masked_fill(~mask, torch.finfo(logits.dtype).min)
                 probabilities = masked.softmax(0).cpu().numpy()
                 activity = None
-        if mode == 'greedy':
+        if self.mode == 'greedy':
             action = int(probabilities.argmax())
         else:
-            action = int(rng.choice(len(probabilities), p=probabilities))
+            action = int(self.rng.choice(len(probabilities), p=probabilities))
         digest = hashlib.sha256(observation.tobytes()).hexdigest()
-        decisions.append({
+        return {
             'schema_version': 1,
             'sequence': frame.sequence,
             'monotonic_ns': frame.monotonic_ns,
@@ -85,9 +93,14 @@ def replay_frames(frames, encoder: Dust2ObservationEncoder, model, mode='greedy'
             'activity': activity,
             'action': action,
             'action_name': ACTION_NAMES[action],
-            'execution': 'offline_replay_only',
-        })
-    return decisions
+            'execution': self.execution,
+        }
+
+
+def replay_frames(frames, encoder: Dust2ObservationEncoder, model, mode='greedy', seed=0):
+    """Return fully inspectable decisions for synchronized recorded frames."""
+    runner = PolicyRunner(encoder, model, mode, seed)
+    return [runner.decide(frame) for frame in frames]
 
 
 def write_jsonl(path, rows):

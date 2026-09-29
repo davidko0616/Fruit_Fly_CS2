@@ -18,8 +18,8 @@ def _read_jsonl(path):
         encoding='utf-8').splitlines() if line.strip()]
 
 
-def _action_mask(clearances, target, movement_threshold,
-                 fire_confidence, fire_half_angle_degrees):
+def build_action_mask(clearances, target, movement_threshold,
+                      fire_confidence, fire_half_angle_degrees):
     movement = [value >= movement_threshold for value in clearances]
     fire_allowed = False
     if target is not None and target.confidence >= fire_confidence:
@@ -70,8 +70,8 @@ def assemble(perception_path, output, movement_threshold=0.03,
         if (target_value is not None and
                 float(target_value['confidence']) >= target_confidence):
             target = VisibleTarget(**target_value)
-        mask = _action_mask(clearances, target, movement_threshold,
-                            fire_confidence, fire_half_angle_degrees)
+        mask = build_action_mask(clearances, target, movement_threshold,
+                                 fire_confidence, fire_half_angle_degrees)
         frame = BridgeFrame(
             sequence=len(frames), monotonic_ns=monotonic_ns,
             round_id=snapshot['round_id'], map_name='de_dust2', pose=pose,
