@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-09-29",
+  "status": "diagnostic_run_complete_requires_corrected_preflight",
+  "execution": "live_shadow_read_only",
+  "input_emitted": false,
+  "source_artifact": "artifacts/cs2_bridge/dust2_live_shadow_5min_20260929_01",
+  "conditions": {
+    "map": "de_dust2",
+    "session_state": "warmup",
+    "duration_seconds": 300.0,
+    "requested_hz": 4.0,
+    "effective_hz": 4.0,
+    "mode": "greedy",
+    "policy_version": 80
+  },
+  "original_live_result": {
+    "attempted_frames": 1200,
+    "accepted_frames": 729,
+    "accepted_fraction": 0.6075,
+    "gsi_rows": 412,
+    "drops": {
+      "clearance_pose_failure": 318,
+      "inactive_gsi_frame": 36,
+      "radar_pose_failure": 115,
+      "radar_pose_out_of_calibration": 2
+    },
+    "capture_latency_ms": {
+      "mean": 22.178911666666668,
+      "p95": 25.03993,
+      "maximum": 267.5187
+    },
+    "accepted_processing_latency_ms": {
+      "mean": 75.96731714677641,
+      "p95": 89.3485,
+      "maximum": 151.7508
+    },
+    "masked_action_violations": 0,
+    "live_target_frames": 164,
+    "target_memory_frames": 366,
+    "waypoint_frames": 366,
+    "action_counts": {
+      "fire": 53,
+      "forward": 223,
+      "strafe_left": 22,
+      "strafe_right": 1,
+      "turn_left": 430
+    },
+    "behavioral_action_counts_valid": false
+  },
+  "diagnosis": {
+    "cause": "The fixed radar does not rotate, but its map pans during play. Raw yellow-marker screen coordinates therefore do not form a global map coordinate system.",
+    "evidence": "Clearance failures occurred at visibly walkable Long A, B doors, Extended A, and pit positions. The A/B site labels moved together between frames and supplied a stable per-frame pan anchor.",
+    "audit_images": 30,
+    "settings_or_codex_frames": 0,
+    "artifact_size_bytes": 28398468
+  },
+  "correction": {
+    "radar_map_calibration": "experiments/cs2_dust2_bridge/dust2_radar_map_calibration_v2.json",
+    "policy_grid_calibration": "experiments/cs2_dust2_bridge/dust2_policy_grid_calibration_v2.json",
+    "clearance_grid_calibration": "experiments/cs2_dust2_bridge/dust2_clearance_grid_calibration_v2.json",
+    "method": "Track the orange A/B radar labels, remove per-frame map pan, transform pose and visible-target geometry into the 128 by 128 policy grid, and use recent-pose continuity only to resolve nearby multi-candidate frames.",
+    "dense_route_reanalysis": {
+      "frames": 600,
+      "accepted_frames": 588,
+      "accepted_fraction": 0.98,
+      "ambiguous_radar_pose": 2,
+      "radar_map_failure": 10,
+      "clearance_pose_failure": 0,
+      "accepted_snap_world_p95": 20.364975735087963,
+      "accepted_snap_world_maximum": 72.42108275313728,
+      "accepted_snap_over_30_frames": 24
+    },
+    "independent_live_audit": {
+      "usable_sparse_frames": 20,
+      "within_30_world_units": 19,
+      "within_90_world_units": 20,
+      "maximum_snap_world": 36.35629619119182
+    },
+    "full_live_run_can_be_reprocessed": false,
+    "reason_full_live_run_cannot_be_reprocessed": "The storage-conscious runner retained only 30 sparse audit images; the other screen frames were processed in memory and discarded."
+  },
+  "next_gate": "Run a short live preflight with the v2 pan-corrected grid calibration before repeating a longer read-only session."
+}

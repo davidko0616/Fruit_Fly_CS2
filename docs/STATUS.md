@@ -46,7 +46,7 @@ CPU-only; `tools/validate_cuda.py` runs the archived experiment on either device
   and map telemetry while discarding authentication and unrequested opponent
   fields. The visibility-gated 14-value encoder, round-scoped last-seen memory,
   calibration tool, offline policy replay, and visible-label contracts are
-  implemented and covered by the passing 59-test project suite (one expected
+  implemented and covered by the passing 61-test project suite (one expected
   CUDA skip). See the
   [setup and contract](CS2_DUST2_BRIDGE.md) and
   [fixed read-only protocol](../experiments/cs2_dust2_bridge/PROTOCOL.md).
@@ -170,23 +170,19 @@ display and anatomical layouts remain planned. Every future environment decision
 must retain synchronized observations, activity, actions, rewards and outcomes.
 Older experiments cannot retroactively supply full activity traces.
 
-1. Run the implemented continuous live read-only shadow around the corrected
-   dense route. The replacement September 29 capture used fixed radar settings,
-   no friendly bots, and five enemy bots. Strict localization accepted 386 of
-   600 frames and rejected 75 ambiguous radar poses plus 139 out-of-NAV poses.
-   All accepted frames passed the perception adapter and frozen-policy replay:
-   155 contained a live target, 163 hidden frames used remembered target state
-   and NAV waypoints, and zero actions violated their masks. The new live runner
-   processes screen frames in memory, causally matches GSI, persists controller
-   memory across frames, and writes proposed actions plus latency and drop
-   evidence without sending input. The 15-second preflight passed: 57 of 60
-   frames were accepted, the loop sustained 4.0 Hz, processing p95 was 113.8 ms,
-   GSI was causal, and no proposed action violated its mask. Three audit frames
-   all showed CS2 gameplay. Next run a 5-10-minute session to measure latency,
-   drop rate, and proposal stability across more routes and encounters.
-   Keep it read-only; do not add an input executor yet. See the
-   [corrected dense result](../experiments/cs2_dust2_bridge/DENSE_ROUTE_REPLAY_RESULT_V2.json)
+1. Validate the v2 pan-corrected continuous live shadow. The original 15-second
+   preflight passed timing and integration checks, and the five-minute run held
+   4.0 Hz with a 89.3 ms processing p95 and zero masked-action violations. That
+   longer run exposed that the fixed-orientation radar map still pans, making
+   raw HUD marker coordinates invalid as global policy coordinates. The v2
+   localizer now tracks the orange A/B site labels per frame, removes map pan,
+   and converts player and target geometry into the 128 by 128 policy grid.
+   Reanalysis of the independent dense route accepted 588 of 600 frames (98.0%):
+   two poses were ambiguous, ten lacked a usable anchor, and none failed NAV
+   clearance. Run a 30-second live v2 preflight next; if it passes, repeat the
+   five-to-ten-minute read-only session before adding any input executor. See the
    [preflight result](../experiments/cs2_dust2_bridge/LIVE_SHADOW_PREFLIGHT_RESULT.json),
+   [five-minute diagnostic](../experiments/cs2_dust2_bridge/LIVE_SHADOW_5MIN_RESULT.json),
    and [live-shadow instructions](CS2_DUST2_BRIDGE.md#continuous-live-shadow).
 2. Repeat matched actor comparisons only when they answer a specific scientific
    question. The one-time held-out FlyWire result was 51/64 hits (79.7%) and

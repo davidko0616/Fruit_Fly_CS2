@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "recorded_date": "2026-09-29",
-  "status": "pass",
+  "status": "integration_pass_superseded_coordinate_frame",
   "execution": "live_shadow_read_only",
   "input_emitted": false,
   "source_artifact": "artifacts/cs2_bridge/dust2_live_shadow_preflight_20260929_01",
@@ -69,7 +69,9 @@
     "maximum_processing_p95_ms": 250.0,
     "requires_zero_masked_action_violations": true,
     "requires_zero_input_emission": true,
-    "passed": true
+    "passed": true,
+    "behavioral_coordinate_validity": false
   },
-  "interpretation": "The bridge can sustain the requested four-hertz causal read-only loop on CPU. This short warmup preflight validates integration and timing, not behavioral quality. A five-to-ten-minute read-only session is required to assess proposal stability across more Dust II routes and encounters."
+  "superseded_by": "experiments/cs2_dust2_bridge/LIVE_SHADOW_5MIN_RESULT.json",
+  "interpretation": "The bridge sustained the requested four-hertz causal read-only loop on CPU. The later five-minute session showed that raw HUD marker coordinates move when the radar pans, so this preflight validates integration and timing but its policy-coordinate observations are superseded by the pan-corrected grid calibration."
 }

@@ -18,8 +18,11 @@ from cs2_bridge.detector import build_player_ssdlite, evaluate_detection_records
 from cs2_bridge.gsi import parse_gsi_payload
 from cs2_bridge.labels import PlayerBox, validate_frame_label
 from cs2_bridge.radar import (
-    detect_enemy_markers, detect_player_pose, detect_player_pose_candidates,
-    select_unambiguous_player_pose)
+    RadarPose, TemporalRadarPoseSelector, detect_enemy_markers, detect_player_pose,
+    detect_player_pose_candidates, select_unambiguous_player_pose)
+from cs2_bridge.radar_map import (
+    Dust2RadarMapLocalizer, RadarMapCalibration,
+    detect_site_anchor_candidates)
 from cs2_bridge.replay import PolicyRunner, read_frames, replay_frames, write_jsonl
 from cs2_bridge.schema import BridgeFrame, Dust2Calibration, PlayerPose, VisibleTarget
 from cs2_bridge.sync import TimestampMatcher
@@ -265,6 +268,51 @@ class CS2BridgeTests(unittest.TestCase):
         self.assertTrue(record['decision']['target_observation_is_live'])
         self.assertTrue(record['decision']['action_mask'][
             record['decision']['action']])
+
+    def test_radar_map_anchor_removes_pan_and_converts_local_geometry(self):
+        image = Image.new('RGB', (600, 450), (40, 40, 40))
+        draw = ImageDraw.Draw(image)
+        draw.rectangle((200, 140, 217, 159), fill=(165, 135, 60))
+        draw.rectangle((405, 153, 422, 172), fill=(165, 135, 60))
+        candidates = detect_site_anchor_candidates(image)
+        self.assertEqual(len(candidates), 2)
+        calibration = RadarMapCalibration(
+            map_name='de_dust2', screen_scale_x=.5, screen_scale_y=.25,
+            site_b_overview_x=100, site_b_overview_y=200,
+            site_separation_screen_x=205, site_separation_screen_y=13,
+            overview_grid_step=8, overview_grid_offset=4,
+            anchor_match_radius=10, anchor_max_age_ms=500)
+        localizer = Dust2RadarMapLocalizer(calibration)
+        raw_pose = RadarPose(
+            x=258.5, y=174.5, yaw_degrees=45, confidence=1,
+            marker_pixels=100, heading_pixels=40, heading_color='white')
+        pose, details = localizer.localize(
+            raw_pose, image, timestamp_ns=1_000_000_000)
+        self.assertEqual(details['source'], 'site_pair')
+        self.assertAlmostEqual(pose.x, 24.5)
+        self.assertAlmostEqual(pose.y, 37.0)
+        self.assertAlmostEqual(pose.yaw_degrees, 63.43494882)
+        converted = localizer.convert_target(
+            VisibleTarget(10, 0, .9), raw_yaw_degrees=0)
+        self.assertAlmostEqual(converted.forward, 2.5)
+        self.assertAlmostEqual(converted.right, 0)
+
+    def test_temporal_radar_selector_resolves_only_nearby_candidate(self):
+        selector = TemporalRadarPoseSelector(
+            max_step_pixels=10, max_age_ms=1000)
+        first = RadarPose(100, 100, 0, 1, 100, 40, 'white')
+        selected, source = selector.select([first], 1_000_000_000)
+        self.assertIs(selected, first)
+        self.assertEqual(source, 'single_frame')
+        nearby = RadarPose(104, 102, 5, 1, 100, 40, 'white')
+        distant = RadarPose(160, 160, 5, 1, 100, 40, 'white')
+        selected, source = selector.select(
+            [distant, nearby], 1_100_000_000)
+        self.assertIs(selected, nearby)
+        self.assertEqual(source, 'temporal_nearest')
+        with self.assertRaises(ValueError):
+            selector.select([distant, RadarPose(
+                170, 170, 0, 1, 100, 40, 'white')], 3_000_000_000)
 
     def test_perception_adapter_gates_walls_and_unaligned_fire(self):
         with tempfile.TemporaryDirectory() as temporary:

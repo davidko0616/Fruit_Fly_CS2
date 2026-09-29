@@ -20,7 +20,8 @@ from cs2_bridge.clearance import Dust2ClearanceEstimator
 from cs2_bridge.detector import build_player_ssdlite
 from cs2_bridge.encoder import Dust2ObservationEncoder
 from cs2_bridge.radar import (
-    detect_player_pose_candidates, select_unambiguous_player_pose)
+    TemporalRadarPoseSelector, detect_player_pose_candidates)
+from cs2_bridge.radar_map import Dust2RadarMapLocalizer
 from cs2_bridge.replay import PolicyRunner
 from cs2_bridge.schema import BridgeFrame, Dust2Calibration, PlayerPose
 from cs2_bridge.target import VisibleTargetCalibration
@@ -68,6 +69,7 @@ class ShadowProcessor:
 
     def __init__(self, detector, class_names, calibration,
                  target_calibration, clearance_estimator, policy_runner,
+                 radar_map_localizer=None,
                  score_threshold=.15, max_gsi_age_ns=15_000_000_000,
                  radar_search_bounds=(180, 100, 500, 400),
                  movement_threshold=.03, target_confidence=.15,
@@ -78,6 +80,9 @@ class ShadowProcessor:
         self.target_calibration = target_calibration
         self.clearance_estimator = clearance_estimator
         self.policy_runner = policy_runner
+        self.radar_map_localizer = radar_map_localizer
+        self.radar_pose_selector = TemporalRadarPoseSelector()
+        self.round_id = None
         self.score_threshold = float(score_threshold)
         self.max_gsi_age_ns = int(max_gsi_age_ns)
         self.radar_search_bounds = tuple(radar_search_bounds)
@@ -117,13 +122,19 @@ class ShadowProcessor:
                  int(snapshot['health']) <= 0)):
             record.update(status='dropped', drop_reason='inactive_gsi_frame')
             return record
+        if snapshot['round_id'] != self.round_id:
+            self.radar_pose_selector.reset()
+            if self.radar_map_localizer is not None:
+                self.radar_map_localizer.reset()
+            self.round_id = snapshot['round_id']
 
         radar_started = time.perf_counter_ns()
         try:
             radar_candidates = detect_player_pose_candidates(
                 image, origin=origin,
                 search_bounds=self.radar_search_bounds)
-            radar_pose = select_unambiguous_player_pose(radar_candidates)
+            raw_radar_pose, pose_source = self.radar_pose_selector.select(
+                radar_candidates, timestamp_ns)
         except ValueError as error:
             record.update(
                 status='dropped', drop_reason='radar_pose_failure',
@@ -133,6 +144,22 @@ class ShadowProcessor:
         record['radar_candidate_count'] = len(radar_candidates)
         record['white_heading_candidate_count'] = sum(
             pose.heading_color == 'white' for pose in radar_candidates)
+        record['raw_radar_pose'] = raw_radar_pose.to_dict()
+        record['radar_pose_source'] = pose_source
+        if self.radar_map_localizer is None:
+            radar_pose = PlayerPose(
+                raw_radar_pose.x, raw_radar_pose.y,
+                raw_radar_pose.yaw_degrees)
+        else:
+            try:
+                radar_pose, map_details = self.radar_map_localizer.localize(
+                    raw_radar_pose, image, timestamp_ns, origin)
+            except ValueError as error:
+                record.update(
+                    status='dropped', drop_reason='radar_map_failure',
+                    detail=str(error))
+                return record
+            record['radar_map'] = map_details
         if not (self.calibration.min_x <= radar_pose.x <= self.calibration.max_x and
                 self.calibration.min_y <= radar_pose.y <= self.calibration.max_y):
             record.update(
@@ -140,8 +167,9 @@ class ShadowProcessor:
                 drop_reason='radar_pose_out_of_calibration')
             return record
         try:
-            local_clearances = self.clearance_estimator.estimate(PlayerPose(
-                radar_pose.x, radar_pose.y, radar_pose.yaw_degrees))
+            clearance_details = self.clearance_estimator.estimate_with_details(
+                radar_pose)
+            local_clearances = clearance_details['clearances']
         except ValueError as error:
             record.update(
                 status='dropped', drop_reason='clearance_pose_failure',
@@ -158,6 +186,7 @@ class ShadowProcessor:
         scores = prediction['scores'][keep].cpu().tolist()
         class_ids = prediction['labels'][keep].cpu().tolist()
         detections = []
+        target_candidates = []
         for box, score, class_id in zip(boxes, scores, class_ids):
             class_index = int(class_id) - 1
             name = (self.class_names[class_index]
@@ -171,18 +200,23 @@ class ShadowProcessor:
                 'score': float(score), 'screen_box': screen_box,
             }
             if name == 'enemy':
-                target = self.target_calibration.target_from_box(
+                raw_target = self.target_calibration.target_from_box(
                     screen_box, confidence=float(score))
+                target = (raw_target if self.radar_map_localizer is None else
+                          self.radar_map_localizer.convert_target(
+                              raw_target, raw_radar_pose.yaw_degrees))
+                detection['visible_target_raw'] = {
+                    'forward': raw_target.forward, 'right': raw_target.right,
+                    'confidence': raw_target.confidence,
+                }
                 detection['visible_target'] = {
                     'forward': target.forward, 'right': target.right,
                     'confidence': target.confidence,
                 }
+                if float(score) >= self.target_confidence:
+                    target_candidates.append(target)
             detections.append(detection)
-        target = next((self.target_calibration.target_from_box(
-            detection['screen_box'], confidence=detection['score'])
-            for detection in detections
-            if detection['class_name'] == 'enemy' and
-            detection['score'] >= self.target_confidence), None)
+        target = next(iter(target_candidates), None)
         mask = build_action_mask(
             local_clearances, target, self.movement_threshold,
             self.fire_confidence, self.fire_half_angle_degrees)
@@ -198,8 +232,14 @@ class ShadowProcessor:
         self.sequence += 1
         record.update(
             status='accepted', sequence=frame.sequence,
-            radar_pose=radar_pose.to_dict(),
-            local_clearances=list(local_clearances), detections=detections,
+            radar_pose={
+                'x': radar_pose.x, 'y': radar_pose.y,
+                'yaw_degrees': radar_pose.yaw_degrees,
+            },
+            local_clearances=list(local_clearances),
+            clearance_snap_world=clearance_details['snap_world'],
+            clearance_mask_position=list(clearance_details['mask_position']),
+            detections=detections,
             primary_visible_target=(None if target is None else {
                 'forward': target.forward, 'right': target.right,
                 'confidence': target.confidence,
@@ -220,6 +260,9 @@ def run(args):
         _load_json(args.target_calibration))
     clearance_estimator = Dust2ClearanceEstimator.from_json(
         args.clearance_calibration)
+    radar_map_localizer = (None if args.radar_map_calibration is None else
+                           Dust2RadarMapLocalizer.from_json(
+                               args.radar_map_calibration))
     detector, class_names, checkpoint_epoch = _load_detector(
         args.checkpoint, args.cpu_threads)
     model, manifest = load_policy(args.policy_run, args.policy_version)
@@ -238,7 +281,7 @@ def run(args):
         execution='live_shadow_read_only')
     processor = ShadowProcessor(
         detector, class_names, calibration, target_calibration,
-        clearance_estimator, policy_runner,
+        clearance_estimator, policy_runner, radar_map_localizer,
         score_threshold=args.score_threshold,
         max_gsi_age_ns=int(args.max_gsi_age_ms * 1_000_000),
         radar_search_bounds=args.radar_search_bounds)
@@ -253,6 +296,7 @@ def run(args):
     action_counts = Counter()
     capture_ms = []
     processing_ms = []
+    clearance_snaps = []
     attempted_frames = 0
     accepted_frames = 0
     target_memory_frames = 0
@@ -302,6 +346,7 @@ def run(args):
                 if record['status'] == 'accepted':
                     accepted_frames += 1
                     processing_ms.append(record['processing_ms'])
+                    clearance_snaps.append(record['clearance_snap_world'])
                     action_counts[record['decision']['action_name']] += 1
                     target_memory_frames += int(
                         record['decision']['target_memory_in_observation'])
@@ -340,12 +385,17 @@ def run(args):
         'waypoint_frames': waypoint_frames,
         'capture_latency_ms': _latency_summary(capture_ms),
         'accepted_processing_latency_ms': _latency_summary(processing_ms),
+        'clearance_snap_world': _latency_summary(clearance_snaps),
+        'clearance_snap_over_30_frames': sum(
+            value > 30 for value in clearance_snaps),
         'requested_hz': args.hz,
         'effective_hz': (None if elapsed_seconds is None else
                          attempted_frames / max(elapsed_seconds, 1e-9)),
         'checkpoint_epoch': checkpoint_epoch,
         'policy_run_id': manifest['run_id'],
         'policy_version': args.policy_version,
+        'radar_map_calibration': (None if args.radar_map_calibration is None
+                                  else str(args.radar_map_calibration)),
         'mode': args.mode,
         'seed': args.seed,
     }
@@ -363,6 +413,7 @@ def main():
     parser.add_argument('--target-calibration', type=Path, required=True)
     parser.add_argument('--clearance-calibration', type=Path, required=True)
     parser.add_argument('--waypoint-calibration', type=Path, required=True)
+    parser.add_argument('--radar-map-calibration', type=Path)
     parser.add_argument('--policy-run', type=Path, required=True)
     parser.add_argument('--policy-version', type=int, default=80)
     parser.add_argument('--mode', choices=('greedy', 'stochastic'), default='greedy')

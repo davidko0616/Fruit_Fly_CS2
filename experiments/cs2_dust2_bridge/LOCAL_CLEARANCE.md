@@ -41,3 +41,11 @@ clearance calibration enabled and no drops.
 The mask is a two-dimensional union of navigation areas. Dust II has limited
 vertical overlap, but a future floor-aware refinement should use the NAV area's
 height when a reliable player-height signal becomes available.
+
+The v1 transform above remains the historical offline route-fit calibration.
+Live shadowing now uses `dust2_radar_map_calibration_v2.json` to remove radar pan
+from the A/B site anchors, followed by
+`dust2_clearance_grid_calibration_v2.json` to query this same NAV mask in the
+policy's 128 by 128 grid. On the independent 600-frame dense route, that path
+accepted 588 frames and produced no clearance failures; the remaining frames
+were radar ambiguity or missing-anchor failures.

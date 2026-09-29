@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "map_name": "de_dust2",
+  "calibration": {
+    "map_name": "de_dust2",
+    "screen_scale_x": 0.33577878484906304,
+    "screen_scale_y": 0.2758824385377325,
+    "site_b_overview_x": 216.05187690335777,
+    "site_b_overview_y": 141.08058845570295,
+    "site_separation_screen_x": 205.1496399726208,
+    "site_separation_screen_y": 12.941996770106599,
+    "overview_grid_step": 8.0,
+    "overview_grid_offset": 4.0,
+    "anchor_match_radius": 35.0,
+    "anchor_max_age_ms": 2000.0
+  },
+  "fit": {
+    "source_capture": "artifacts/cs2_bridge/dust2_dense_route_20260929_02",
+    "source_localization": "artifacts/cs2_bridge/dust2_dense_route_20260929_02_localization.jsonl",
+    "sample_stride": 4,
+    "sampled_anchor_pose_pairs": 98,
+    "fit_pairs": 49,
+    "held_out_pairs": 49,
+    "held_out_inside_nav_fraction": 0.8979591836734694,
+    "held_out_within_30_world_units_fraction": 0.9795918367346939,
+    "held_out_within_90_world_units_fraction": 1.0,
+    "held_out_maximum_snap_world": 57.42569043963405,
+    "seed": 29
+  },
+  "independent_live_audit": {
+    "source_capture": "artifacts/cs2_bridge/dust2_live_shadow_5min_20260929_01/audit_frames",
+    "usable_anchor_pose_pairs": 20,
+    "within_30_world_units": 19,
+    "within_90_world_units": 20,
+    "maximum_snap_world": 36.35629619119182
+  },
+  "full_dense_reanalysis": {
+    "frames": 600,
+    "accepted": 588,
+    "ambiguous_radar_pose": 2,
+    "radar_map_failure": 10,
+    "accepted_fraction": 0.98,
+    "accepted_snap_world_p95": 20.364975735087963,
+    "accepted_snap_world_maximum": 72.42108275313728,
+    "accepted_snap_over_30_frames": 24
+  }
+}

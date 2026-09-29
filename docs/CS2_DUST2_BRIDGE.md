@@ -157,7 +157,8 @@ The frozen planner-enabled policy can be reproduced with:
 
 `tools/run_cs2_shadow.py` runs the complete bridge continuously while a human
 plays. It captures each screen frame in memory, matches only an earlier GSI row,
-localizes the player on the fixed radar, estimates NAV clearance, detects visible
+localizes the player on the fixed radar, removes the radar map's per-frame pan
+from the orange A/B site anchors, estimates NAV clearance, detects visible
 enemies, updates round-scoped target memory and the waypoint planner, and records
 the frozen policy's proposed action. It contains no keyboard or mouse output and
 marks every evidence row and the summary with `input_emitted: false`.
@@ -168,14 +169,15 @@ save a sparse JPEG sample for visual audit. Run a short preflight with:
 
 ```powershell
 .\.venv\Scripts\python.exe -u tools\run_cs2_shadow.py `
-  --output artifacts\cs2_bridge\dust2_live_shadow_preflight_20260929_01 `
+  --output artifacts\cs2_bridge\dust2_live_shadow_grid_v2_preflight_20260929_01 `
   --checkpoint artifacts\cs2_bridge\dust2_team_detector_pilot_v3_threshold_015\best.pt `
-  --calibration experiments\cs2_dust2_bridge\dust2_calibration_v1.json `
+  --calibration experiments\cs2_dust2_bridge\dust2_policy_grid_calibration_v2.json `
   --target-calibration experiments\cs2_dust2_bridge\dust2_visible_target_calibration_v1.json `
-  --clearance-calibration artifacts\cs2_bridge\dust2_clearance_calibration_v1.json `
-  --waypoint-calibration artifacts\cs2_bridge\dust2_clearance_calibration_v1.json `
+  --clearance-calibration experiments\cs2_dust2_bridge\dust2_clearance_grid_calibration_v2.json `
+  --waypoint-calibration experiments\cs2_dust2_bridge\dust2_clearance_grid_calibration_v2.json `
+  --radar-map-calibration experiments\cs2_dust2_bridge\dust2_radar_map_calibration_v2.json `
   --policy-run artifacts\toy_combat\dust2_nav_flywire_seed_84_exploratory_v9_waypoint_full_map `
-  --policy-version 80 --mode greedy --duration-seconds 15 --hz 4 `
+  --policy-version 80 --mode greedy --duration-seconds 30 --hz 4 `
   --backend dxcam --region 0,0,2560,1440 `
   --radar-search-bounds 180,100,500,400 --delay 5 --sound-cues `
   --audit-every 20
@@ -187,16 +189,26 @@ summary reports accepted and dropped frames, causal GSI volume, action counts,
 mask violations, target-memory and waypoint use, capture latency, processing
 latency, and effective frame rate.
 
-The corrected independent dense route is the fixed offline acceptance baseline:
-strict localization accepted 386 of 600 frames, including 155 live-target
-frames, and the frozen-policy replay produced zero masked-action violations.
-The first 15-second live preflight then accepted 57 of 60 frames, sustained the
-requested 4 Hz, and kept processing p95 at 113.8 ms with causal GSI and zero
-masked-action violations. Its three audit images all showed CS2 gameplay. See
-the [preflight result](../experiments/cs2_dust2_bridge/LIVE_SHADOW_PREFLIGHT_RESULT.json).
-A longer read-only run is the next acceptance gate. Only after it passes should
-proposed actions be mapped to local practice controls behind an explicit enable
-flag and immediate stop control.
+The first 15-second preflight passed the CPU integration and timing checks: it
+accepted 57 of 60 frames, sustained 4 Hz, kept processing p95 at 113.8 ms, used
+causal GSI, and produced no masked-action violations. A later five-minute run
+exposed a coordinate error: fixed radar orientation does not stop the map from
+panning, so raw player-marker screen coordinates are not global positions. Its
+729 accepted decisions remain useful for timing and safety evidence, but their
+action distribution is not valid behavioral evidence.
+
+The v2 localizer tracks the A/B site labels to remove that pan and maps both the
+player and visible targets into the policy's 128 by 128 grid. Reanalysis of the
+independent 600-frame dense route accepted 588 frames (98.0%): two poses were
+ambiguous, ten lacked a usable map anchor, and none failed NAV clearance. A
+sparse independent audit of the live run placed all 20 usable frames within the
+90-world-unit correction bound. See the
+[preflight result](../experiments/cs2_dust2_bridge/LIVE_SHADOW_PREFLIGHT_RESULT.json)
+and [five-minute diagnostic](../experiments/cs2_dust2_bridge/LIVE_SHADOW_5MIN_RESULT.json).
+The next gate is a 30-second live v2 preflight, followed by a repeat longer
+read-only run if it passes. Only after that should proposed actions be mapped to
+local practice controls behind an explicit enable flag and immediate stop
+control.
 
 Visible-player captures and labels follow the separate
 [perception protocol](../experiments/cs2_dust2_bridge/PERCEPTION_PROTOCOL.md).

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "map_name": "de_dust2",
+  "screen_scale_x": 0.125,
+  "screen_scale_y": 0.125,
+  "screen_offset_x": -0.5,
+  "screen_offset_y": -0.5,
+  "overview_units_per_pixel": 4.4,
+  "max_distance_world": 600.0,
+  "max_snap_world": 90.0,
+  "mask_file": "../../artifacts/cs2_bridge/dust2_walkability_mask_v1.png"
+}

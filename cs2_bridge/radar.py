@@ -296,3 +296,45 @@ def select_unambiguous_player_pose(candidates):
     if len(candidates) == 1:
         return candidates[0]
     raise ValueError('Multiple player markers are visible')
+
+
+class TemporalRadarPoseSelector:
+    """Resolve brief multi-candidate frames from a recent local-player track."""
+
+    def __init__(self, max_step_pixels=25.0, max_age_ms=1500.0):
+        if max_step_pixels <= 0 or max_age_ms <= 0:
+            raise ValueError('Temporal radar limits must be positive')
+        self.max_step_pixels = float(max_step_pixels)
+        self.max_age_ns = int(max_age_ms * 1_000_000)
+        self.previous = None
+        self.previous_ns = None
+
+    def reset(self):
+        self.previous = None
+        self.previous_ns = None
+
+    def select(self, candidates, timestamp_ns):
+        timestamp_ns = int(timestamp_ns)
+        try:
+            pose = select_unambiguous_player_pose(candidates)
+            source = 'single_frame'
+        except ValueError as error:
+            if (self.previous is None or self.previous_ns is None or
+                    timestamp_ns - self.previous_ns > self.max_age_ns):
+                raise error
+            preferred = [pose for pose in candidates
+                         if pose.heading_color == 'white'] or list(candidates)
+            distances = sorted((
+                (math.hypot(pose.x - self.previous.x,
+                            pose.y - self.previous.y), pose)
+                for pose in preferred), key=lambda item: item[0])
+            if not distances or distances[0][0] > self.max_step_pixels:
+                raise error
+            if (len(distances) > 1 and
+                    distances[1][0] - distances[0][0] < 3.0):
+                raise ValueError('Temporal player-marker match is ambiguous')
+            pose = distances[0][1]
+            source = 'temporal_nearest'
+        self.previous = pose
+        self.previous_ns = timestamp_ns
+        return pose, source

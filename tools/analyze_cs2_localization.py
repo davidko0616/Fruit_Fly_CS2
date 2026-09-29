@@ -6,6 +6,8 @@ import math
 from pathlib import Path
 import sys
 
+import numpy as np
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -13,7 +15,8 @@ from PIL import Image
 
 from cs2_bridge.clearance import Dust2ClearanceEstimator
 from cs2_bridge.radar import (
-    detect_player_pose_candidates, select_unambiguous_player_pose)
+    TemporalRadarPoseSelector, detect_player_pose_candidates)
+from cs2_bridge.radar_map import Dust2RadarMapLocalizer
 from cs2_bridge.schema import Dust2Calibration, PlayerPose
 
 
@@ -46,7 +49,8 @@ def _required_snap_world(estimator, x, y):
 
 
 def analyze(capture, calibration_path, clearance_path, output,
-            radar_search_bounds=(180, 100, 500, 400)):
+            radar_search_bounds=(180, 100, 500, 400),
+            radar_map_calibration_path=None):
     capture, output = Path(capture), Path(output)
     summary_path = output.with_suffix(output.suffix + '.summary.json')
     if output.exists() or summary_path.exists():
@@ -55,6 +59,10 @@ def analyze(capture, calibration_path, clearance_path, output,
     calibration = Dust2Calibration.from_dict(json.loads(
         Path(calibration_path).read_text(encoding='utf-8')))
     estimator = Dust2ClearanceEstimator.from_json(clearance_path)
+    radar_map_localizer = (
+        None if radar_map_calibration_path is None else
+        Dust2RadarMapLocalizer.from_json(radar_map_calibration_path))
+    pose_selector = TemporalRadarPoseSelector()
     results = []
     for frame in frames:
         region = frame.get('region', [0, 0, frame['width'], frame['height']])
@@ -66,8 +74,9 @@ def analyze(capture, calibration_path, clearance_path, output,
         }
         try:
             with Image.open(capture / frame['file']) as image:
+                rgb = image.convert('RGB')
                 candidates = detect_player_pose_candidates(
-                    image.convert('RGB'), origin=origin,
+                    rgb, origin=origin,
                     search_bounds=radar_search_bounds)
         except ValueError as error:
             result.update(status='radar_pose_failure', reason=str(error))
@@ -77,7 +86,8 @@ def analyze(capture, calibration_path, clearance_path, output,
         result['white_heading_candidate_count'] = sum(
             pose.heading_color == 'white' for pose in candidates)
         try:
-            pose = select_unambiguous_player_pose(candidates)
+            raw_pose, pose_source = pose_selector.select(
+                candidates, result['monotonic_ns'])
         except ValueError as error:
             result.update(
                 status='ambiguous_radar_pose',
@@ -85,7 +95,22 @@ def analyze(capture, calibration_path, clearance_path, output,
                 radar_candidates=[pose.to_dict() for pose in candidates])
             results.append(result)
             continue
-        result['radar_pose'] = pose.to_dict()
+        result['raw_radar_pose'] = raw_pose.to_dict()
+        result['radar_pose_source'] = pose_source
+        if radar_map_localizer is None:
+            pose = PlayerPose(
+                raw_pose.x, raw_pose.y, raw_pose.yaw_degrees)
+        else:
+            try:
+                pose, map_details = radar_map_localizer.localize(
+                    raw_pose, rgb, result['monotonic_ns'], origin)
+            except ValueError as error:
+                result.update(status='radar_map_failure', reason=str(error))
+                results.append(result)
+                continue
+            result['radar_map'] = map_details
+        result['radar_pose'] = {
+            'x': pose.x, 'y': pose.y, 'yaw_degrees': pose.yaw_degrees}
         if not (calibration.min_x <= pose.x <= calibration.max_x and
                 calibration.min_y <= pose.y <= calibration.max_y):
             result.update(status='radar_pose_out_of_calibration', reason=(
@@ -112,6 +137,8 @@ def analyze(capture, calibration_path, clearance_path, output,
         for row in results:
             destination.write(json.dumps(row, separators=(',', ':')) + '\n')
     counts = Counter(row['status'] for row in results)
+    accepted_snaps = [row['snap_world'] for row in results
+                      if row['status'] == 'accepted']
     summary = {
         'schema_version': 1,
         'frames': len(results),
@@ -128,6 +155,15 @@ def analyze(capture, calibration_path, clearance_path, output,
             'over_90': sum((row.get('required_snap_world') or 0) > 90
                            for row in results),
         },
+        'accepted_snap_world': {
+            'mean': (None if not accepted_snaps else
+                     float(np.mean(accepted_snaps))),
+            'p95': (None if not accepted_snaps else
+                    float(np.quantile(accepted_snaps, .95))),
+            'maximum': (None if not accepted_snaps else
+                        float(max(accepted_snaps))),
+            'over_30': sum(value > 30 for value in accepted_snaps),
+        },
     }
     summary_path.write_text(
         json.dumps(summary, indent=2) + '\n', encoding='utf-8')
@@ -139,6 +175,7 @@ def main():
     parser.add_argument('--capture', type=Path, required=True)
     parser.add_argument('--calibration', type=Path, required=True)
     parser.add_argument('--clearance-calibration', type=Path, required=True)
+    parser.add_argument('--radar-map-calibration', type=Path)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--radar-search-bounds', default='180,100,500,400')
     args = parser.parse_args()
@@ -147,7 +184,7 @@ def main():
         parser.error('radar search bounds must be min_x,min_y,max_x,max_y')
     print(json.dumps(analyze(
         args.capture, args.calibration, args.clearance_calibration,
-        args.output, bounds), indent=2))
+        args.output, bounds, args.radar_map_calibration), indent=2))
 
 
 if __name__ == '__main__':
