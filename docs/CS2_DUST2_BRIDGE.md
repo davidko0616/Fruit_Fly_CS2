@@ -190,9 +190,13 @@ latency, and effective frame rate.
 The corrected independent dense route is the fixed offline acceptance baseline:
 strict localization accepted 386 of 600 frames, including 155 live-target
 frames, and the frozen-policy replay produced zero masked-action violations.
-The live preflight is the next acceptance run. Only after a longer read-only run
-passes should proposed actions be mapped to local practice controls behind an
-explicit enable flag and immediate stop control.
+The first 15-second live preflight then accepted 57 of 60 frames, sustained the
+requested 4 Hz, and kept processing p95 at 113.8 ms with causal GSI and zero
+masked-action violations. Its three audit images all showed CS2 gameplay. See
+the [preflight result](../experiments/cs2_dust2_bridge/LIVE_SHADOW_PREFLIGHT_RESULT.json).
+A longer read-only run is the next acceptance gate. Only after it passes should
+proposed actions be mapped to local practice controls behind an explicit enable
+flag and immediate stop control.
 
 Visible-player captures and labels follow the separate
 [perception protocol](../experiments/cs2_dust2_bridge/PERCEPTION_PROTOCOL.md).

@@ -179,10 +179,14 @@ Older experiments cannot retroactively supply full activity traces.
    and NAV waypoints, and zero actions violated their masks. The new live runner
    processes screen frames in memory, causally matches GSI, persists controller
    memory across frames, and writes proposed actions plus latency and drop
-   evidence without sending input. First run a 15-second preflight, then a
-   5-10-minute session to measure latency, drop rate, and proposal stability.
+   evidence without sending input. The 15-second preflight passed: 57 of 60
+   frames were accepted, the loop sustained 4.0 Hz, processing p95 was 113.8 ms,
+   GSI was causal, and no proposed action violated its mask. Three audit frames
+   all showed CS2 gameplay. Next run a 5-10-minute session to measure latency,
+   drop rate, and proposal stability across more routes and encounters.
    Keep it read-only; do not add an input executor yet. See the
    [corrected dense result](../experiments/cs2_dust2_bridge/DENSE_ROUTE_REPLAY_RESULT_V2.json)
+   [preflight result](../experiments/cs2_dust2_bridge/LIVE_SHADOW_PREFLIGHT_RESULT.json),
    and [live-shadow instructions](CS2_DUST2_BRIDGE.md#continuous-live-shadow).
 2. Repeat matched actor comparisons only when they answer a specific scientific
    question. The one-time held-out FlyWire result was 51/64 hits (79.7%) and

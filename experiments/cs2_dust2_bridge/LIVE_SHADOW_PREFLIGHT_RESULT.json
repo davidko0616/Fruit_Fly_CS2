@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-09-29",
+  "status": "pass",
+  "execution": "live_shadow_read_only",
+  "input_emitted": false,
+  "source_artifact": "artifacts/cs2_bridge/dust2_live_shadow_preflight_20260929_01",
+  "conditions": {
+    "map": "de_dust2",
+    "session_state": "warmup",
+    "duration_seconds": 15.0,
+    "requested_hz": 4.0,
+    "mode": "greedy",
+    "policy_version": 80,
+    "detector_checkpoint_epoch": 5
+  },
+  "capture": {
+    "attempted_frames": 60,
+    "accepted_frames": 57,
+    "accepted_fraction": 0.95,
+    "gsi_rows": 46,
+    "effective_hz": 4.0,
+    "drops": {
+      "radar_pose_failure": 2,
+      "clearance_pose_failure": 1
+    },
+    "causal_gsi_for_all_matched_frames": true,
+    "mean_gsi_age_ms": 820.0333333333333,
+    "maximum_gsi_age_ms": 3109.0
+  },
+  "latency_ms": {
+    "capture_mean": 34.986986666666674,
+    "capture_p95": 32.19789,
+    "capture_maximum": 394.7499,
+    "accepted_processing_mean": 88.05670701754387,
+    "accepted_processing_p95": 113.79315999999997,
+    "accepted_processing_maximum": 135.4425
+  },
+  "perception_and_policy": {
+    "detections": 74,
+    "enemy_detections": 47,
+    "friendly_detections": 27,
+    "live_target_frames": 20,
+    "target_memory_frames": 30,
+    "waypoint_frames": 30,
+    "masked_action_violations": 0,
+    "action_counts": {
+      "fire": 9,
+      "forward": 18,
+      "strafe_left": 1,
+      "turn_left": 29
+    },
+    "action_transitions": 23,
+    "longest_identical_action_run": {
+      "action": "turn_left",
+      "frames": 7
+    }
+  },
+  "audit": {
+    "saved_images": 3,
+    "all_images_show_cs2_gameplay": true,
+    "settings_or_codex_frames": 0,
+    "all_shadow_rows_mark_input_emitted_false": true,
+    "all_decisions_mark_live_shadow_read_only": true,
+    "artifact_size_bytes": 2517318
+  },
+  "acceptance": {
+    "minimum_accepted_fraction": 0.9,
+    "maximum_processing_p95_ms": 250.0,
+    "requires_zero_masked_action_violations": true,
+    "requires_zero_input_emission": true,
+    "passed": true
+  },
+  "interpretation": "The bridge can sustain the requested four-hertz causal read-only loop on CPU. This short warmup preflight validates integration and timing, not behavioral quality. A five-to-ten-minute read-only session is required to assess proposal stability across more Dust II routes and encounters."
+}
