@@ -160,6 +160,10 @@ class ShadowProcessor:
                     detail=str(error))
                 return record
             record['radar_map'] = map_details
+        record['radar_pose'] = {
+            'x': radar_pose.x, 'y': radar_pose.y,
+            'yaw_degrees': radar_pose.yaw_degrees,
+        }
         if not (self.calibration.min_x <= radar_pose.x <= self.calibration.max_x and
                 self.calibration.min_y <= radar_pose.y <= self.calibration.max_y):
             record.update(
@@ -232,10 +236,6 @@ class ShadowProcessor:
         self.sequence += 1
         record.update(
             status='accepted', sequence=frame.sequence,
-            radar_pose={
-                'x': radar_pose.x, 'y': radar_pose.y,
-                'yaw_degrees': radar_pose.yaw_degrees,
-            },
             local_clearances=list(local_clearances),
             clearance_snap_world=clearance_details['snap_world'],
             clearance_mask_position=list(clearance_details['mask_position']),

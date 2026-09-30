@@ -205,10 +205,16 @@ sparse independent audit of the live run placed all 20 usable frames within the
 90-world-unit correction bound. See the
 [preflight result](../experiments/cs2_dust2_bridge/LIVE_SHADOW_PREFLIGHT_RESULT.json)
 and [five-minute diagnostic](../experiments/cs2_dust2_bridge/LIVE_SHADOW_5MIN_RESULT.json).
-The next gate is a 30-second live v2 preflight, followed by a repeat longer
-read-only run if it passes. Only after that should proposed actions be mapped to
-local practice controls behind an explicit enable flag and immediate stop
-control.
+The September 30 v2 preflight passed: 113 of 120 frames were accepted (94.2%),
+the loop sustained 4 Hz, processing p95 was 117.5 ms, and all decisions obeyed
+their action masks. Four startup frames lacked an A/B anchor and three poses
+exceeded the configured NAV correction bound. All six audit images showed active
+Dust II gameplay, every GSI match was causal, and no input was emitted. See the
+[v2 preflight result](../experiments/cs2_dust2_bridge/LIVE_SHADOW_GRID_V2_PREFLIGHT_RESULT.json).
+The next gate is now a five-to-ten-minute v2 read-only route covering both sites,
+spawns, mid, tunnels, and the connecting paths. Only after that should proposed
+actions be mapped to local practice controls behind an explicit enable flag and
+immediate stop control.
 
 Visible-player captures and labels follow the separate
 [perception protocol](../experiments/cs2_dust2_bridge/PERCEPTION_PROTOCOL.md).

@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-09-30",
+  "status": "pass",
+  "execution": "live_shadow_read_only",
+  "input_emitted": false,
+  "source_artifact": "artifacts/cs2_bridge/dust2_live_shadow_grid_v2_preflight_20260930_01",
+  "conditions": {
+    "map": "de_dust2",
+    "session_state": "warmup",
+    "duration_seconds": 30.0,
+    "requested_hz": 4.0,
+    "effective_hz": 4.0,
+    "mode": "greedy",
+    "policy_version": 80,
+    "radar_map_calibration": "experiments/cs2_dust2_bridge/dust2_radar_map_calibration_v2.json"
+  },
+  "capture": {
+    "attempted_frames": 120,
+    "accepted_frames": 113,
+    "accepted_fraction": 0.9416666666666667,
+    "gsi_rows": 59,
+    "drops": {
+      "radar_map_failure": 4,
+      "clearance_pose_failure": 3
+    },
+    "causal_gsi_for_all_frames": true,
+    "maximum_gsi_age_ms": 6023.0
+  },
+  "localization": {
+    "site_pair_frames": 96,
+    "single_site_frames": 13,
+    "recent_site_frames": 4,
+    "temporal_pose_selection_frames": 4,
+    "clearance_snap_world": {
+      "mean": 7.115305194561163,
+      "p50": 0.0,
+      "p95": 41.284721967721055,
+      "maximum": 89.2810066601101,
+      "over_30_frames": 11
+    }
+  },
+  "perception_and_policy": {
+    "live_target_frames": 26,
+    "target_memory_frames": 78,
+    "waypoint_frames": 78,
+    "action_counts": {
+      "fire": 8,
+      "forward": 36,
+      "strafe_left": 11,
+      "turn_left": 58
+    },
+    "action_transitions": 29,
+    "masked_action_violations": 0
+  },
+  "latency_ms": {
+    "capture_mean": 32.82969166666666,
+    "capture_p95": 31.707375,
+    "capture_maximum": 478.9854,
+    "accepted_processing_mean": 105.70795221238939,
+    "accepted_processing_p95": 117.49875999999998,
+    "accepted_processing_maximum": 194.8499
+  },
+  "audit": {
+    "saved_images": 6,
+    "all_images_show_cs2_gameplay": true,
+    "settings_console_desktop_or_codex_frames": 0,
+    "all_shadow_rows_mark_input_emitted_false": true,
+    "all_decisions_mark_live_shadow_read_only": true
+  },
+  "acceptance": {
+    "minimum_accepted_fraction": 0.9,
+    "minimum_effective_hz": 3.8,
+    "maximum_processing_p95_ms": 250.0,
+    "requires_zero_masked_action_violations": true,
+    "requires_zero_input_emission": true,
+    "passed": true
+  },
+  "interpretation": "The pan-corrected v2 bridge passed its short live CPU gate. It sustained four hertz, kept policy processing well below the latency limit, localized across T Start, Top of Mid, Outside Long, and Middle, and emitted no input. This validates live integration and coordinate handling, not gameplay quality.",
+  "next_gate": "Repeat a five-to-ten-minute read-only session across both sites, spawns, mid, tunnels, and connecting routes before designing an input executor."
+}

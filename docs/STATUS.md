@@ -179,10 +179,14 @@ Older experiments cannot retroactively supply full activity traces.
    and converts player and target geometry into the 128 by 128 policy grid.
    Reanalysis of the independent dense route accepted 588 of 600 frames (98.0%):
    two poses were ambiguous, ten lacked a usable anchor, and none failed NAV
-   clearance. Run a 30-second live v2 preflight next; if it passes, repeat the
-   five-to-ten-minute read-only session before adding any input executor. See the
+   clearance. The 30-second live v2 preflight then accepted 113 of 120 frames
+   (94.2%), sustained 4.0 Hz, kept processing p95 at 117.5 ms, and produced zero
+   mask violations or input events. Its six audit images were all active Dust II
+   gameplay. Repeat the five-to-ten-minute read-only session across the full map
+   before adding any input executor. See the
    [preflight result](../experiments/cs2_dust2_bridge/LIVE_SHADOW_PREFLIGHT_RESULT.json),
    [five-minute diagnostic](../experiments/cs2_dust2_bridge/LIVE_SHADOW_5MIN_RESULT.json),
+   [v2 preflight result](../experiments/cs2_dust2_bridge/LIVE_SHADOW_GRID_V2_PREFLIGHT_RESULT.json),
    and [live-shadow instructions](CS2_DUST2_BRIDGE.md#continuous-live-shadow).
 2. Repeat matched actor comparisons only when they answer a specific scientific
    question. The one-time held-out FlyWire result was 51/64 hits (79.7%) and
