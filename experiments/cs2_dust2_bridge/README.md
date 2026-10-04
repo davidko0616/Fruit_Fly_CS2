@@ -102,3 +102,11 @@ designed. The installed GSI config still used its 10-second read-only heartbeat,
 so the versioned heartbeat is reduced to 0.25 seconds before repeating the short
 trial; behavioral quality is not yet assessed. See
 [`GUARDED_CONTROLLER_NOFIRE_PREFLIGHT_RESULT.json`](GUARDED_CONTROLLER_NOFIRE_PREFLIGHT_RESULT.json).
+
+The approved repeat verified the 0.25-second heartbeat with 64 GSI rows and no
+stale-GSI rejection. It emitted one bounded right strafe and safely blocked 38
+fire proposals. The no-fire path now masks fire before policy selection so the
+greedy policy selects its next-best movement or turn, while the executor retains
+its independent fire block. No behavioral-quality claim is made from either
+short run. See
+[`GUARDED_CONTROLLER_NOFIRE_HEARTBEAT_RESULT.json`](GUARDED_CONTROLLER_NOFIRE_HEARTBEAT_RESULT.json).

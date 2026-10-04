@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-04",
+  "status": "pass_heartbeat_gate_selection_adjustment_required",
+  "execution": "live_controller_guarded",
+  "source_artifact": "artifacts/cs2_bridge/dust2_guarded_controller_nofire_preflight_20261004_02",
+  "conditions": {
+    "map": "de_dust2",
+    "requested_duration_seconds": 10.0,
+    "recorded_duration_seconds": 10.0,
+    "requested_hz": 4.0,
+    "effective_hz": 4.0,
+    "gsi_heartbeat_seconds": 0.25,
+    "mode": "greedy",
+    "policy_version": 80,
+    "fire_enabled": false,
+    "key_hold_ms": 60.0,
+    "turn_pixels": 32,
+    "maximum_frame_age_ms": 250.0,
+    "maximum_gsi_age_ms": 1000.0
+  },
+  "capture": {
+    "attempted_frames": 40,
+    "accepted_frames": 40,
+    "gsi_rows": 64,
+    "saved_images": 0,
+    "artifact_size_bytes": 695964
+  },
+  "execution_result": {
+    "proposed_actions": {
+      "fire": 39,
+      "strafe_right": 1
+    },
+    "emitted_actions": {
+      "strafe_right": 1
+    },
+    "blocked_actions": {
+      "fire_disabled": 38,
+      "stale_frame": 1
+    },
+    "emitted_action_frame_indices": [12],
+    "emitted_action_gsi_age_ms": [578.0],
+    "observed_gsi_age_ms_range": [94.0, 578.0],
+    "masked_action_violations": 0,
+    "fire_actions_emitted": 0,
+    "emergency_stop_triggered": false
+  },
+  "perception": {
+    "live_target_frames": 39,
+    "enemy_detections": 66,
+    "friendly_detections": 0,
+    "visual_validity_assessed": false,
+    "reason": "The approved run retained no screenshots. Detection correctness cannot be determined from telemetry alone."
+  },
+  "latency_ms": {
+    "capture_mean": 32.0620925,
+    "capture_p95": 31.435,
+    "capture_maximum": 304.5506,
+    "accepted_processing_mean": 92.14477,
+    "accepted_processing_p95": 116.19611,
+    "accepted_processing_maximum": 124.0142
+  },
+  "safety_assessment": {
+    "fresh_gsi_for_all_post_startup_frames": true,
+    "foreground_guard_passed_for_every_emitted_action": true,
+    "bounded_input_only": true,
+    "no_fire_mode_passed": true,
+    "no_screenshots_retained": true,
+    "passed": true
+  },
+  "selection_diagnosis": {
+    "interpretation": "The faster heartbeat removed every stale-GSI rejection. No-fire remained safe, but final-stage blocking caused the greedy policy to repeatedly propose fire rather than choose its next-best available movement action.",
+    "correction": "Mask fire before policy selection whenever no-fire mode is active, while retaining the executor fire guard as a second boundary."
+  },
+  "behavioral_quality_claimed": false,
+  "next_gate": "Repeat a separately approved short no-fire trial after preselection fire masking."
+}

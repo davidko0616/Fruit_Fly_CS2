@@ -252,6 +252,14 @@ versioned GSI config now uses a 0.25-second heartbeat; the installed config must
 be updated before a separately approved repeat. See the
 [preflight result](../experiments/cs2_dust2_bridge/GUARDED_CONTROLLER_NOFIRE_PREFLIGHT_RESULT.json).
 
+The second approved 10-second run verified that correction: 64 GSI rows kept
+all post-startup decisions within the one-second freshness limit. One right
+strafe was emitted; 38 fire proposals were blocked and no shot was sent. Because
+blocking fire only at the executor prevented the greedy policy from choosing
+its next-best action, no-fire mode now also masks fire before policy selection.
+The executor keeps its independent fire guard. See the
+[heartbeat result](../experiments/cs2_dust2_bridge/GUARDED_CONTROLLER_NOFIRE_HEARTBEAT_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with

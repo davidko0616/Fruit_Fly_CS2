@@ -382,6 +382,27 @@ class CS2BridgeTests(unittest.TestCase):
         self.assertTrue(record['decision']['action_mask'][
             record['decision']['action']])
 
+        no_fire_runner = PolicyRunner(
+            Dust2ObservationEncoder(calibration), FixedPolicy(),
+            execution='live_controller_guarded')
+        no_fire_processor = ShadowProcessor(
+            FixedDetector(), ('enemy',), calibration, target_calibration,
+            Dust2ClearanceEstimator(
+                clearance_calibration, Image.new('L', (240, 180), 255)),
+            no_fire_runner, radar_search_bounds=(0, 0, 239, 179),
+            execution='live_controller_guarded', allow_fire_actions=False)
+        no_fire_record = no_fire_processor.process(image, 1_000_000_000, {
+            'sequence': 3,
+            'received_monotonic_ns': 900_000_000,
+            'snapshot': {
+                'map_name': 'de_dust2', 'round_id': 'de_dust2:1',
+                'player_activity': 'playing', 'health': 100,
+            },
+        })
+        self.assertFalse(no_fire_record['fire_execution_enabled'])
+        self.assertFalse(no_fire_record['decision']['action_mask'][7])
+        self.assertNotEqual(no_fire_record['decision']['action_name'], 'fire')
+
     def test_radar_map_anchor_removes_pan_and_converts_local_geometry(self):
         image = Image.new('RGB', (600, 450), (40, 40, 40))
         draw = ImageDraw.Draw(image)

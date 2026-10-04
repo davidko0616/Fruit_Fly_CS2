@@ -74,7 +74,7 @@ class ShadowProcessor:
                  radar_search_bounds=(180, 100, 500, 400),
                  movement_threshold=.03, target_confidence=.15,
                  fire_confidence=.15, fire_half_angle_degrees=11.25,
-                 execution='live_shadow_read_only'):
+                 execution='live_shadow_read_only', allow_fire_actions=True):
         self.detector = detector
         self.class_names = tuple(class_names)
         self.calibration = calibration
@@ -92,6 +92,7 @@ class ShadowProcessor:
         self.fire_confidence = float(fire_confidence)
         self.fire_half_angle_degrees = float(fire_half_angle_degrees)
         self.execution = str(execution)
+        self.allow_fire_actions = bool(allow_fire_actions)
         self.sequence = 0
 
     def process(self, image, timestamp_ns, gsi_row, origin=(0, 0)):
@@ -101,6 +102,7 @@ class ShadowProcessor:
             'frame_index': None,
             'monotonic_ns': int(timestamp_ns),
             'execution': self.execution,
+            'fire_execution_enabled': self.allow_fire_actions,
             'input_emitted': False,
         }
         if gsi_row is None:
@@ -226,6 +228,9 @@ class ShadowProcessor:
         mask = build_action_mask(
             local_clearances, target, self.movement_threshold,
             self.fire_confidence, self.fire_half_angle_degrees)
+        if not self.allow_fire_actions:
+            mask = tuple(value if index != 7 else False
+                         for index, value in enumerate(mask))
         frame = BridgeFrame(
             sequence=self.sequence, monotonic_ns=timestamp_ns,
             round_id=snapshot['round_id'], map_name=self.calibration.map_name,
@@ -288,7 +293,9 @@ def run(args, action_executor=None):
         clearance_estimator, policy_runner, radar_map_localizer,
         score_threshold=args.score_threshold,
         max_gsi_age_ns=int(args.max_gsi_age_ms * 1_000_000),
-        radar_search_bounds=args.radar_search_bounds, execution=execution)
+        radar_search_bounds=args.radar_search_bounds, execution=execution,
+        allow_fire_actions=(action_executor is None or
+                            action_executor.config.fire_enabled))
 
     gsi_recorder = GSIRecorder(output / 'gsi.jsonl', args.gsi_token)
     server = ThreadingHTTPServer(
