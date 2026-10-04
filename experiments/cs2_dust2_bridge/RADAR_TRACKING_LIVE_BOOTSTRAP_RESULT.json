@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-04",
+  "status": "inconclusive_no_initial_anchor",
+  "execution": "live_controller_guarded",
+  "source_artifact": "artifacts/cs2_bridge/dust2_guarded_controller_nofire_8hz_tracking_20261004_01",
+  "conditions": {
+    "map": "de_dust2",
+    "requested_duration_seconds": 10.0,
+    "recorded_duration_seconds": 10.0,
+    "requested_hz": 8.0,
+    "effective_hz": 8.0,
+    "turn_pixels": 16,
+    "fire_enabled": false,
+    "saved_images": 0
+  },
+  "result": {
+    "attempted_frames": 80,
+    "accepted_frames": 0,
+    "gsi_rows": 61,
+    "valid_raw_player_pose_frames": 80,
+    "radar_map_failures": 80,
+    "failure": "No usable radar site anchors",
+    "emitted_input_actions": 0,
+    "masked_action_violations": 0,
+    "artifact_size_bytes": 159611
+  },
+  "diagnosis": {
+    "initial_direct_anchor_available": false,
+    "short_horizon_tracker_initialized": false,
+    "interpretation": "The trial began at the anchorless position left by the prior controller run. Consecutive texture tracking can bridge loss after a direct anchor but cannot infer an absolute map origin before its first anchor."
+  },
+  "safety_assessment": {
+    "input_emitted_without_absolute_localization": false,
+    "no_fire_mode_passed": true,
+    "no_screenshots_retained": true,
+    "passed": true
+  },
+  "behavioral_quality_claimed": false,
+  "next_gate": "Restart the local Dust II round to restore a visible startup anchor, then repeat the separately approved 10-second 8 Hz no-fire tracking trial."
+}

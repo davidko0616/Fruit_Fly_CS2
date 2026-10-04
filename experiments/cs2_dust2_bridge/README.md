@@ -140,3 +140,10 @@ route acceptance from 588/600 to 598/600, eliminated all radar-map failures, and
 kept all 54 tracked frames within 18.4 world units of walkable NAV space. The two
 remaining rejections were ambiguous player markers. See
 [`RADAR_MAP_TRACKING_REANALYSIS.json`](RADAR_MAP_TRACKING_REANALYSIS.json).
+
+The first live tracker validation started from the anchorless position left by
+the preceding run. The player marker was valid on all 80 frames, but no site
+anchor was available to initialize an absolute map origin. The bridge correctly
+emitted no input. Until global reference matching is added, live trials must
+start after a local round restart with a visible site anchor. See
+[`RADAR_TRACKING_LIVE_BOOTSTRAP_RESULT.json`](RADAR_TRACKING_LIVE_BOOTSTRAP_RESULT.json).

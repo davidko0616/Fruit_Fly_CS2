@@ -295,6 +295,14 @@ frames. Tracked frames required at most 18.4 world units of NAV correction. The
 two remaining drops were ambiguous player-marker frames. See the
 [tracking reanalysis](../experiments/cs2_dust2_bridge/RADAR_MAP_TRACKING_REANALYSIS.json).
 
+The first live tracking validation began at the anchorless position left by the
+previous run. All 80 raw player-marker poses were valid, but the localizer had no
+absolute site anchor from which to initialize texture tracking, so all frames
+failed closed and no input was emitted. The current tracker bridges temporary
+anchor loss; it does not yet provide global anchorless startup. Short trials must
+therefore begin after a local round restart where a site anchor is visible. See
+the [bootstrap result](../experiments/cs2_dust2_bridge/RADAR_TRACKING_LIVE_BOOTSTRAP_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with
