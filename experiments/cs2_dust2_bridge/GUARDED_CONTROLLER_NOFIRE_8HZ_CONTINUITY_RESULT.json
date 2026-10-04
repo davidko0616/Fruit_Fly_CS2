@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-04",
+  "status": "pass_continuity_tracker_not_exercised",
+  "execution": "live_controller_guarded",
+  "source_artifact": "artifacts/cs2_bridge/dust2_guarded_controller_nofire_8hz_tracking_20261004_03",
+  "conditions": {
+    "map": "de_dust2",
+    "requested_duration_seconds": 10.0,
+    "recorded_duration_seconds": 10.109,
+    "requested_hz": 8.0,
+    "effective_hz": 7.8148184785835,
+    "turn_pixels": 16,
+    "key_hold_ms": 60.0,
+    "fire_enabled": false,
+    "fire_masked_before_policy_selection": true,
+    "saved_images": 0
+  },
+  "capture": {
+    "attempted_frames": 79,
+    "accepted_frames": 79,
+    "accepted_fraction": 1.0,
+    "gsi_rows": 64,
+    "artifact_size_bytes": 1250821
+  },
+  "execution_result": {
+    "proposed_and_emitted_actions": {
+      "forward": 1,
+      "turn_left": 78
+    },
+    "emitted_action_count": 79,
+    "blocked_actions": {},
+    "masked_action_violations": 0,
+    "fire_selected": 0,
+    "fire_actions_emitted": 0
+  },
+  "localization": {
+    "accepted_frames": 79,
+    "radar_map_failures": 0,
+    "source_counts": {
+      "site_pair": 48,
+      "single_site": 31,
+      "tracked_map_pan": 0
+    },
+    "clearance_snap_world_mean": 2.5101756136610462,
+    "clearance_snap_world_p95": 7.336486860330133,
+    "clearance_snap_world_maximum": 9.768238161140456,
+    "interpretation": "Direct site anchors remained usable for the full run. Localization continuity passed, but the new texture tracker was not exercised live."
+  },
+  "freshness_ms": {
+    "gsi_minimum": 125.0,
+    "gsi_maximum": 625.0,
+    "frame_minimum": 101.0,
+    "frame_maximum": 234.0
+  },
+  "latency_ms": {
+    "capture_mean": 25.44346582278481,
+    "capture_p95": 24.13341,
+    "capture_maximum": 256.6395,
+    "accepted_processing_mean": 100.78405569620254,
+    "accepted_processing_p95": 108.125,
+    "accepted_processing_maximum": 112.9936
+  },
+  "perception_and_behavior": {
+    "live_target_frames": 0,
+    "target_memory_frames": 0,
+    "waypoint_frames": 0,
+    "turn_left_fraction": 0.9873417721518988,
+    "interpretation": "With no visible or remembered target, the frozen greedy policy searched almost exclusively by rotating left. This is safe and smooth at 8 Hz but is not natural Dust II exploration."
+  },
+  "safety_assessment": {
+    "continuous_localization": true,
+    "all_accepted_actions_emitted": true,
+    "bounded_input_only": true,
+    "no_fire_mode_passed": true,
+    "no_screenshots_retained": true,
+    "passed": true
+  },
+  "behavioral_quality_claimed": false,
+  "next_gate": "Add or train a map-specific exploration objective for the no-target state so the FlyWire controller patrols instead of rotating indefinitely; then validate tracker use during actual translation."
+}

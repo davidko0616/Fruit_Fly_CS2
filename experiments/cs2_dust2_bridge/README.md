@@ -147,3 +147,11 @@ anchor was available to initialize an absolute map origin. The bridge correctly
 emitted no input. Until global reference matching is added, live trials must
 start after a local round restart with a visible site anchor. See
 [`RADAR_TRACKING_LIVE_BOOTSTRAP_RESULT.json`](RADAR_TRACKING_LIVE_BOOTSTRAP_RESULT.json).
+
+A one-frame diagnostic then confirmed a valid anchored radar view. The final
+8 Hz retry accepted and executed all 79 frames with no localization or safety
+failures. Anchors stayed visible, so live texture tracking remains unexercised.
+The no-target greedy policy produced 78 left turns and one forward step, showing
+that the next controller problem is map-specific exploration rather than input
+safety or timing. See
+[`GUARDED_CONTROLLER_NOFIRE_8HZ_CONTINUITY_RESULT.json`](GUARDED_CONTROLLER_NOFIRE_8HZ_CONTINUITY_RESULT.json).

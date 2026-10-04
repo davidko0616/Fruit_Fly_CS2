@@ -303,6 +303,15 @@ anchor loss; it does not yet provide global anchorless startup. Short trials mus
 therefore begin after a local round restart where a site anchor is visible. See
 the [bootstrap result](../experiments/cs2_dust2_bridge/RADAR_TRACKING_LIVE_BOOTSTRAP_RESULT.json).
 
+After a one-frame diagnostic confirmed both site labels and the player marker,
+the final 8 Hz retry accepted and executed all 79 captured frames with zero
+localization or safety failures. Direct anchors remained visible throughout, so
+the texture tracker was not exercised live. With no visible or remembered
+target, the frozen greedy policy chose 78 left turns and one forward step. The
+next behavior gate is therefore map-specific no-target exploration rather than
+a longer spinning run. See the
+[continuity result](../experiments/cs2_dust2_bridge/GUARDED_CONTROLLER_NOFIRE_8HZ_CONTINUITY_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with
