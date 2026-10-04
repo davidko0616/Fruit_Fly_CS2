@@ -285,6 +285,16 @@ pan tracking is required before a longer controller run. Player feedback is
 still needed to judge whether the 8 Hz turns looked smoother. See the
 [8 Hz result](../experiments/cs2_dust2_bridge/GUARDED_CONTROLLER_NOFIRE_8HZ_RESULT.json).
 
+The player confirmed that the 8 Hz motion looked much smoother. The bridge now
+tracks short radar-map translations from the visible map texture for at most six
+seconds after the last direct site anchor, rejects shifts above eight pixels per
+frame or weak correlations, and resets the horizon whenever an anchor returns.
+On the 600-frame regression route this increased accepted localization from 588
+to 598 frames, eliminated all ten radar-map failures, and used tracked pan on 54
+frames. Tracked frames required at most 18.4 world units of NAV correction. The
+two remaining drops were ambiguous player-marker frames. See the
+[tracking reanalysis](../experiments/cs2_dust2_bridge/RADAR_MAP_TRACKING_REANALYSIS.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with

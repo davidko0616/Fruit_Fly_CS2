@@ -431,6 +431,52 @@ class CS2BridgeTests(unittest.TestCase):
         self.assertAlmostEqual(converted.forward, 2.5)
         self.assertAlmostEqual(converted.right, 0)
 
+    def test_radar_map_tracks_pan_after_site_anchors_leave_view(self):
+        calibration = RadarMapCalibration(
+            map_name='de_dust2', screen_scale_x=.5, screen_scale_y=.25,
+            site_b_overview_x=100, site_b_overview_y=200,
+            site_separation_screen_x=205, site_separation_screen_y=13,
+            overview_grid_step=8, overview_grid_offset=4,
+            anchor_match_radius=10, anchor_max_age_ms=500,
+            tracking_max_age_ms=6000, tracking_max_shift_pixels=8,
+            tracking_min_response=.12)
+
+        def radar_image(shift_x=0, shift_y=0, anchors=False):
+            image = Image.new('RGB', (600, 450), (40, 40, 40))
+            draw = ImageDraw.Draw(image)
+            for box, color in (
+                    ((185, 105, 245, 125), (90, 90, 90)),
+                    ((270, 115, 295, 205), (125, 125, 125)),
+                    ((330, 190, 450, 215), (75, 75, 75)),
+                    ((455, 110, 485, 245), (110, 110, 110))):
+                draw.rectangle(tuple(
+                    value + (shift_x if index % 2 == 0 else shift_y)
+                    for index, value in enumerate(box)), fill=color)
+            if anchors:
+                draw.rectangle((200, 140, 217, 159), fill=(165, 135, 60))
+                draw.rectangle((405, 153, 422, 172), fill=(165, 135, 60))
+            return image
+
+        localizer = Dust2RadarMapLocalizer(calibration)
+        initial_pose, initial_details = localizer.localize(
+            RadarPose(258.5, 174.5, 45, 1, 100, 40, 'white'),
+            radar_image(anchors=True), timestamp_ns=1_000_000_000)
+        self.assertEqual(initial_details['source'], 'site_pair')
+
+        tracked_pose, tracked_details = localizer.localize(
+            RadarPose(261.5, 172.5, 45, 1, 100, 40, 'white'),
+            radar_image(3, -2), timestamp_ns=1_125_000_000)
+        self.assertEqual(tracked_details['source'], 'tracked_map_pan')
+        self.assertAlmostEqual(tracked_details['tracking_shift'][0], 3, delta=.35)
+        self.assertAlmostEqual(tracked_details['tracking_shift'][1], -2, delta=.35)
+        self.assertAlmostEqual(tracked_pose.x, initial_pose.x, delta=.1)
+        self.assertAlmostEqual(tracked_pose.y, initial_pose.y, delta=.1)
+
+        with self.assertRaisesRegex(ValueError, 'No usable radar site anchors'):
+            localizer.localize(
+                RadarPose(261.5, 172.5, 45, 1, 100, 40, 'white'),
+                radar_image(3, -2), timestamp_ns=7_100_000_000)
+
     def test_temporal_radar_selector_resolves_only_nearby_candidate(self):
         selector = TemporalRadarPoseSelector(
             max_step_pixels=10, max_age_ms=1000)

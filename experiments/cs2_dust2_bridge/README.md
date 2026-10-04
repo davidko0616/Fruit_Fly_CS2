@@ -6,7 +6,7 @@ own-player/map GSI, encodes visibility-gated
 Dust II frames with last-seen target memory, and replays them through the
 confirmed 100-neuron FlyWire policy without game input.
 
-The full 67-test suite passes (with one expected CUDA skip), and the committed
+The full 68-test suite passes (with one expected CUDA skip), and the committed
 three-frame fixture completes an
 end-to-end replay through policy version 100. This validates interfaces and
 memory transformations only; it is not Dust II training or performance evidence.
@@ -132,3 +132,11 @@ rejected all remaining frames and emitted no further input. The next engineering
 gate is anchorless short-horizon radar-map pan tracking. Player feedback remains
 the evidence for whether the 16-pixel 8 Hz turn steps looked smoother. See
 [`GUARDED_CONTROLLER_NOFIRE_8HZ_RESULT.json`](GUARDED_CONTROLLER_NOFIRE_8HZ_RESULT.json).
+
+The player confirmed that 8 Hz looked much smoother. Short-horizon phase
+correlation now tracks radar-map pan from map texture when site labels disappear,
+with strict correlation, shift, and six-second age limits. It raised regression
+route acceptance from 588/600 to 598/600, eliminated all radar-map failures, and
+kept all 54 tracked frames within 18.4 world units of walkable NAV space. The two
+remaining rejections were ambiguous player markers. See
+[`RADAR_MAP_TRACKING_REANALYSIS.json`](RADAR_MAP_TRACKING_REANALYSIS.json).

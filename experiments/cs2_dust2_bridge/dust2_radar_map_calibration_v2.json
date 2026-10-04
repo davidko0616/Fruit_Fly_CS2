@@ -12,7 +12,10 @@
     "overview_grid_step": 8.0,
     "overview_grid_offset": 4.0,
     "anchor_match_radius": 35.0,
-    "anchor_max_age_ms": 2000.0
+    "anchor_max_age_ms": 2000.0,
+    "tracking_max_age_ms": 6000.0,
+    "tracking_max_shift_pixels": 8.0,
+    "tracking_min_response": 0.12
   },
   "fit": {
     "source_capture": "artifacts/cs2_bridge/dust2_dense_route_20260929_02",

@@ -75,7 +75,10 @@
     "no_screenshots_retained": true,
     "passed": true
   },
-  "actuator_smoothness_feedback": null,
+  "actuator_smoothness_feedback": {
+    "smoother_than_4_hz": true,
+    "reported_by_player": true
+  },
   "behavioral_quality_claimed": false,
-  "next_gate": "Record player feedback on 8 Hz smoothness, then add anchorless short-horizon radar-map pan tracking before any longer controller run."
+  "next_gate": "Repeat a separately approved 10-second 8 Hz no-fire trial with the offline-validated short-horizon radar-map pan tracker."
 }

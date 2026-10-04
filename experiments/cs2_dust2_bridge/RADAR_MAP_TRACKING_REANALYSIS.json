@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-04",
+  "status": "pass",
+  "source_capture": "artifacts/cs2_bridge/dust2_dense_route_20260929_02",
+  "source_output": "artifacts/cs2_bridge/dust2_dense_route_20260929_02_tracking_reanalysis_v1.jsonl",
+  "method": {
+    "description": "Windowed high-pass phase correlation tracks short-horizon radar-map translation when neither A/B site anchor is usable.",
+    "maximum_age_from_direct_anchor_ms": 6000.0,
+    "maximum_per_frame_shift_pixels": 8.0,
+    "minimum_correlation_response": 0.12,
+    "direct_anchor_reacquisition_resets_horizon": true,
+    "fail_closed_after_horizon_or_invalid_shift": true
+  },
+  "reanalysis": {
+    "frames": 600,
+    "previous_accepted_frames": 588,
+    "accepted_frames": 598,
+    "accepted_fraction": 0.9966666666666667,
+    "improvement_frames": 10,
+    "ambiguous_player_marker_frames": 2,
+    "radar_map_failure_frames": 0,
+    "source_counts": {
+      "site_pair": 433,
+      "single_site": 110,
+      "tracked_map_pan": 54,
+      "recent_site": 1
+    }
+  },
+  "tracked_frames": {
+    "count": 54,
+    "clearance_snap_world_mean": 0.705065270973731,
+    "clearance_snap_world_maximum": 18.341734762858213,
+    "clearance_snap_over_30_frames": 0,
+    "correlation_response_minimum": 0.16166192293167114,
+    "correlation_response_maximum": 1.0,
+    "per_frame_shift_pixels_maximum": 5.254258454630558
+  },
+  "all_accepted_frames": {
+    "clearance_snap_world_mean": 2.593503283152586,
+    "clearance_snap_world_p95": 19.877444579831074,
+    "clearance_snap_world_maximum": 72.42108275313728,
+    "clearance_snap_over_30_frames": 24
+  },
+  "cpu_benchmark": {
+    "mean_tracking_ms_per_frame": 6.080674,
+    "interpretation": "The added tracking cost fits within the prior 8 Hz run's CPU timing margin."
+  },
+  "tests": {
+    "full_suite_tests": 68,
+    "passed": 67,
+    "expected_cuda_skips": 1,
+    "synthetic_pan_preserves_pose": true,
+    "tracking_horizon_fails_closed": true
+  },
+  "limitations": {
+    "independent_acceptance_claimed": false,
+    "reason": "This recorded route was already used during radar-map calibration work. It is regression evidence, not an independent live acceptance run."
+  },
+  "acceptance": {
+    "requires_zero_radar_map_failures": true,
+    "requires_tracked_snap_maximum_below_30_world_units": true,
+    "requires_per_frame_shift_below_configured_limit": true,
+    "requires_full_test_suite_pass": true,
+    "passed": true
+  },
+  "next_gate": "Run a separately approved 10-second 8 Hz no-fire controller repeat and require continuous safe localization across the previous anchor-loss interval."
+}

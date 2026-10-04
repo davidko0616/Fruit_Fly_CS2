@@ -23,18 +23,25 @@ class RadarMapCalibration:
     overview_grid_offset: float
     anchor_match_radius: float
     anchor_max_age_ms: float
+    tracking_max_age_ms: float = 6_000.0
+    tracking_max_shift_pixels: float = 8.0
+    tracking_min_response: float = .12
 
     def __post_init__(self):
         if self.map_name != 'de_dust2':
             raise ValueError('Radar-map calibration must be for de_dust2')
         positive = (
             'screen_scale_x', 'screen_scale_y', 'overview_grid_step',
-            'anchor_match_radius', 'anchor_max_age_ms')
+            'anchor_match_radius', 'anchor_max_age_ms',
+            'tracking_max_age_ms', 'tracking_max_shift_pixels',
+            'tracking_min_response')
         for name in positive:
             value = float(getattr(self, name))
             if not math.isfinite(value) or value <= 0:
                 raise ValueError(f'{name} must be finite and positive')
             object.__setattr__(self, name, value)
+        if self.tracking_min_response > 1:
+            raise ValueError('tracking_min_response must not exceed one')
         for name in (
                 'site_b_overview_x', 'site_b_overview_y',
                 'site_separation_screen_x', 'site_separation_screen_y',
@@ -49,7 +56,10 @@ class RadarMapCalibration:
         if value.get('schema_version', 1) != 1:
             raise ValueError('Unsupported radar-map calibration schema')
         fields = value.get('calibration', value)
-        return cls(**{name: fields[name] for name in cls.__dataclass_fields__})
+        return cls(**{
+            name: fields[name] for name in cls.__dataclass_fields__
+            if name in fields
+        })
 
     @classmethod
     def from_json(cls, path):
@@ -87,6 +97,62 @@ def detect_site_anchor_candidates(
     return tuple(candidates)
 
 
+def _radar_tracking_crop(
+        image, origin=(0, 0), bounds=(170, 90, 510, 260)):
+    """Return a windowed high-pass radar crop for translation tracking."""
+    grayscale = np.asarray(image.convert('L'), dtype=np.float32)
+    min_x, min_y, max_x, max_y = bounds
+    x0 = max(0, int(math.floor(min_x - origin[0])))
+    y0 = max(0, int(math.floor(min_y - origin[1])))
+    x1 = min(grayscale.shape[1], int(math.ceil(max_x - origin[0])) + 1)
+    y1 = min(grayscale.shape[0], int(math.ceil(max_y - origin[1])) + 1)
+    if x1 - x0 < 32 or y1 - y0 < 32:
+        raise ValueError('Radar tracking bounds do not overlap enough of the image')
+    crop = grayscale[y0:y1, x0:x1]
+    crop = crop - ndimage.gaussian_filter(crop, sigma=3)
+    window = np.outer(np.hanning(crop.shape[0]), np.hanning(crop.shape[1]))
+    return crop * window.astype(np.float32)
+
+
+def _parabolic_peak(values, index):
+    """Estimate a periodic correlation peak offset within one pixel."""
+    center = float(values[index])
+    left = float(values[(index - 1) % len(values)])
+    right = float(values[(index + 1) % len(values)])
+    denominator = left - 2 * center + right
+    if abs(denominator) < 1e-12:
+        return 0.0
+    return float(np.clip(.5 * (left - right) / denominator, -.5, .5))
+
+
+def _estimate_map_shift(previous, current, max_shift_pixels, min_response):
+    """Estimate the current radar-map translation relative to the prior crop."""
+    if previous.shape != current.shape:
+        return None
+    previous_fft = np.fft.fft2(previous)
+    current_fft = np.fft.fft2(current)
+    cross_power = current_fft * np.conj(previous_fft)
+    magnitude = np.abs(cross_power)
+    cross_power /= np.maximum(magnitude, 1e-9)
+    correlation = np.abs(np.fft.ifft2(cross_power))
+    peak_y, peak_x = np.unravel_index(
+        int(np.argmax(correlation)), correlation.shape)
+    response = float(correlation[peak_y, peak_x])
+    if response < min_response:
+        return None
+    offset_x = _parabolic_peak(correlation[peak_y, :], peak_x)
+    offset_y = _parabolic_peak(correlation[:, peak_x], peak_y)
+    shift_x = float(peak_x + offset_x)
+    shift_y = float(peak_y + offset_y)
+    if shift_x > correlation.shape[1] / 2:
+        shift_x -= correlation.shape[1]
+    if shift_y > correlation.shape[0] / 2:
+        shift_y -= correlation.shape[0]
+    if math.hypot(shift_x, shift_y) > max_shift_pixels:
+        return None
+    return shift_x, shift_y, response
+
+
 class Dust2RadarMapLocalizer:
     """Remove HUD radar pan and return pose in the training grid system."""
 
@@ -94,6 +160,7 @@ class Dust2RadarMapLocalizer:
         self.calibration = calibration
         self.site_b_screen = None
         self.anchor_ns = None
+        self.previous_radar_crop = None
 
     @classmethod
     def from_json(cls, path):
@@ -102,8 +169,9 @@ class Dust2RadarMapLocalizer:
     def reset(self):
         self.site_b_screen = None
         self.anchor_ns = None
+        self.previous_radar_crop = None
 
-    def _select_site_b(self, candidates, timestamp_ns):
+    def _select_site_b(self, candidates, timestamp_ns, tracked_shift=None):
         calibration = self.calibration
         expected_dx = calibration.site_separation_screen_x
         expected_dy = calibration.site_separation_screen_y
@@ -132,23 +200,49 @@ class Dust2RadarMapLocalizer:
                     matches.append((a_error, (
                         candidate[0] - expected_dx,
                         candidate[1] - expected_dy)))
-            if not matches:
-                raise ValueError('No radar site anchor matches recent map pan')
-            _, site_b = min(matches, key=lambda item: item[0])
-            source = 'single_site'
-        elif (self.site_b_screen is not None and self.anchor_ns is not None and
+            if matches:
+                _, site_b = min(matches, key=lambda item: item[0])
+                source = 'single_site'
+            else:
+                site_b = None
+                source = None
+        else:
+            site_b = None
+            source = None
+        if (site_b is None and self.site_b_screen is not None and
+                self.anchor_ns is not None and tracked_shift is not None and
+                timestamp_ns - self.anchor_ns <=
+                calibration.tracking_max_age_ms * 1_000_000):
+            shift_x, shift_y, _ = tracked_shift
+            site_b = (
+                self.site_b_screen[0] + shift_x,
+                self.site_b_screen[1] + shift_y)
+            source = 'tracked_map_pan'
+        elif (site_b is None and self.site_b_screen is not None and
+              self.anchor_ns is not None and
               timestamp_ns - self.anchor_ns <=
               calibration.anchor_max_age_ms * 1_000_000):
             return self.site_b_screen, 'recent_site'
-        else:
+        elif site_b is None:
             raise ValueError('No usable radar site anchors')
         self.site_b_screen = tuple(float(value) for value in site_b)
-        self.anchor_ns = int(timestamp_ns)
+        if source in ('site_pair', 'single_site'):
+            self.anchor_ns = int(timestamp_ns)
         return self.site_b_screen, source
 
     def localize(self, raw_pose, image, timestamp_ns, origin=(0, 0)):
         candidates = detect_site_anchor_candidates(image, origin)
-        site_b, source = self._select_site_b(candidates, int(timestamp_ns))
+        current_crop = _radar_tracking_crop(image, origin)
+        tracked_shift = None
+        if self.previous_radar_crop is not None:
+            tracked_shift = _estimate_map_shift(
+                self.previous_radar_crop, current_crop,
+                self.calibration.tracking_max_shift_pixels,
+                self.calibration.tracking_min_response)
+        site_b, source = self._select_site_b(
+            candidates, int(timestamp_ns), tracked_shift)
+        if source != 'recent_site':
+            self.previous_radar_crop = current_crop
         calibration = self.calibration
         overview_x = (calibration.site_b_overview_x +
                       (raw_pose.x - site_b[0]) / calibration.screen_scale_x)
@@ -168,6 +262,10 @@ class Dust2RadarMapLocalizer:
             'candidate_count': len(candidates),
             'site_b_screen': list(site_b),
             'overview_position': [overview_x, overview_y],
+            'tracking_shift': (None if tracked_shift is None else
+                               list(tracked_shift[:2])),
+            'tracking_response': (None if tracked_shift is None else
+                                  tracked_shift[2]),
         }
 
     def convert_target(self, target, raw_yaw_degrees):
