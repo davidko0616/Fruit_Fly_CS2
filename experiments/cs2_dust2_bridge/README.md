@@ -118,3 +118,9 @@ freshness limits, with no firing, safety blocks, saved screenshots, or mask
 violations. This validates real no-fire input integration; observed navigation
 quality still needs player feedback. See
 [`GUARDED_CONTROLLER_NOFIRE_MOVEMENT_RESULT.json`](GUARDED_CONTROLLER_NOFIRE_MOVEMENT_RESULT.json).
+
+The player observed controlled movement and slight spinning, but the 4 Hz turn
+steps did not look natural. The next short trial will use 8 Hz updates and
+16-pixel turn steps, which preserves approximately the same turn speed while
+doubling its temporal resolution. A dedicated F12 drill is skipped; F12 remains
+available and the executor releases movement keys on exit or capture failure.

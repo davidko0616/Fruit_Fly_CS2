@@ -269,6 +269,13 @@ were retained, so this proves the guarded integration path rather than Dust II
 gameplay quality. See the
 [movement result](../experiments/cs2_dust2_bridge/GUARDED_CONTROLLER_NOFIRE_MOVEMENT_RESULT.json).
 
+The player confirmed that the character moved and turned without behaving
+wildly, but that four instantaneous turn steps per second looked unnatural. The
+next actuator trial keeps approximately the same turn speed while using 8 Hz
+policy updates and 16-pixel turn steps. A separate live F12 drill is not required
+before that short trial; the stop path remains available, is covered by the fake
+backend tests, and keys are released on normal exit or capture failure.
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with

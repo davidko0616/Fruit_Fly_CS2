@@ -58,6 +58,13 @@
     "visual_validity_assessed": false,
     "reason": "The approved run retained no screenshots. Gameplay quality and detection correctness require player feedback or a separately approved visual audit."
   },
+  "player_feedback": {
+    "movement_observed": true,
+    "turning_observed": true,
+    "behavior_wild_or_uncontrolled": false,
+    "natural_movement": false,
+    "observation": "The player moved and spun slightly without behaving wildly, but turning looked unnatural because its update rate was low."
+  },
   "latency_ms": {
     "capture_mean": 28.30695,
     "capture_p95": 24.42882,
@@ -77,5 +84,5 @@
   },
   "interpretation": "The third short trial validates the complete guarded CPU perception-policy-input loop for no-fire movement and turning. Every frame stayed within the state-freshness limits and produced one bounded action. This is an integration and safety result, not evidence that the current policy navigates Dust II well.",
   "behavioral_quality_claimed": false,
-  "next_gate": "Collect player feedback on observed behavior, then run a separately approved live F12 emergency-stop drill before any longer controller trial."
+  "next_gate": "Run a separately approved 10-second no-fire actuator-tuning trial at 8 Hz with 16-pixel turn steps, preserving approximately the same turn speed with twice the update rate."
 }
