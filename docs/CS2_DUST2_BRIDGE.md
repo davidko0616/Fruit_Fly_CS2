@@ -312,13 +312,25 @@ next behavior gate is therefore map-specific no-target exploration rather than
 a longer spinning run. See the
 [continuity result](../experiments/cs2_dust2_bridge/GUARDED_CONTROLLER_NOFIRE_8HZ_CONTINUITY_RESULT.json).
 
+The no-target path now supports a deterministic Dust II patrol planner. It
+cycles through eight widely separated goals on the existing NAV grid and feeds
+the next safe waypoint through the same 14-value geometry used for remembered
+targets. A visible enemy takes priority, remembered target state takes priority
+until it expires, and patrol metadata stays distinct from target memory in the
+audit record. Counterfactual replay of the passing 79-frame live trace activated
+patrol on every frame with zero planner rejections. On those recorded poses the
+frozen FlyWire policy changed from 78 left turns and one forward step to 48
+forward steps and 31 right strafes. This verifies integration, not closed-loop
+gameplay quality. See the
+[offline patrol replay](../experiments/cs2_dust2_bridge/PATROL_OFFLINE_REPLAY_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with
 `run_cs2_controller.py`, choose a new output directory, and append:
 
 ```powershell
---enable-input --confirm-local-practice LOCAL_PRACTICE_ONLY
+--enable-patrol --enable-input --confirm-local-practice LOCAL_PRACTICE_ONLY
 ```
 
 Visible-player captures and labels follow the separate

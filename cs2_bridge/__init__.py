@@ -7,13 +7,13 @@ from .radar import RadarEnemyMarker, RadarPose, detect_enemy_markers, detect_pla
 from .radar_map import Dust2RadarMapLocalizer, RadarMapCalibration
 from .target import VisibleTargetCalibration
 from .schema import BridgeFrame, Dust2Calibration, PlayerPose, VisibleTarget
-from .waypoint import Dust2WaypointPlanner, WaypointPlan
+from .waypoint import Dust2PatrolPlanner, Dust2WaypointPlanner, PatrolPlan, WaypointPlan
 
 __all__ = [
     'BridgeFrame', 'Dust2Calibration', 'Dust2ObservationEncoder', 'GSISnapshot',
     'Dust2RadarMapLocalizer', 'GuardedActionExecutor', 'InputSafetyConfig',
     'ObservationResult', 'PlayerPose',
     'RadarMapCalibration', 'RadarPose', 'VisibleTarget',
-    'Dust2WaypointPlanner', 'WaypointPlan',
+    'Dust2PatrolPlanner', 'Dust2WaypointPlanner', 'PatrolPlan', 'WaypointPlan',
     'detect_player_pose', 'parse_gsi_payload',
 ]

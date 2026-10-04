@@ -19,6 +19,10 @@ class ObservationResult:
     waypoint_path_remaining: float | None
     waypoint_target_snap_world: float | None
     waypoint_planner_rejection: str | None
+    waypoint_source: str | None
+    patrol_active: bool
+    patrol_goal_world: tuple[float, float] | None
+    patrol_goal_index: int | None
 
 
 class Dust2ObservationEncoder:
@@ -28,12 +32,13 @@ class Dust2ObservationEncoder:
 
     def __init__(self, calibration: Dust2Calibration,
                  target_memory_timeout_ns=5_000_000_000,
-                 waypoint_planner=None):
+                 waypoint_planner=None, patrol_planner=None):
         self.calibration = calibration
         if target_memory_timeout_ns is not None and target_memory_timeout_ns <= 0:
             raise ValueError('Target-memory timeout must be positive or None')
         self.target_memory_timeout_ns = target_memory_timeout_ns
         self.waypoint_planner = waypoint_planner
+        self.patrol_planner = patrol_planner
         self.last_seen_world = None
         self.last_seen_ns = None
         self.round_id = None
@@ -41,6 +46,8 @@ class Dust2ObservationEncoder:
         self.previous_monotonic_ns = None
         if self.waypoint_planner is not None:
             self.waypoint_planner.reset()
+        if self.patrol_planner is not None:
+            self.patrol_planner.reset()
 
     def reset(self, round_id=None):
         self.last_seen_world = None
@@ -50,6 +57,8 @@ class Dust2ObservationEncoder:
         self.previous_monotonic_ns = None
         if self.waypoint_planner is not None:
             self.waypoint_planner.reset()
+        if self.patrol_planner is not None:
+            self.patrol_planner.reset()
 
     @staticmethod
     def _axes(yaw_degrees):
@@ -76,6 +85,8 @@ class Dust2ObservationEncoder:
             self.round_id = frame.round_id
             if self.waypoint_planner is not None:
                 self.waypoint_planner.reset()
+            if self.patrol_planner is not None:
+                self.patrol_planner.reset()
         self._validate_order(frame)
 
         width = self.calibration.max_x - self.calibration.min_x
@@ -91,11 +102,15 @@ class Dust2ObservationEncoder:
         memory_used = False
         waypoint_plan = None
         waypoint_rejection = None
+        waypoint_source = None
+        patrol_plan = None
         if live:
             local_forward, local_right = frame.target.forward, frame.target.right
             self.last_seen_world = (player_world + forward_axis * local_forward +
                                     right_axis * local_right)
             self.last_seen_ns = frame.monotonic_ns
+            if self.patrol_planner is not None:
+                self.patrol_planner.reset()
         elif (self.last_seen_ns is not None and
               self.target_memory_timeout_ns is not None and
               frame.monotonic_ns - self.last_seen_ns >
@@ -109,6 +124,7 @@ class Dust2ObservationEncoder:
                 try:
                     waypoint_plan = self.waypoint_planner.plan(
                         player_world, self.last_seen_world)
+                    waypoint_source = 'target_memory'
                     target_world = np.asarray(waypoint_plan.world, dtype=np.float32)
                 except ValueError as error:
                     waypoint_rejection = str(error)
@@ -125,8 +141,24 @@ class Dust2ObservationEncoder:
         else:
             local_forward = local_right = 0.0
 
+        if (not live and not memory_used and self.last_seen_world is None and
+                self.patrol_planner is not None):
+            try:
+                patrol_plan = self.patrol_planner.plan(player_world)
+                waypoint_plan = patrol_plan.waypoint
+                waypoint_source = 'patrol'
+                target_world = np.asarray(
+                    waypoint_plan.world, dtype=np.float32)
+                delta = target_world - player_world
+                local_forward = float(np.dot(delta, forward_axis))
+                local_right = float(np.dot(delta, right_axis))
+            except ValueError as error:
+                waypoint_rejection = str(error)
+                self.patrol_planner.reset()
+                local_forward = local_right = 0.0
+
         distance = math.hypot(local_forward, local_right)
-        if not live and not memory_used:
+        if not live and not memory_used and patrol_plan is None:
             alignment = 0.0
         else:
             alignment = 1.0 if distance == 0 else local_forward / distance
@@ -154,4 +186,10 @@ class Dust2ObservationEncoder:
             waypoint_target_snap_world=(None if waypoint_plan is None else
                                         waypoint_plan.target_snap_world),
             waypoint_planner_rejection=waypoint_rejection,
+            waypoint_source=waypoint_source,
+            patrol_active=patrol_plan is not None,
+            patrol_goal_world=(None if patrol_plan is None else
+                               patrol_plan.goal_world),
+            patrol_goal_index=(None if patrol_plan is None else
+                               patrol_plan.goal_index),
         )

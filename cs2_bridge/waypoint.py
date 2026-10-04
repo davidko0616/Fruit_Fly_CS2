@@ -21,6 +21,14 @@ class WaypointPlan:
     target_snap_world: float
 
 
+@dataclass(frozen=True)
+class PatrolPlan:
+    waypoint: WaypointPlan
+    goal_world: tuple[float, float]
+    goal_grid: tuple[int, int]
+    goal_index: int
+
+
 class Dust2WaypointPlanner:
     """A* planner on the same downsampled NAV mask used during training."""
 
@@ -179,3 +187,70 @@ class Dust2WaypointPlanner:
             world=self._grid_to_world(waypoint), grid=waypoint,
             target_grid=target, path_remaining_cells=float(len(self.path) - 1),
             player_snap_world=player_snap, target_snap_world=target_snap)
+
+
+class Dust2PatrolPlanner:
+    """Cycle through deterministic, widely separated goals on the NAV grid."""
+
+    def __init__(self, waypoint_planner: Dust2WaypointPlanner,
+                 goal_count=8, arrival_cells=3):
+        if int(goal_count) < 2 or int(arrival_cells) < 0:
+            raise ValueError('Patrol requires at least two goals and nonnegative arrival')
+        self.waypoint_planner = waypoint_planner
+        self.goal_count = int(goal_count)
+        self.arrival_cells = int(arrival_cells)
+        self.goals = self._select_goals()
+        self.goal_index = None
+
+    @classmethod
+    def from_json(cls, path, grid_step=8, lookahead_cells=6,
+                  target_max_snap_world=90.0, goal_count=8,
+                  arrival_cells=3):
+        planner = Dust2WaypointPlanner.from_json(
+            path, grid_step, lookahead_cells, target_max_snap_world)
+        return cls(planner, goal_count, arrival_cells)
+
+    def _select_goals(self):
+        points = np.argwhere(self.waypoint_planner.grid)
+        if len(points) < self.goal_count:
+            raise ValueError('Waypoint grid has too few cells for patrol goals')
+        first_index = int(np.argmin(
+            points[:, 0] * self.waypoint_planner.grid.shape[1] + points[:, 1]))
+        selected = [points[first_index]]
+        minimum_distance = np.full(len(points), np.inf)
+        for _ in range(1, self.goal_count):
+            delta = points - selected[-1]
+            distance = np.sum(delta * delta, axis=1)
+            minimum_distance = np.minimum(minimum_distance, distance)
+            selected.append(points[int(np.argmax(minimum_distance))])
+        unordered = [tuple(int(value) for value in point) for point in selected]
+        ordered = [unordered.pop(0)]
+        while unordered:
+            current = ordered[-1]
+            next_index = min(range(len(unordered)), key=lambda index: (
+                math.dist(current, unordered[index]), unordered[index]))
+            ordered.append(unordered.pop(next_index))
+        return tuple(ordered)
+
+    def reset(self):
+        self.goal_index = None
+        self.waypoint_planner.reset()
+
+    def plan(self, player_world):
+        player_grid, _ = self.waypoint_planner._world_to_grid(
+            player_world, self.waypoint_planner.calibration.max_snap_world)
+        if self.goal_index is None:
+            self.goal_index = min(
+                range(len(self.goals)),
+                key=lambda index: math.dist(player_grid, self.goals[index]))
+        for _ in range(len(self.goals)):
+            goal_grid = self.goals[self.goal_index]
+            goal_world = self.waypoint_planner._grid_to_world(goal_grid)
+            waypoint = self.waypoint_planner.plan(player_world, goal_world)
+            if waypoint.path_remaining_cells > self.arrival_cells:
+                return PatrolPlan(
+                    waypoint=waypoint, goal_world=goal_world,
+                    goal_grid=goal_grid, goal_index=self.goal_index)
+            self.goal_index = (self.goal_index + 1) % len(self.goals)
+            self.waypoint_planner.reset()
+        raise ValueError('Patrol could not select a goal away from the player')

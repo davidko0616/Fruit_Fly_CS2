@@ -25,7 +25,7 @@ from cs2_bridge.radar_map import Dust2RadarMapLocalizer
 from cs2_bridge.replay import PolicyRunner
 from cs2_bridge.schema import BridgeFrame, Dust2Calibration, PlayerPose
 from cs2_bridge.target import VisibleTargetCalibration
-from cs2_bridge.waypoint import Dust2WaypointPlanner
+from cs2_bridge.waypoint import Dust2PatrolPlanner, Dust2WaypointPlanner
 from tools.assemble_cs2_bridge_frames import build_action_mask
 from tools.capture_cs2_screen import (
     ScreenGrabber, notify_capture_complete, notify_capture_failed,
@@ -281,11 +281,22 @@ def run(args, action_executor=None):
         grid_step=int(environment.get('grid_step', 8)),
         lookahead_cells=int(environment.get('waypoint_lookahead_cells', 6)),
         target_max_snap_world=args.waypoint_target_max_snap_world)
+    patrol_planner = (None if not args.enable_patrol else
+                      Dust2PatrolPlanner.from_json(
+                          args.waypoint_calibration,
+                          grid_step=int(environment.get('grid_step', 8)),
+                          lookahead_cells=int(environment.get(
+                              'waypoint_lookahead_cells', 6)),
+                          target_max_snap_world=(
+                              args.waypoint_target_max_snap_world),
+                          goal_count=args.patrol_goal_count,
+                          arrival_cells=args.patrol_arrival_cells))
     execution = ('live_shadow_read_only' if action_executor is None else
                  'live_controller_guarded')
     policy_runner = PolicyRunner(
         Dust2ObservationEncoder(
-            calibration, int(args.target_memory_ms * 1_000_000), planner),
+            calibration, int(args.target_memory_ms * 1_000_000), planner,
+            patrol_planner),
         model, mode=args.mode, seed=args.seed,
         execution=execution)
     processor = ShadowProcessor(
@@ -312,6 +323,7 @@ def run(args, action_executor=None):
     accepted_frames = 0
     target_memory_frames = 0
     waypoint_frames = 0
+    patrol_frames = 0
     masked_action_violations = 0
     emitted_inputs = 0
     execution_counts = Counter()
@@ -378,6 +390,7 @@ def run(args, action_executor=None):
                         record['decision']['target_memory_in_observation'])
                     waypoint_frames += int(
                         record['decision']['waypoint_planner_active'])
+                    patrol_frames += int(record['decision']['patrol_active'])
                     masked_action_violations += int(not record['decision'][
                         'action_mask'][record['decision']['action']])
                 frame_index += 1
@@ -419,6 +432,7 @@ def run(args, action_executor=None):
         'masked_action_violations': masked_action_violations,
         'target_memory_frames': target_memory_frames,
         'waypoint_frames': waypoint_frames,
+        'patrol_frames': patrol_frames,
         'capture_latency_ms': _latency_summary(capture_ms),
         'accepted_processing_latency_ms': _latency_summary(processing_ms),
         'clearance_snap_world': _latency_summary(clearance_snaps),
@@ -466,6 +480,9 @@ def build_parser(description=__doc__):
     parser.add_argument('--score-threshold', type=float, default=.15)
     parser.add_argument('--target-memory-ms', type=float, default=5000)
     parser.add_argument('--waypoint-target-max-snap-world', type=float, default=90)
+    parser.add_argument('--enable-patrol', action='store_true')
+    parser.add_argument('--patrol-goal-count', type=int, default=8)
+    parser.add_argument('--patrol-arrival-cells', type=int, default=3)
     parser.add_argument('--max-gsi-age-ms', type=float, default=15000)
     parser.add_argument('--cpu-threads', type=int,
                         default=min(6, os.cpu_count() or 1))
@@ -490,6 +507,8 @@ def validate_args(parser, args):
         parser.error('Duration, frame, rate, delay, and age values are invalid')
     if not 0 <= args.score_threshold <= 1:
         parser.error('--score-threshold must be in [0, 1]')
+    if args.patrol_goal_count < 2 or args.patrol_arrival_cells < 0:
+        parser.error('Patrol goal count and arrival distance are invalid')
 
 
 def main():

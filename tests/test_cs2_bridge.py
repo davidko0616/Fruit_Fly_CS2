@@ -28,7 +28,7 @@ from cs2_bridge.replay import PolicyRunner, read_frames, replay_frames, write_js
 from cs2_bridge.schema import BridgeFrame, Dust2Calibration, PlayerPose, VisibleTarget
 from cs2_bridge.sync import TimestampMatcher
 from cs2_bridge.target import VisibleTargetCalibration
-from cs2_bridge.waypoint import Dust2WaypointPlanner
+from cs2_bridge.waypoint import Dust2PatrolPlanner, Dust2WaypointPlanner
 from tools.calibrate_dust2_bridge import calibrate
 from tools.audit_cs2_labels import audit
 from tools.assemble_cs2_bridge_frames import assemble
@@ -268,6 +268,57 @@ class CS2BridgeTests(unittest.TestCase):
         self.assertIsNotNone(hidden.waypoint_planner_rejection)
         self.assertEqual(hidden.observation[4], 0)
         self.assertEqual(hidden.observation[5], 0)
+
+    def test_patrol_supplies_hidden_waypoint_without_claiming_target_memory(self):
+        mask = Image.new('L', (160, 160), 255)
+        clearance = ClearanceCalibration(
+            map_name='de_dust2', screen_scale_x=1, screen_scale_y=1,
+            screen_offset_x=0, screen_offset_y=0,
+            overview_units_per_pixel=1, max_distance_world=24,
+            max_snap_world=30, mask_file='unused.png')
+        target_planner = Dust2WaypointPlanner(
+            clearance, mask, grid_step=4, lookahead_cells=6)
+        patrol_planner = Dust2PatrolPlanner(
+            Dust2WaypointPlanner(
+                clearance, mask, grid_step=4, lookahead_cells=6),
+            goal_count=4, arrival_cells=3)
+        calibration = Dust2Calibration('de_dust2', 0, 160, 0, 160, 160)
+        encoder = Dust2ObservationEncoder(
+            calibration, target_memory_timeout_ns=100,
+            waypoint_planner=target_planner,
+            patrol_planner=patrol_planner)
+
+        patrol = encoder.encode(BridgeFrame(
+            0, 1, 'de_dust2:1', 'de_dust2', PlayerPose(80, 80, 0),
+            (1, 1, 1, 1)))
+        self.assertTrue(patrol.patrol_active)
+        self.assertEqual(patrol.waypoint_source, 'patrol')
+        self.assertTrue(patrol.waypoint_planner_active)
+        self.assertFalse(patrol.target_observation_is_live)
+        self.assertFalse(patrol.target_memory_in_observation)
+        self.assertFalse(patrol.has_last_seen_target)
+        self.assertIsNotNone(patrol.patrol_goal_world)
+        self.assertIsNotNone(patrol.patrol_goal_index)
+        self.assertGreater(float(np.linalg.norm(patrol.observation[4:6])), 0)
+
+        visible = encoder.encode(BridgeFrame(
+            1, 2, 'de_dust2:1', 'de_dust2', PlayerPose(80, 80, 0),
+            (1, 1, 1, 1), VisibleTarget(20, 0)))
+        self.assertFalse(visible.patrol_active)
+        self.assertIsNone(visible.waypoint_source)
+        remembered = encoder.encode(BridgeFrame(
+            2, 3, 'de_dust2:1', 'de_dust2', PlayerPose(80, 80, 0),
+            (1, 1, 1, 1)))
+        self.assertTrue(remembered.target_memory_in_observation)
+        self.assertFalse(remembered.patrol_active)
+        self.assertEqual(remembered.waypoint_source, 'target_memory')
+
+        expired = encoder.encode(BridgeFrame(
+            3, 103, 'de_dust2:1', 'de_dust2', PlayerPose(80, 80, 0),
+            (1, 1, 1, 1)))
+        self.assertFalse(expired.target_memory_in_observation)
+        self.assertTrue(expired.patrol_active)
+        self.assertEqual(expired.waypoint_source, 'patrol')
 
     def test_timestamp_matcher_prefers_nearest_and_rejects_stale_rows(self):
         matcher = TimestampMatcher([

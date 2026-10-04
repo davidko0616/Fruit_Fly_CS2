@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "execution": "offline_counterfactual_replay",
+  "source_shadow": "artifacts\\cs2_bridge\\dust2_guarded_controller_nofire_8hz_tracking_20261004_03\\shadow.jsonl",
+  "source_sha256": "ae68c3e76d624d8f865d96413f834713a65c2eb51574465a5ca2b80a5ef1d5f4",
+  "accepted_frames": 79,
+  "policy_run_id": "10a40610-4f86-4fad-9872-f9b55072da84",
+  "policy_version": 80,
+  "patrol_goal_count": 8,
+  "patrol_arrival_cells": 3,
+  "patrol_frames": 79,
+  "target_memory_frames": 0,
+  "waypoint_rejections": 0,
+  "patrol_goal_indices_seen": [
+    5
+  ],
+  "baseline_action_counts": {
+    "forward": 1,
+    "turn_left": 78
+  },
+  "patrol_action_counts": {
+    "forward": 48,
+    "strafe_right": 31
+  },
+  "behavioral_quality_claimed": false,
+  "interpretation": "Counterfactual policy decisions on recorded poses verify wiring only; a live guarded trial is required to measure closed-loop patrol behavior."
+}
