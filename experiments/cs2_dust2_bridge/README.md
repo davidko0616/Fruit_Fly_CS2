@@ -91,6 +91,14 @@ violations. A terminal CS2 crash caused one 13.1-second capture stall after the
 preceding 293 seconds of valid evidence. The next-stage controller is now
 implemented separately from the shadow runner. It requires explicit
 local-practice enablement, keeps fire disabled by default, stops and releases
-movement on F12, and rejects stale, inactive, masked, or unfocused actions. Its
-native input path has not yet been used; the next gate is a short, separately
-approved, no-fire local-practice trial.
+movement on F12, and rejects stale, inactive, masked, or unfocused actions. The
+first separately approved 10-second no-fire trial passed all 40 perception
+frames. Three fresh-state left-turn decisions emitted bounded mouse input, and
+the
+executor rejected the other 37 decisions because one frame and 36 causal GSI
+rows were outside their execution-age limits. No fire or masked input was
+emitted and no screenshots were retained. The guard therefore failed closed as
+designed. The installed GSI config still used its 10-second read-only heartbeat,
+so the versioned heartbeat is reduced to 0.25 seconds before repeating the short
+trial; behavioral quality is not yet assessed. See
+[`GUARDED_CONTROLLER_NOFIRE_PREFLIGHT_RESULT.json`](GUARDED_CONTROLLER_NOFIRE_PREFLIGHT_RESULT.json).

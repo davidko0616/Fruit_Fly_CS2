@@ -242,11 +242,19 @@ flag is supplied; the first validation run therefore remains no-fire. Every row
 records whether an input was emitted and why an action was executed or blocked,
 and the summary records the safety configuration and execution counts.
 
-The guarded executor has only been exercised against a fake backend. It must not
-be run against CS2 until a separate live test is explicitly approved. The first
-approved test should use a short duration, no fire, an empty local Practice with
-Bots session, and `--audit-every 0` so it retains no screenshots. Use the same
-arguments as the passing v2 preflight, replace `run_cs2_shadow.py` with
+The guarded executor first passed its fake-backend tests. Its separately
+approved 10-second no-fire CS2 test then processed all 40 frames, emitted three bounded
+left turns, and blocked 37 decisions on stale-state guards. It emitted no fire,
+retained no screenshots, and had no action-mask violations. This passed the
+native-input and fail-closed safety gate, but the installed 10-second GSI
+heartbeat was too slow for the one-second execution freshness limit. The
+versioned GSI config now uses a 0.25-second heartbeat; the installed config must
+be updated before a separately approved repeat. See the
+[preflight result](../experiments/cs2_dust2_bridge/GUARDED_CONTROLLER_NOFIRE_PREFLIGHT_RESULT.json).
+
+Short no-fire trials should use an empty local Practice with Bots session and
+`--audit-every 0` so they retain no screenshots. Use the same arguments as the
+passing v2 preflight, replace `run_cs2_shadow.py` with
 `run_cs2_controller.py`, choose a new output directory, and append:
 
 ```powershell

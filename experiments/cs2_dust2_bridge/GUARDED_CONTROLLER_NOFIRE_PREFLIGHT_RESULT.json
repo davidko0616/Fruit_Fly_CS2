@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-04",
+  "status": "pass_safety_gate_timing_adjustment_required",
+  "execution": "live_controller_guarded",
+  "source_artifact": "artifacts/cs2_bridge/dust2_guarded_controller_nofire_preflight_20261004_01",
+  "conditions": {
+    "map": "de_dust2",
+    "requested_duration_seconds": 10.0,
+    "recorded_duration_seconds": 10.0,
+    "requested_hz": 4.0,
+    "effective_hz": 4.0,
+    "mode": "greedy",
+    "policy_version": 80,
+    "fire_enabled": false,
+    "key_hold_ms": 60.0,
+    "turn_pixels": 32,
+    "maximum_frame_age_ms": 250.0,
+    "maximum_gsi_age_ms": 1000.0,
+    "foreground_window_required": "Counter-Strike 2"
+  },
+  "capture": {
+    "attempted_frames": 40,
+    "accepted_frames": 40,
+    "gsi_rows": 3,
+    "saved_images": 0,
+    "artifact_size_bytes": 587302
+  },
+  "execution_result": {
+    "proposed_actions": {
+      "turn_left": 40
+    },
+    "emitted_actions": {
+      "turn_left": 3
+    },
+    "blocked_actions": {
+      "stale_frame": 1,
+      "stale_gsi": 36
+    },
+    "emitted_action_frame_indices": [37, 38, 39],
+    "emitted_action_gsi_age_ms": [125.0, 375.0, 640.0],
+    "masked_action_violations": 0,
+    "fire_actions_emitted": 0,
+    "emergency_stop_triggered": false
+  },
+  "latency_ms": {
+    "capture_mean": 37.98117,
+    "capture_p95": 28.332345,
+    "capture_maximum": 468.0254,
+    "accepted_processing_mean": 89.6951175,
+    "accepted_processing_p95": 107.494685,
+    "accepted_processing_maximum": 117.5191
+  },
+  "safety_assessment": {
+    "explicit_enable_and_confirmation_required": true,
+    "foreground_guard_passed_for_every_emitted_action": true,
+    "stale_state_failed_closed": true,
+    "bounded_input_only": true,
+    "no_fire_mode_passed": true,
+    "no_screenshots_retained": true,
+    "passed": true
+  },
+  "timing_diagnosis": {
+    "installed_gsi_heartbeat_seconds": 10.0,
+    "executor_maximum_gsi_age_seconds": 1.0,
+    "interpretation": "The executor correctly rejected decisions between unchanged-state GSI heartbeats. Three fresh-state decisions produced bounded left turns near the end of the run. This proves native input and fail-closed behavior, but does not provide enough executed actions for movement-quality evaluation.",
+    "correction": "Reduce the loopback GSI heartbeat to 0.25 seconds while retaining the one-second executor freshness limit, then repeat the short no-fire trial with separate capture approval."
+  },
+  "behavioral_quality_claimed": false,
+  "next_gate": "Install the 0.25-second GSI heartbeat and repeat a separately approved short no-fire local-practice trial."
+}
