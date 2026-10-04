@@ -276,6 +276,15 @@ policy updates and 16-pixel turn steps. A separate live F12 drill is not require
 before that short trial; the stop path remains available, is covered by the fake
 backend tests, and keys are released on normal exit or capture failure.
 
+The approved 8 Hz actuator trial sustained all 80 requested capture intervals
+and emitted 45 bounded actions with 16-pixel turn steps. It then rejected frames
+45–79 because both site anchors had left the usable radar view and the
+two-second recent-anchor window expired. No dropped frame emitted input. This is
+a safety pass and localization-continuity failure; anchorless short-horizon map
+pan tracking is required before a longer controller run. Player feedback is
+still needed to judge whether the 8 Hz turns looked smoother. See the
+[8 Hz result](../experiments/cs2_dust2_bridge/GUARDED_CONTROLLER_NOFIRE_8HZ_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with

@@ -124,3 +124,11 @@ steps did not look natural. The next short trial will use 8 Hz updates and
 16-pixel turn steps, which preserves approximately the same turn speed while
 doubling its temporal resolution. A dedicated F12 drill is skipped; F12 remains
 available and the executor releases movement keys on exit or capture failure.
+
+The approved 8 Hz tuning run sustained 8 Hz and emitted 45 safe actions, but it
+accepted only the first 45 of 80 frames. Both A/B site anchors then left the
+usable radar view; after the two-second recent-anchor window expired, the bridge
+rejected all remaining frames and emitted no further input. The next engineering
+gate is anchorless short-horizon radar-map pan tracking. Player feedback remains
+the evidence for whether the 16-pixel 8 Hz turn steps looked smoother. See
+[`GUARDED_CONTROLLER_NOFIRE_8HZ_RESULT.json`](GUARDED_CONTROLLER_NOFIRE_8HZ_RESULT.json).

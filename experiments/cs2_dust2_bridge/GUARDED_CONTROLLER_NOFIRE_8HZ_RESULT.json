@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-04",
+  "status": "partial_pass_radar_anchor_loss",
+  "execution": "live_controller_guarded",
+  "source_artifact": "artifacts/cs2_bridge/dust2_guarded_controller_nofire_8hz_20261004_01",
+  "conditions": {
+    "map": "de_dust2",
+    "requested_duration_seconds": 10.0,
+    "recorded_duration_seconds": 10.0,
+    "requested_hz": 8.0,
+    "effective_hz": 8.0,
+    "turn_pixels": 16,
+    "key_hold_ms": 60.0,
+    "fire_enabled": false,
+    "fire_masked_before_policy_selection": true,
+    "maximum_frame_age_ms": 250.0,
+    "maximum_gsi_age_ms": 1000.0
+  },
+  "capture": {
+    "attempted_frames": 80,
+    "accepted_frames": 45,
+    "accepted_fraction": 0.5625,
+    "gsi_rows": 60,
+    "saved_images": 0,
+    "artifact_size_bytes": 748996
+  },
+  "execution_result": {
+    "proposed_and_emitted_actions": {
+      "forward": 23,
+      "strafe_right": 9,
+      "turn_left": 13
+    },
+    "emitted_action_count": 45,
+    "blocked_actions": {
+      "record_not_accepted": 35
+    },
+    "input_emitted_on_dropped_frames": 0,
+    "masked_action_violations": 0,
+    "fire_selected": 0,
+    "fire_actions_emitted": 0
+  },
+  "localization": {
+    "accepted_frame_range": [0, 44],
+    "failed_frame_range": [45, 79],
+    "failure": "No usable radar site anchors",
+    "radar_map_failures": 35,
+    "accepted_anchor_sources": {
+      "site_pair": 28,
+      "single_site": 5,
+      "recent_site": 12
+    },
+    "interpretation": "The controller moved far enough for both A/B site anchors to leave the usable radar view. The two-second recent-anchor window expired, after which every remaining frame failed closed before policy execution."
+  },
+  "freshness_ms_for_emitted_actions": {
+    "gsi_minimum": 93.0,
+    "gsi_maximum": 640.0,
+    "frame_minimum": 85.5,
+    "frame_maximum": 242.0
+  },
+  "latency_ms": {
+    "capture_mean": 23.9808425,
+    "capture_p95": 24.70204,
+    "capture_maximum": 263.068,
+    "accepted_processing_mean": 85.189987,
+    "accepted_processing_p95": 97.56616,
+    "accepted_processing_maximum": 116.7626
+  },
+  "safety_assessment": {
+    "requested_rate_sustained": true,
+    "stale_state_input_emitted": false,
+    "localization_failure_input_emitted": false,
+    "bounded_input_only": true,
+    "no_fire_mode_passed": true,
+    "no_screenshots_retained": true,
+    "passed": true
+  },
+  "actuator_smoothness_feedback": null,
+  "behavioral_quality_claimed": false,
+  "next_gate": "Record player feedback on 8 Hz smoothness, then add anchorless short-horizon radar-map pan tracking before any longer controller run."
+}
