@@ -2,6 +2,7 @@
 from dataclasses import asdict, dataclass
 import ctypes
 from ctypes import wintypes
+import threading
 import sys
 import time
 
@@ -16,6 +17,8 @@ class InputSafetyConfig:
     max_gsi_age_ms: float = 1_000.0
     key_hold_ms: float = 60.0
     turn_pixels: int = 32
+    turn_duration_ms: float = 110.0
+    turn_substeps: int = 8
     required_window_title: str = 'Counter-Strike 2'
     fire_enabled: bool = False
 
@@ -28,6 +31,10 @@ class InputSafetyConfig:
             raise ValueError('key_hold_ms must be in (0, 250]')
         if not 0 < int(self.turn_pixels) <= 200:
             raise ValueError('turn_pixels must be in (0, 200]')
+        if not 0 < float(self.turn_duration_ms) <= 250:
+            raise ValueError('turn_duration_ms must be in (0, 250]')
+        if not 1 <= int(self.turn_substeps) <= int(self.turn_pixels):
+            raise ValueError('turn_substeps must be in [1, turn_pixels]')
         if not str(self.required_window_title).strip():
             raise ValueError('required_window_title is required')
 
@@ -149,13 +156,23 @@ class GuardedActionExecutor:
         'strafe_left': 'a', 'strafe_right': 'd',
     }
 
-    def __init__(self, backend, enabled=False, config=None, sleep=time.sleep):
+    def __init__(self, backend, enabled=False, config=None, sleep=time.sleep,
+                 turn_wait=None):
         self.backend = backend
         self.enabled = bool(enabled)
         self.config = config or InputSafetyConfig()
         self.sleep = sleep
+        self.turn_wait = (turn_wait if turn_wait is not None else
+                          lambda event, seconds: event.wait(seconds))
         self.emergency_stop_latched = False
         self.held_keys = set()
+        self._turn_lock = threading.Lock()
+        self._turn_thread = None
+        self._turn_stop = None
+        self.last_turn_stop_reason = None
+        self._turns_started = 0
+        self._turn_substeps_emitted = 0
+        self._turn_stop_counts = {}
 
     def _result(self, reason, action_name=None, input_emitted=False, **extra):
         result = {
@@ -171,8 +188,103 @@ class GuardedActionExecutor:
     def poll_emergency_stop(self):
         if self.backend.emergency_stop_pressed():
             self.emergency_stop_latched = True
+            self._stop_turn()
             self.release_all()
         return self.emergency_stop_latched
+
+    def _turn_deltas(self, direction):
+        """Return integer mouse deltas following a smoothstep curve."""
+        cumulative = 0
+        deltas = []
+        for index in range(1, self.config.turn_substeps + 1):
+            progress = index / self.config.turn_substeps
+            eased = progress * progress * (3.0 - 2.0 * progress)
+            next_cumulative = round(self.config.turn_pixels * eased)
+            delta = next_cumulative - cumulative
+            if delta:
+                deltas.append(direction * delta)
+            cumulative = next_cumulative
+        return tuple(deltas)
+
+    def _run_turn(self, direction, stop_event):
+        deltas = self._turn_deltas(direction)
+        interval = (0.0 if len(deltas) <= 1 else
+                    self.config.turn_duration_ms / 1_000 / (len(deltas) - 1))
+        reason = 'completed'
+        try:
+            for index, delta in enumerate(deltas):
+                if stop_event.is_set():
+                    reason = 'superseded'
+                    break
+                if self.backend.emergency_stop_pressed():
+                    self.emergency_stop_latched = True
+                    reason = 'emergency_stop'
+                    self.release_all()
+                    break
+                title = self.backend.foreground_title()
+                if self.config.required_window_title.casefold() not in title.casefold():
+                    reason = 'foreground_window_mismatch'
+                    self.release_all()
+                    break
+                self.backend.move_mouse(delta, 0)
+                with self._turn_lock:
+                    self._turn_substeps_emitted += 1
+                if (index + 1 < len(deltas) and
+                        self.turn_wait(stop_event, interval)):
+                    reason = 'superseded'
+                    break
+        finally:
+            self.last_turn_stop_reason = reason
+            with self._turn_lock:
+                self._turn_stop_counts[reason] = (
+                    self._turn_stop_counts.get(reason, 0) + 1)
+                if self._turn_thread is threading.current_thread():
+                    self._turn_thread = None
+                    self._turn_stop = None
+
+    def _stop_turn(self):
+        with self._turn_lock:
+            thread = self._turn_thread
+            stop_event = self._turn_stop
+        if stop_event is not None:
+            stop_event.set()
+        if thread is not None and thread is not threading.current_thread():
+            thread.join(timeout=.5)
+        with self._turn_lock:
+            if self._turn_thread is thread:
+                self._turn_thread = None
+                self._turn_stop = None
+
+    def _start_turn(self, direction):
+        self._stop_turn()
+        stop_event = threading.Event()
+        thread = threading.Thread(
+            target=self._run_turn, args=(direction, stop_event),
+            name='cs2-smooth-turn', daemon=True)
+        with self._turn_lock:
+            self._turn_stop = stop_event
+            self._turn_thread = thread
+            self._turns_started += 1
+        thread.start()
+
+    def wait_for_turn(self, timeout=None):
+        with self._turn_lock:
+            thread = self._turn_thread
+        if thread is not None:
+            thread.join(timeout)
+        return thread is None or not thread.is_alive()
+
+    def actuation_summary(self):
+        with self._turn_lock:
+            return {
+                'smooth_turns_started': self._turns_started,
+                'smooth_turn_substeps_emitted': self._turn_substeps_emitted,
+                'smooth_turn_stop_counts': dict(sorted(
+                    self._turn_stop_counts.items())),
+                'smooth_turn_active': (
+                    self._turn_thread is not None and
+                    self._turn_thread.is_alive()),
+            }
 
     def execute(self, record, now_ns=None):
         """Execute one accepted record after every safety condition passes."""
@@ -228,6 +340,7 @@ class GuardedActionExecutor:
                 foreground_title=title)
 
         if action_name == 'wait':
+            self._stop_turn()
             return self._result(
                 'wait', action_name, frame_age_ms=frame_age_ms,
                 gsi_age_ms=gsi_age_ms)
@@ -237,6 +350,7 @@ class GuardedActionExecutor:
                 gsi_age_ms=gsi_age_ms)
 
         if action_name in self.KEY_ACTIONS:
+            self._stop_turn()
             key = self.KEY_ACTIONS[action_name]
             self.backend.key_down(key)
             self.held_keys.add(key)
@@ -247,15 +361,23 @@ class GuardedActionExecutor:
                 self.held_keys.discard(key)
         elif action_name in ('turn_left', 'turn_right'):
             direction = -1 if action_name == 'turn_left' else 1
-            self.backend.move_mouse(direction * self.config.turn_pixels, 0)
+            self._start_turn(direction)
         elif action_name == 'fire':
+            self._stop_turn()
             self.backend.click_left()
         else:
             return self._result('unsupported_action', action_name)
 
         return self._result(
             'executed', action_name, input_emitted=True,
-            frame_age_ms=frame_age_ms, gsi_age_ms=gsi_age_ms)
+            frame_age_ms=frame_age_ms, gsi_age_ms=gsi_age_ms,
+            turn_actuation=(None if action_name not in
+                            ('turn_left', 'turn_right') else {
+                                'pixels': self.config.turn_pixels,
+                                'duration_ms': self.config.turn_duration_ms,
+                                'substeps': self.config.turn_substeps,
+                                'curve': 'smoothstep',
+                            }))
 
     def release_all(self):
         for key in ('w', 's', 'a', 'd'):
@@ -266,4 +388,5 @@ class GuardedActionExecutor:
         self.held_keys.clear()
 
     def close(self):
+        self._stop_turn()
         self.release_all()

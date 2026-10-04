@@ -235,12 +235,17 @@ the player is alive and active on `de_dust2`, the proposed action is allowed by
 its mask, and the foreground window title contains `Counter-Strike 2`.
 
 Movement is one bounded W/A/S/D hold per accepted frame (60 ms by default), and
-turns are bounded relative mouse movements (32 pixels by default). All movement
-keys are released on exit. F12 latches an emergency stop, releases the movement
-keys, and ends the loop. Fire is blocked unless the separate `--enable-fire`
-flag is supplied; the first validation run therefore remains no-fire. Every row
-records whether an input was emitted and why an action was executed or blocked,
-and the summary records the safety configuration and execution counts.
+turns are bounded relative mouse movements (32 pixels by default). Each turn is
+distributed over eight eased mouse substeps across 110 ms by a separate actuator
+thread, allowing the perception loop to remain at 8 Hz while avoiding a visible
+single-frame camera jump. The actuator rechecks F12 and the foreground window
+before every substep. All movement keys are released and any active turn is
+joined on exit. F12 latches an emergency stop, releases the movement keys, and
+ends the loop. Fire is blocked unless the separate `--enable-fire` flag is
+supplied; the first validation run therefore remains no-fire. Every row records
+whether an input was emitted and why an action was executed or blocked, and the
+summary records the safety configuration, execution counts, completed turns,
+emitted turn substeps, and interrupted-turn reasons.
 
 The guarded executor first passed its fake-backend tests. Its separately
 approved 10-second no-fire CS2 test then processed all 40 frames, emitted three bounded

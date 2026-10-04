@@ -422,6 +422,9 @@ def run(args, action_executor=None):
         'input_emitted': emitted_inputs > 0,
         'emitted_input_actions': emitted_inputs,
         'input_execution_counts': dict(sorted(execution_counts.items())),
+        'input_actuation_summary': (
+            None if action_executor is None else
+            action_executor.actuation_summary()),
         'duration_seconds': (None if elapsed_seconds is None else
                              float(elapsed_seconds)),
         'attempted_frames': attempted_frames,

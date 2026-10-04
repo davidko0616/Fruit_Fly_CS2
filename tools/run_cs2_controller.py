@@ -31,6 +31,8 @@ def main():
     parser.add_argument('--execution-max-gsi-age-ms', type=float, default=1000)
     parser.add_argument('--key-hold-ms', type=float, default=60)
     parser.add_argument('--turn-pixels', type=int, default=32)
+    parser.add_argument('--turn-duration-ms', type=float, default=110)
+    parser.add_argument('--turn-substeps', type=int, default=8)
     parser.add_argument('--required-window-title', default='Counter-Strike 2')
     args = parser.parse_args()
     validate_args(parser, args)
@@ -46,6 +48,8 @@ def main():
         max_gsi_age_ms=args.execution_max_gsi_age_ms,
         key_hold_ms=args.key_hold_ms,
         turn_pixels=args.turn_pixels,
+        turn_duration_ms=args.turn_duration_ms,
+        turn_substeps=args.turn_substeps,
         required_window_title=args.required_window_title,
         fire_enabled=args.enable_fire)
     executor = GuardedActionExecutor(

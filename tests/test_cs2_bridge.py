@@ -116,6 +116,54 @@ class GuardedExecutorTests(unittest.TestCase):
         self.assertFalse(result['input_emitted'])
         self.assertEqual(backend.events, [])
 
+    def test_turn_is_eased_across_bounded_substeps(self):
+        backend = FakeInputBackend()
+        waits = []
+        executor = GuardedActionExecutor(
+            backend, enabled=True,
+            config=InputSafetyConfig(
+                turn_pixels=16, turn_duration_ms=105, turn_substeps=8),
+            turn_wait=lambda event, seconds: waits.append(seconds) or False)
+        result = executor.execute(executor_record(5), now_ns=1_000_000_000)
+        self.assertTrue(executor.wait_for_turn(1))
+        deltas = [event[1] for event in backend.events
+                  if event[0] == 'move_mouse']
+        self.assertEqual(deltas, [-1, -1, -3, -3, -3, -3, -1, -1])
+        self.assertEqual(sum(deltas), -16)
+        self.assertEqual(len(waits), 7)
+        self.assertTrue(all(abs(wait - .015) < 1e-9 for wait in waits))
+        self.assertEqual(result['turn_actuation'], {
+            'pixels': 16, 'duration_ms': 105, 'substeps': 8,
+            'curve': 'smoothstep'})
+        self.assertEqual(executor.actuation_summary(), {
+            'smooth_turns_started': 1,
+            'smooth_turn_substeps_emitted': 8,
+            'smooth_turn_stop_counts': {'completed': 1},
+            'smooth_turn_active': False})
+        executor.close()
+
+    def test_smooth_turn_stops_if_focus_changes_between_substeps(self):
+        backend = FakeInputBackend()
+        waits = []
+
+        def change_focus(event, seconds):
+            waits.append(seconds)
+            backend.title = 'Codex'
+            return False
+
+        executor = GuardedActionExecutor(
+            backend, enabled=True,
+            config=InputSafetyConfig(turn_pixels=16, turn_substeps=8),
+            turn_wait=change_focus)
+        executor.execute(executor_record(6), now_ns=1_000_000_000)
+        self.assertTrue(executor.wait_for_turn(1))
+        deltas = [event[1] for event in backend.events
+                  if event[0] == 'move_mouse']
+        self.assertEqual(deltas, [1])
+        self.assertEqual(executor.last_turn_stop_reason,
+                         'foreground_window_mismatch')
+        executor.close()
+
     def test_stale_masked_and_unfocused_actions_are_blocked(self):
         backend = FakeInputBackend()
         executor = GuardedActionExecutor(backend, enabled=True)
@@ -153,6 +201,10 @@ class GuardedExecutorTests(unittest.TestCase):
             InputSafetyConfig(key_hold_ms=251)
         with self.assertRaisesRegex(ValueError, 'turn_pixels'):
             InputSafetyConfig(turn_pixels=201)
+        with self.assertRaisesRegex(ValueError, 'turn_duration_ms'):
+            InputSafetyConfig(turn_duration_ms=251)
+        with self.assertRaisesRegex(ValueError, 'turn_substeps'):
+            InputSafetyConfig(turn_pixels=4, turn_substeps=5)
 
 
 class FixedPolicy(torch.nn.Module):
