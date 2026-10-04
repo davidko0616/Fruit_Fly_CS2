@@ -1,6 +1,7 @@
 """Dust II observation, telemetry, and offline policy bridge."""
 
 from .encoder import Dust2ObservationEncoder, ObservationResult
+from .executor import GuardedActionExecutor, InputSafetyConfig
 from .gsi import GSISnapshot, parse_gsi_payload
 from .radar import RadarEnemyMarker, RadarPose, detect_enemy_markers, detect_player_pose
 from .radar_map import Dust2RadarMapLocalizer, RadarMapCalibration
@@ -10,7 +11,8 @@ from .waypoint import Dust2WaypointPlanner, WaypointPlan
 
 __all__ = [
     'BridgeFrame', 'Dust2Calibration', 'Dust2ObservationEncoder', 'GSISnapshot',
-    'Dust2RadarMapLocalizer', 'ObservationResult', 'PlayerPose',
+    'Dust2RadarMapLocalizer', 'GuardedActionExecutor', 'InputSafetyConfig',
+    'ObservationResult', 'PlayerPose',
     'RadarMapCalibration', 'RadarPose', 'VisibleTarget',
     'Dust2WaypointPlanner', 'WaypointPlan',
     'detect_player_pose', 'parse_gsi_payload',

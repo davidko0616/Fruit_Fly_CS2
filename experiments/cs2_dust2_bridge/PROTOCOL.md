@@ -50,3 +50,18 @@ After this protocol passes, freeze a separate detector/data-collection protocol
 before map-specific training. Training and final gameplay evaluation must use
 session-level splits so adjacent frames from one route cannot leak across train,
 validation, and test sets.
+
+## Guarded local-practice execution gate
+
+The later controller stage is isolated in `tools/run_cs2_controller.py`; the
+read-only shadow command remains unchanged at its CLI boundary. Native input is
+enabled only when the explicit enable flag and local-practice confirmation
+phrase are both present. F12 is a latched emergency stop. Each action also
+requires a fresh accepted frame, fresh causal GSI, active own-player state on
+`de_dust2`, a valid action mask, and the CS2 window in the foreground.
+
+Initial live validation is movement and turning only. Fire requires a second
+flag and remains outside the first test. Key holds and mouse turns have hard
+maximums, all movement keys are released on exit, and every emitted or blocked
+action is recorded. Native execution must first pass fake-backend tests and then
+requires separate approval for a short local Practice with Bots trial.

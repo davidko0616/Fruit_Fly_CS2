@@ -1,11 +1,12 @@
 # Dust II bridge status
 
-The read-only bridge foundation and first real fixed-radar calibration are
-implemented. The bridge records own-player/map GSI, encodes visibility-gated
+The read-only bridge foundation, first real fixed-radar calibration, and guarded
+local-practice execution boundary are implemented. The bridge records
+own-player/map GSI, encodes visibility-gated
 Dust II frames with last-seen target memory, and replays them through the
 confirmed 100-neuron FlyWire policy without game input.
 
-The full 57-test suite passes (with one expected CUDA skip), and the committed
+The full 67-test suite passes (with one expected CUDA skip), and the committed
 three-frame fixture completes an
 end-to-end replay through policy version 100. This validates interfaces and
 memory transformations only; it is not Dust II training or performance evidence.
@@ -83,3 +84,13 @@ See the
 [setup and data contract](../../docs/CS2_DUST2_BRIDGE.md). The capture backend,
 label schema, session-level split, and held-out detector acceptance metrics are
 fixed in the [visible-perception protocol](PERCEPTION_PROTOCOL.md).
+
+The October 4 five-minute v2 shadow run passed 918 of 949 eligible gameplay
+frames (96.7%) across the main Dust II routes, with zero action-mask or input
+violations. A terminal CS2 crash caused one 13.1-second capture stall after the
+preceding 293 seconds of valid evidence. The next-stage controller is now
+implemented separately from the shadow runner. It requires explicit
+local-practice enablement, keeps fire disabled by default, stops and releases
+movement on F12, and rejects stale, inactive, masked, or unfocused actions. Its
+native input path has not yet been used; the next gate is a short, separately
+approved, no-fire local-practice trial.

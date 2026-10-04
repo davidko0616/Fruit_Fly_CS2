@@ -73,7 +73,8 @@ class ShadowProcessor:
                  score_threshold=.15, max_gsi_age_ns=15_000_000_000,
                  radar_search_bounds=(180, 100, 500, 400),
                  movement_threshold=.03, target_confidence=.15,
-                 fire_confidence=.15, fire_half_angle_degrees=11.25):
+                 fire_confidence=.15, fire_half_angle_degrees=11.25,
+                 execution='live_shadow_read_only'):
         self.detector = detector
         self.class_names = tuple(class_names)
         self.calibration = calibration
@@ -90,6 +91,7 @@ class ShadowProcessor:
         self.target_confidence = float(target_confidence)
         self.fire_confidence = float(fire_confidence)
         self.fire_half_angle_degrees = float(fire_half_angle_degrees)
+        self.execution = str(execution)
         self.sequence = 0
 
     def process(self, image, timestamp_ns, gsi_row, origin=(0, 0)):
@@ -98,7 +100,7 @@ class ShadowProcessor:
             'schema_version': 1,
             'frame_index': None,
             'monotonic_ns': int(timestamp_ns),
-            'execution': 'live_shadow_read_only',
+            'execution': self.execution,
             'input_emitted': False,
         }
         if gsi_row is None:
@@ -250,7 +252,7 @@ class ShadowProcessor:
         return record
 
 
-def run(args):
+def run(args, action_executor=None):
     output = Path(args.output)
     if output.exists():
         raise FileExistsError(f'Refusing to overwrite {output}')
@@ -274,17 +276,19 @@ def run(args):
         grid_step=int(environment.get('grid_step', 8)),
         lookahead_cells=int(environment.get('waypoint_lookahead_cells', 6)),
         target_max_snap_world=args.waypoint_target_max_snap_world)
+    execution = ('live_shadow_read_only' if action_executor is None else
+                 'live_controller_guarded')
     policy_runner = PolicyRunner(
         Dust2ObservationEncoder(
             calibration, int(args.target_memory_ms * 1_000_000), planner),
         model, mode=args.mode, seed=args.seed,
-        execution='live_shadow_read_only')
+        execution=execution)
     processor = ShadowProcessor(
         detector, class_names, calibration, target_calibration,
         clearance_estimator, policy_runner, radar_map_localizer,
         score_threshold=args.score_threshold,
         max_gsi_age_ns=int(args.max_gsi_age_ms * 1_000_000),
-        radar_search_bounds=args.radar_search_bounds)
+        radar_search_bounds=args.radar_search_bounds, execution=execution)
 
     gsi_recorder = GSIRecorder(output / 'gsi.jsonl', args.gsi_token)
     server = ThreadingHTTPServer(
@@ -302,6 +306,9 @@ def run(args):
     target_memory_frames = 0
     waypoint_frames = 0
     masked_action_violations = 0
+    emitted_inputs = 0
+    execution_counts = Counter()
+    emergency_stop = False
     started = None
     elapsed_seconds = None
     try:
@@ -312,6 +319,10 @@ def run(args):
                 'x', encoding='utf-8', newline='\n') as destination:
             frame_index = 0
             while True:
+                if (action_executor is not None and
+                        action_executor.poll_emergency_stop()):
+                    emergency_stop = True
+                    break
                 if args.max_frames is not None and frame_index >= args.max_frames:
                     break
                 if (args.duration_seconds is not None and
@@ -331,6 +342,14 @@ def run(args):
                 record['capture_ms'] = current_capture_ms
                 record['capture_backend'] = grabber.backend
                 record['screen_size'] = [image.width, image.height]
+                if action_executor is not None:
+                    input_execution = action_executor.execute(record)
+                    record['input_execution'] = input_execution
+                    record['input_emitted'] = input_execution['input_emitted']
+                    emitted_inputs += int(input_execution['input_emitted'])
+                    execution_counts[input_execution['reason']] += 1
+                    if input_execution['emergency_stop_latched']:
+                        emergency_stop = True
                 if args.audit_every and frame_index % args.audit_every == 0:
                     audit_dir = output / 'audit_frames'
                     audit_dir.mkdir(exist_ok=True)
@@ -355,6 +374,8 @@ def run(args):
                     masked_action_violations += int(not record['decision'][
                         'action_mask'][record['decision']['action']])
                 frame_index += 1
+                if emergency_stop:
+                    break
                 deadline += 1.0 / args.hz
                 time.sleep(max(0.0, deadline - time.monotonic()))
         elapsed_seconds = time.monotonic() - started
@@ -362,6 +383,8 @@ def run(args):
         notify_capture_failed(args.sound_cues)
         raise
     finally:
+        if action_executor is not None:
+            action_executor.close()
         grabber.close()
         server.shutdown()
         server.server_close()
@@ -370,9 +393,15 @@ def run(args):
 
     summary = {
         'schema_version': 1,
-        'status': 'complete',
-        'execution': 'live_shadow_read_only',
-        'input_emitted': False,
+        'status': ('emergency_stop' if emergency_stop else 'complete'),
+        'execution': execution,
+        'input_executor_enabled': (action_executor is not None and
+                                   action_executor.enabled),
+        'input_safety_config': (None if action_executor is None else
+                                action_executor.config.to_dict()),
+        'input_emitted': emitted_inputs > 0,
+        'emitted_input_actions': emitted_inputs,
+        'input_execution_counts': dict(sorted(execution_counts.items())),
         'duration_seconds': (None if elapsed_seconds is None else
                              float(elapsed_seconds)),
         'attempted_frames': attempted_frames,
@@ -405,8 +434,8 @@ def run(args):
     return summary
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+def build_parser(description=__doc__):
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--checkpoint', type=Path, required=True)
     parser.add_argument('--calibration', type=Path, required=True)
@@ -441,7 +470,10 @@ def main():
     parser.add_argument('--sound-cues', action='store_true')
     parser.add_argument('--spoken-prompt', default=(
         'Dust Two live shadow starting. Play normally until the completion sound.'))
-    args = parser.parse_args()
+    return parser
+
+
+def validate_args(parser, args):
     if args.gsi_host not in ('127.0.0.1', 'localhost', '::1'):
         parser.error('GSI host must be loopback')
     if (args.duration_seconds is not None and args.duration_seconds <= 0 or
@@ -451,6 +483,12 @@ def main():
         parser.error('Duration, frame, rate, delay, and age values are invalid')
     if not 0 <= args.score_threshold <= 1:
         parser.error('--score-threshold must be in [0, 1]')
+
+
+def main():
+    parser = build_parser()
+    args = parser.parse_args()
+    validate_args(parser, args)
     print(json.dumps(run(args), indent=2))
 
 

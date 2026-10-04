@@ -12,6 +12,7 @@ import yaml
 from PIL import Image, ImageDraw
 
 from cs2_bridge.encoder import Dust2ObservationEncoder
+from cs2_bridge.executor import GuardedActionExecutor, InputSafetyConfig
 from cs2_bridge.clearance import ClearanceCalibration, Dust2ClearanceEstimator
 from cs2_bridge.detector_dataset import export_dataset
 from cs2_bridge.detector import build_player_ssdlite, evaluate_detection_records
@@ -40,6 +41,118 @@ from tools.run_cs2_shadow import ShadowProcessor
 
 
 FIXTURES = Path(__file__).parent / 'fixtures'
+
+
+class FakeInputBackend:
+    def __init__(self, title='Counter-Strike 2', emergency_stop=False):
+        self.title = title
+        self.emergency_stop = emergency_stop
+        self.events = []
+
+    def foreground_title(self):
+        return self.title
+
+    def emergency_stop_pressed(self):
+        return self.emergency_stop
+
+    def key_down(self, key):
+        self.events.append(('key_down', key))
+
+    def key_up(self, key):
+        self.events.append(('key_up', key))
+
+    def move_mouse(self, dx, dy=0):
+        self.events.append(('move_mouse', dx, dy))
+
+    def click_left(self):
+        self.events.append(('click_left',))
+
+
+def executor_record(action, *, timestamp_ns=900_000_000,
+                    gsi_delta_ns=-50_000_000, accepted=True, mask=None):
+    names = ('wait', 'forward', 'backward', 'strafe_left', 'strafe_right',
+             'turn_left', 'turn_right', 'fire')
+    return {
+        'status': 'accepted' if accepted else 'dropped',
+        'monotonic_ns': timestamp_ns,
+        'gsi_delta_ns': gsi_delta_ns,
+        'gsi_snapshot': {
+            'map_name': 'de_dust2', 'round_id': 'de_dust2:1',
+            'player_activity': 'playing', 'health': 100,
+        },
+        'decision': {
+            'action': action, 'action_name': names[action],
+            'action_mask': ([True] * 8 if mask is None else mask),
+        },
+    }
+
+
+class GuardedExecutorTests(unittest.TestCase):
+    def test_disabled_executor_never_touches_backend(self):
+        backend = FakeInputBackend()
+        executor = GuardedActionExecutor(backend, enabled=False)
+        result = executor.execute(executor_record(1), now_ns=1_000_000_000)
+        self.assertEqual(result['reason'], 'executor_disabled')
+        self.assertFalse(result['input_emitted'])
+        self.assertEqual(backend.events, [])
+
+    def test_forward_is_a_bounded_key_hold(self):
+        backend = FakeInputBackend()
+        sleeps = []
+        executor = GuardedActionExecutor(
+            backend, enabled=True, sleep=sleeps.append,
+            config=InputSafetyConfig(key_hold_ms=60))
+        result = executor.execute(executor_record(1), now_ns=1_000_000_000)
+        self.assertEqual(result['reason'], 'executed')
+        self.assertTrue(result['input_emitted'])
+        self.assertEqual(backend.events, [('key_down', 'w'), ('key_up', 'w')])
+        self.assertEqual(sleeps, [.06])
+
+    def test_fire_is_blocked_in_default_no_fire_mode(self):
+        backend = FakeInputBackend()
+        executor = GuardedActionExecutor(backend, enabled=True)
+        result = executor.execute(executor_record(7), now_ns=1_000_000_000)
+        self.assertEqual(result['reason'], 'fire_disabled')
+        self.assertFalse(result['input_emitted'])
+        self.assertEqual(backend.events, [])
+
+    def test_stale_masked_and_unfocused_actions_are_blocked(self):
+        backend = FakeInputBackend()
+        executor = GuardedActionExecutor(backend, enabled=True)
+        stale = executor.execute(executor_record(1), now_ns=1_200_000_000)
+        self.assertEqual(stale['reason'], 'stale_frame')
+
+        mask = [True] * 8
+        mask[1] = False
+        masked = executor.execute(
+            executor_record(1, mask=mask), now_ns=1_000_000_000)
+        self.assertEqual(masked['reason'], 'action_mask_blocked')
+
+        backend.title = 'Windows PowerShell'
+        unfocused = executor.execute(
+            executor_record(1), now_ns=1_000_000_000)
+        self.assertEqual(unfocused['reason'], 'foreground_window_mismatch')
+        self.assertFalse(unfocused['input_emitted'])
+        self.assertNotIn(('key_down', 'w'), backend.events)
+
+    def test_f12_latches_stop_and_releases_movement_keys(self):
+        backend = FakeInputBackend(emergency_stop=True)
+        executor = GuardedActionExecutor(backend, enabled=True)
+        executor.held_keys.add('w')
+        result = executor.execute(executor_record(1), now_ns=1_000_000_000)
+        self.assertEqual(result['reason'], 'emergency_stop')
+        self.assertTrue(result['emergency_stop_latched'])
+        self.assertFalse(result['input_emitted'])
+        self.assertEqual(
+            backend.events,
+            [('key_up', 'w'), ('key_up', 's'),
+             ('key_up', 'a'), ('key_up', 'd')])
+
+    def test_safety_configuration_rejects_unbounded_values(self):
+        with self.assertRaisesRegex(ValueError, 'key_hold_ms'):
+            InputSafetyConfig(key_hold_ms=251)
+        with self.assertRaisesRegex(ValueError, 'turn_pixels'):
+            InputSafetyConfig(turn_pixels=201)
 
 
 class FixedPolicy(torch.nn.Module):

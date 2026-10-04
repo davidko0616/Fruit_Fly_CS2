@@ -1,10 +1,12 @@
 # Dust II observation bridge
 
-The first Counter-Strike stage is deliberately read-only. It records player and
+The first Counter-Strike stage was deliberately read-only. It records player and
 map status from Valve Game State Integration (GSI), combines it with visible-radar
 localization and later screen perception, converts synchronized frames to the
 existing 14-value controller input, and replays them through a fixed policy without
-emitting keyboard or mouse input.
+emitting keyboard or mouse input. A separate guarded executor now exists for the
+next local-practice validation stage; the original shadow command remains
+read-only.
 
 This stage uses the internal map name `de_dust2`. It is designed for Practice
 with Bots or another controlled local session. The toy-combat weights are used
@@ -223,10 +225,33 @@ The game crashed at the end of the run. The final capture stalled for 13.1
 seconds and the run retained 1,173 rather than 1,200 frames, but its last frame
 was still valid gameplay and the preceding 293 seconds remain usable. See the
 [five-minute v2 result](../experiments/cs2_dust2_bridge/LIVE_SHADOW_GRID_V2_5MIN_RESULT.json).
-The next gate is a disabled-by-default local-practice input executor with an
-explicit enable flag, immediate stop control, stale-state failsafes, bounded key
-holds, and a no-fire validation mode. It must not emit input until a separate
-live test is explicitly approved.
+## Guarded local-practice controller
+
+`tools/run_cs2_controller.py` wraps the same perception and policy loop with a
+disabled-by-default native input boundary. It requires both `--enable-input` and
+the exact `--confirm-local-practice LOCAL_PRACTICE_ONLY` phrase. Before every
+action it verifies F12 is not pressed, the frame and causal GSI row are fresh,
+the player is alive and active on `de_dust2`, the proposed action is allowed by
+its mask, and the foreground window title contains `Counter-Strike 2`.
+
+Movement is one bounded W/A/S/D hold per accepted frame (60 ms by default), and
+turns are bounded relative mouse movements (32 pixels by default). All movement
+keys are released on exit. F12 latches an emergency stop, releases the movement
+keys, and ends the loop. Fire is blocked unless the separate `--enable-fire`
+flag is supplied; the first validation run therefore remains no-fire. Every row
+records whether an input was emitted and why an action was executed or blocked,
+and the summary records the safety configuration and execution counts.
+
+The guarded executor has only been exercised against a fake backend. It must not
+be run against CS2 until a separate live test is explicitly approved. The first
+approved test should use a short duration, no fire, an empty local Practice with
+Bots session, and `--audit-every 0` so it retains no screenshots. Use the same
+arguments as the passing v2 preflight, replace `run_cs2_shadow.py` with
+`run_cs2_controller.py`, choose a new output directory, and append:
+
+```powershell
+--enable-input --confirm-local-practice LOCAL_PRACTICE_ONLY
+```
 
 Visible-player captures and labels follow the separate
 [perception protocol](../experiments/cs2_dust2_bridge/PERCEPTION_PROTOCOL.md).
