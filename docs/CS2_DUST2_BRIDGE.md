@@ -260,6 +260,15 @@ its next-best action, no-fire mode now also masks fire before policy selection.
 The executor keeps its independent fire guard. See the
 [heartbeat result](../experiments/cs2_dust2_bridge/GUARDED_CONTROLLER_NOFIRE_HEARTBEAT_RESULT.json).
 
+The third approved 10-second run passed the complete no-fire movement gate. All
+40 frames were accepted and all 40 decisions emitted bounded input: ten forward
+steps, nine right strafes, and 21 left turns. GSI age stayed between 94 and 609
+ms, frame age stayed between 85.5 and 234 ms, fire remained masked before policy
+selection, and there were no safety blocks or mask violations. No screenshots
+were retained, so this proves the guarded integration path rather than Dust II
+gameplay quality. See the
+[movement result](../experiments/cs2_dust2_bridge/GUARDED_CONTROLLER_NOFIRE_MOVEMENT_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with

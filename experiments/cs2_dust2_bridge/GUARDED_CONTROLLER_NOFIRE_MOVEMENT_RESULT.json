@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-04",
+  "status": "pass",
+  "execution": "live_controller_guarded",
+  "source_artifact": "artifacts/cs2_bridge/dust2_guarded_controller_nofire_preflight_20261004_03",
+  "conditions": {
+    "map": "de_dust2",
+    "requested_duration_seconds": 10.0,
+    "recorded_duration_seconds": 10.0,
+    "requested_hz": 4.0,
+    "effective_hz": 4.0,
+    "gsi_heartbeat_seconds": 0.25,
+    "mode": "greedy",
+    "policy_version": 80,
+    "fire_enabled": false,
+    "fire_masked_before_policy_selection": true,
+    "key_hold_ms": 60.0,
+    "turn_pixels": 32,
+    "maximum_frame_age_ms": 250.0,
+    "maximum_gsi_age_ms": 1000.0
+  },
+  "capture": {
+    "attempted_frames": 40,
+    "accepted_frames": 40,
+    "gsi_rows": 63,
+    "saved_images": 0,
+    "artifact_size_bytes": 668460
+  },
+  "execution_result": {
+    "proposed_actions": {
+      "forward": 10,
+      "strafe_right": 9,
+      "turn_left": 21
+    },
+    "emitted_actions": {
+      "forward": 10,
+      "strafe_right": 9,
+      "turn_left": 21
+    },
+    "blocked_actions": {},
+    "emitted_action_count": 40,
+    "masked_action_violations": 0,
+    "fire_selected": 0,
+    "fire_actions_emitted": 0,
+    "emergency_stop_triggered": false
+  },
+  "freshness_ms": {
+    "gsi_minimum": 94.0,
+    "gsi_maximum": 609.0,
+    "frame_minimum": 85.5,
+    "frame_maximum": 234.0
+  },
+  "perception_and_memory": {
+    "live_target_frames": 19,
+    "target_memory_frames": 19,
+    "waypoint_frames": 19,
+    "visual_validity_assessed": false,
+    "reason": "The approved run retained no screenshots. Gameplay quality and detection correctness require player feedback or a separately approved visual audit."
+  },
+  "latency_ms": {
+    "capture_mean": 28.30695,
+    "capture_p95": 24.42882,
+    "capture_maximum": 259.4355,
+    "accepted_processing_mean": 84.483845,
+    "accepted_processing_p95": 95.024475,
+    "accepted_processing_maximum": 101.7884
+  },
+  "acceptance": {
+    "requires_all_frames_accepted": true,
+    "requires_all_post_policy_actions_executed": true,
+    "requires_zero_stale_state_actions": true,
+    "requires_zero_masked_action_violations": true,
+    "requires_zero_fire_selection_and_emission": true,
+    "requires_no_screenshots": true,
+    "passed": true
+  },
+  "interpretation": "The third short trial validates the complete guarded CPU perception-policy-input loop for no-fire movement and turning. Every frame stayed within the state-freshness limits and produced one bounded action. This is an integration and safety result, not evidence that the current policy navigates Dust II well.",
+  "behavioral_quality_claimed": false,
+  "next_gate": "Collect player feedback on observed behavior, then run a separately approved live F12 emergency-stop drill before any longer controller trial."
+}

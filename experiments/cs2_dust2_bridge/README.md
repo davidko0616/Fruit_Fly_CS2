@@ -110,3 +110,11 @@ greedy policy selects its next-best movement or turn, while the executor retains
 its independent fire block. No behavioral-quality claim is made from either
 short run. See
 [`GUARDED_CONTROLLER_NOFIRE_HEARTBEAT_RESULT.json`](GUARDED_CONTROLLER_NOFIRE_HEARTBEAT_RESULT.json).
+
+The third approved 10-second trial passed after preselection fire masking. It
+accepted all 40 frames and emitted all 40 bounded decisions: ten forward, nine
+strafe-right, and 21 turn-left actions. Every frame and GSI row met the strict
+freshness limits, with no firing, safety blocks, saved screenshots, or mask
+violations. This validates real no-fire input integration; observed navigation
+quality still needs player feedback. See
+[`GUARDED_CONTROLLER_NOFIRE_MOVEMENT_RESULT.json`](GUARDED_CONTROLLER_NOFIRE_MOVEMENT_RESULT.json).
