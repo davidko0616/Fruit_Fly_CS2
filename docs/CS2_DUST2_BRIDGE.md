@@ -211,10 +211,22 @@ their action masks. Four startup frames lacked an A/B anchor and three poses
 exceeded the configured NAV correction bound. All six audit images showed active
 Dust II gameplay, every GSI match was causal, and no input was emitted. See the
 [v2 preflight result](../experiments/cs2_dust2_bridge/LIVE_SHADOW_GRID_V2_PREFLIGHT_RESULT.json).
-The next gate is now a five-to-ten-minute v2 read-only route covering both sites,
-spawns, mid, tunnels, and the connecting paths. Only after that should proposed
-actions be mapped to local practice controls behind an explicit enable flag and
-immediate stop control.
+The October 4 five-minute v2 run then covered both sites, both tunnels, mid,
+Long, Short, Catwalk, and the spawn routes. It accepted 918 of 949 eligible
+gameplay frames (96.7%); 99 death frames and 125 pose-less buy-menu frames were
+excluded before policy execution. Processing p95 was 99.1 ms, effective rate was
+3.83 Hz, and 247 accepted frames contained a live target. All 30 audit images
+were reviewed: 24 showed active gameplay, five showed the buy menu, one showed a
+death, and none showed a black screen, settings, console, desktop, or Codex.
+
+The game crashed at the end of the run. The final capture stalled for 13.1
+seconds and the run retained 1,173 rather than 1,200 frames, but its last frame
+was still valid gameplay and the preceding 293 seconds remain usable. See the
+[five-minute v2 result](../experiments/cs2_dust2_bridge/LIVE_SHADOW_GRID_V2_5MIN_RESULT.json).
+The next gate is a disabled-by-default local-practice input executor with an
+explicit enable flag, immediate stop control, stale-state failsafes, bounded key
+holds, and a no-fire validation mode. It must not emit input until a separate
+live test is explicitly approved.
 
 Visible-player captures and labels follow the separate
 [perception protocol](../experiments/cs2_dust2_bridge/PERCEPTION_PROTOCOL.md).

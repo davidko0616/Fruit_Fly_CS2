@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-04",
+  "status": "pass_with_terminal_game_crash_caveat",
+  "execution": "live_shadow_read_only",
+  "input_emitted": false,
+  "source_artifact": "artifacts/cs2_bridge/dust2_live_shadow_grid_v2_5min_20261004_01",
+  "conditions": {
+    "map": "de_dust2",
+    "session_state": "warmup",
+    "requested_duration_seconds": 300.0,
+    "recorded_duration_seconds": 306.141,
+    "requested_hz": 4.0,
+    "effective_hz": 3.831567806990896,
+    "mode": "greedy",
+    "policy_version": 80,
+    "radar_map_calibration": "experiments/cs2_dust2_bridge/dust2_radar_map_calibration_v2.json"
+  },
+  "capture": {
+    "attempted_frames": 1173,
+    "accepted_frames": 918,
+    "raw_accepted_fraction": 0.782608695652174,
+    "gsi_rows": 377,
+    "drops": {
+      "inactive_gsi_frame": 99,
+      "radar_pose_failure": 125,
+      "radar_map_failure": 6,
+      "clearance_pose_failure": 25
+    },
+    "eligible_gameplay_frames": 949,
+    "eligible_gameplay_accepted_fraction": 0.9673340358271865,
+    "eligibility_rule": "Exclude inactive/death frames and pose-less buy-menu frames before measuring gameplay localization acceptance.",
+    "causal_gsi_for_all_frames": true,
+    "maximum_gsi_age_ms": 10023.0
+  },
+  "terminal_crash": {
+    "reported_by_player": true,
+    "last_frame_index": 1172,
+    "last_capture_latency_ms": 13063.1218,
+    "last_frame_status": "accepted",
+    "interpretation": "DXCam returned a final usable frame after a 13.1-second stall. The crash occurred at the end of the run and reduced the expected 1200 frames to 1173. No black frame was retained in the sparse audit set."
+  },
+  "localization": {
+    "site_pair_frames": 660,
+    "single_site_frames": 164,
+    "recent_site_frames": 94,
+    "temporal_pose_selection_frames": 35,
+    "clearance_snap_world": {
+      "mean": 6.04587497767977,
+      "p50": 0.0,
+      "p95": 50.86706623213486,
+      "maximum": 89.78282613489797,
+      "over_30_frames": 63
+    }
+  },
+  "perception_and_policy": {
+    "live_target_frames": 247,
+    "target_memory_frames": 477,
+    "waypoint_frames": 477,
+    "action_counts": {
+      "fire": 83,
+      "forward": 281,
+      "strafe_left": 31,
+      "strafe_right": 10,
+      "turn_left": 512,
+      "turn_right": 1
+    },
+    "action_transitions": 276,
+    "masked_action_violations": 0,
+    "behavioral_quality_claimed": false
+  },
+  "latency_ms": {
+    "capture_mean_including_terminal_stall": 33.77701798806479,
+    "capture_p95": 24.717179999999992,
+    "capture_maximum": 13063.1218,
+    "accepted_processing_mean": 82.59590816993465,
+    "accepted_processing_p95": 99.14990999999999,
+    "accepted_processing_maximum": 167.6647
+  },
+  "audit": {
+    "saved_images": 30,
+    "active_gameplay_images": 24,
+    "buy_menu_images": 5,
+    "death_images": 1,
+    "black_images": 0,
+    "settings_console_desktop_or_codex_images": 0,
+    "route_coverage": [
+      "T Start",
+      "Top of Mid",
+      "Outside Long",
+      "Long Doors",
+      "Long A",
+      "Catwalk",
+      "Short Stairs",
+      "Extended A",
+      "Bombsite A",
+      "Upper Tunnel",
+      "Lower Tunnel",
+      "Bombsite B",
+      "B Doors"
+    ],
+    "all_shadow_rows_mark_input_emitted_false": true,
+    "all_decisions_mark_live_shadow_read_only": true,
+    "artifact_size_bytes": 30822227
+  },
+  "acceptance": {
+    "minimum_eligible_gameplay_accepted_fraction": 0.9,
+    "minimum_effective_hz": 3.8,
+    "maximum_processing_p95_ms": 250.0,
+    "requires_zero_masked_action_violations": true,
+    "requires_zero_input_emission": true,
+    "passed": true
+  },
+  "interpretation": "The corrected bridge passed the sustained CPU read-only gate across the main Dust II routes. Death and buy-menu intervals were rejected before policy execution. The player-reported terminal crash affected the final capture interval but did not introduce a retained black frame or invalidate the preceding 293 seconds of evidence.",
+  "next_gate": "Implement a disabled-by-default local-practice input executor with explicit enable, immediate stop, stale-state failsafes, bounded key holds, and a no-fire validation mode. Do not emit input until the user explicitly approves a live executor test."
+}

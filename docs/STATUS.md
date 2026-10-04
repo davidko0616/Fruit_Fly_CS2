@@ -182,11 +182,19 @@ Older experiments cannot retroactively supply full activity traces.
    clearance. The 30-second live v2 preflight then accepted 113 of 120 frames
    (94.2%), sustained 4.0 Hz, kept processing p95 at 117.5 ms, and produced zero
    mask violations or input events. Its six audit images were all active Dust II
-   gameplay. Repeat the five-to-ten-minute read-only session across the full map
-   before adding any input executor. See the
+   gameplay. The five-minute v2 run then accepted 918 of 949 eligible gameplay
+   frames (96.7%) across both sites, tunnels, mid, Long, Short, Catwalk, and the
+   spawn routes. Processing p95 was 99.1 ms, the effective rate was 3.83 Hz, and
+   zero decisions violated their masks or emitted input. Death and buy-menu
+   intervals were rejected before policy execution. A player-reported game crash
+   caused a 13.1-second final capture stall, but no black frame was retained and
+   the preceding 293 seconds remain usable. The next stage is to implement a
+   disabled-by-default local-practice executor with explicit enable/stop controls,
+   stale-state failsafes, bounded key holds, and a no-fire validation mode. See the
    [preflight result](../experiments/cs2_dust2_bridge/LIVE_SHADOW_PREFLIGHT_RESULT.json),
    [five-minute diagnostic](../experiments/cs2_dust2_bridge/LIVE_SHADOW_5MIN_RESULT.json),
    [v2 preflight result](../experiments/cs2_dust2_bridge/LIVE_SHADOW_GRID_V2_PREFLIGHT_RESULT.json),
+   [five-minute v2 result](../experiments/cs2_dust2_bridge/LIVE_SHADOW_GRID_V2_5MIN_RESULT.json),
    and [live-shadow instructions](CS2_DUST2_BRIDGE.md#continuous-live-shadow).
 2. Repeat matched actor comparisons only when they answer a specific scientific
    question. The one-time held-out FlyWire result was 51/64 hits (79.7%) and
