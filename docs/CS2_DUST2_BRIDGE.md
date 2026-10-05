@@ -359,6 +359,15 @@ shutdown still cancel immediately. The player reported that the substep motion
 already looked smoother than single-step turning. See the
 [bootstrap-optimized result](../experiments/cs2_dust2_bridge/SMOOTH_TURN_PATROL_BOOTSTRAP_OPTIMIZED_RESULT.json).
 
+The queued-turn retry passed the technical actuation gate. It localized all 72
+frames, sustained 7.18 Hz, completed 44 turn curves, and emitted 360 of 368
+substeps from started curves. The two interrupted curves correspond to the
+turn-to-forward transition and run shutdown. The one-entry pending queue stayed
+bounded, replacing 21 redundant pending commands. No fire or masked action was
+emitted, and no screenshots were retained. Subjective feedback on this exact run
+is still required before accepting the motion quality. See the
+[queued-turn result](../experiments/cs2_dust2_bridge/SMOOTH_TURN_PATROL_QUEUED_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with

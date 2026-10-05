@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-05",
+  "status": "pass_actuation_and_safety",
+  "execution": "live_controller_guarded",
+  "source_artifact": "artifacts/cs2_bridge/dust2_guarded_controller_nofire_8hz_patrol_smooth_queued_20261005_03",
+  "conditions": {
+    "requested_duration_seconds": 10.0,
+    "recorded_duration_seconds": 10.031,
+    "requested_hz": 8.0,
+    "effective_hz": 7.177748978167066,
+    "turn_pixels": 16,
+    "turn_duration_ms": 110.0,
+    "turn_substeps": 8,
+    "pending_turn_queue_capacity": 1,
+    "fire_enabled": false,
+    "saved_images": 0
+  },
+  "capture": {
+    "attempted_frames": 72,
+    "accepted_frames": 72,
+    "gsi_rows": 64,
+    "radar_map_source_counts": {
+      "site_pair": 67,
+      "single_site": 5
+    }
+  },
+  "execution_result": {
+    "executed_actions": 71,
+    "stale_frame_actions": 1,
+    "action_counts": {
+      "forward": 2,
+      "turn_left": 70
+    },
+    "masked_action_violations": 0,
+    "fire_actions_emitted": 0
+  },
+  "smooth_turn_actuation": {
+    "commands_received": 69,
+    "commands_started_immediately": 3,
+    "commands_queued": 45,
+    "pending_commands_replaced": 21,
+    "curves_started": 46,
+    "curves_completed": 44,
+    "curves_superseded": 2,
+    "planned_substeps_for_started_curves": 368,
+    "emitted_substeps": 360,
+    "emitted_fraction": 0.9782608695652174,
+    "expected_interruptions": {
+      "turn_to_forward_transition": 1,
+      "run_shutdown": 1
+    },
+    "queue_bound_respected": true,
+    "passed": true
+  },
+  "perception_and_behavior": {
+    "target_memory_frames": 0,
+    "waypoint_frames": 72,
+    "patrol_frames": 72,
+    "clearance_snap_world_maximum": 9.046908525526549
+  },
+  "latency_ms": {
+    "capture_p95": 29.095475,
+    "processing_mean": 109.14245972222221,
+    "processing_p95": 140.76761,
+    "processing_maximum": 191.2648
+  },
+  "safety_assessment": {
+    "continuous_localization": true,
+    "bounded_input_only": true,
+    "bounded_pending_turn_queue": true,
+    "no_fire_mode_passed": true,
+    "no_screenshots_retained": true,
+    "passed": true
+  },
+  "tests": {
+    "full_suite_tests": 72,
+    "passed": 71,
+    "expected_cuda_skips": 1,
+    "same_direction_queue_regression": true
+  },
+  "player_feedback": {
+    "previous_substep_turning_looked_smoother": true,
+    "this_exact_run": "pending"
+  },
+  "behavioral_quality_claimed": false,
+  "next_gate": "Collect player feedback on this exact queued-turn run, then address the policy's persistent left-turn search before longer Dust II patrol evaluation."
+}
