@@ -75,6 +75,7 @@ def executor_record(action, *, timestamp_ns=900_000_000,
     return {
         'status': 'accepted' if accepted else 'dropped',
         'monotonic_ns': timestamp_ns,
+        'clearance_snap_world': 0.0,
         'gsi_delta_ns': gsi_delta_ns,
         'gsi_snapshot': {
             'map_name': 'de_dust2', 'round_id': 'de_dust2:1',
@@ -218,6 +219,26 @@ class GuardedExecutorTests(unittest.TestCase):
         self.assertFalse(executor.held_keys)
         executor.close()
 
+    def test_uncertain_clearance_pose_blocks_movement_but_allows_turn(self):
+        backend = FakeInputBackend()
+        executor = GuardedActionExecutor(backend, enabled=True)
+        movement = executor_record(1)
+        movement['clearance_snap_world'] = 30.01
+        blocked = executor.execute(movement, now_ns=1_000_000_000)
+        self.assertEqual(blocked['reason'], 'movement_pose_uncertain')
+        self.assertFalse(blocked['input_emitted'])
+        self.assertEqual(blocked['clearance_snap_world'], 30.01)
+        self.assertEqual(backend.events, [])
+
+        turn = executor_record(5)
+        turn['clearance_snap_world'] = 80.0
+        allowed = executor.execute(turn, now_ns=1_000_000_000)
+        self.assertEqual(allowed['reason'], 'executed')
+        self.assertTrue(executor.wait_for_turn(1))
+        self.assertTrue(any(event[0] == 'move_mouse'
+                            for event in backend.events))
+        executor.close()
+
     def test_repeated_turn_queues_one_curve_without_cancelling_active_curve(self):
         backend = FakeInputBackend()
         entered_wait = threading.Event()
@@ -307,6 +328,9 @@ class GuardedExecutorTests(unittest.TestCase):
     def test_safety_configuration_rejects_unbounded_values(self):
         with self.assertRaisesRegex(ValueError, 'key_hold_ms'):
             InputSafetyConfig(key_hold_ms=251)
+        with self.assertRaisesRegex(
+                ValueError, 'max_movement_clearance_snap_world'):
+            InputSafetyConfig(max_movement_clearance_snap_world=91)
         with self.assertRaisesRegex(ValueError, 'turn_pixels'):
             InputSafetyConfig(turn_pixels=201)
         with self.assertRaisesRegex(ValueError, 'turn_duration_ms'):

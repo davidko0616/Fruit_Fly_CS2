@@ -34,6 +34,9 @@ def main():
         '--sustain-movement', action='store_true',
         help=('Renew repeated movement decisions without releasing the key; '
               'the key still expires after --key-hold-ms.'))
+    parser.add_argument(
+        '--execution-max-movement-snap-world', type=float, default=30,
+        help='Block movement when NAV-mask pose correction exceeds this value.')
     parser.add_argument('--turn-pixels', type=int, default=32)
     parser.add_argument('--turn-duration-ms', type=float, default=110)
     parser.add_argument('--turn-substeps', type=int, default=8)
@@ -52,6 +55,8 @@ def main():
         max_gsi_age_ms=args.execution_max_gsi_age_ms,
         key_hold_ms=args.key_hold_ms,
         sustain_movement=args.sustain_movement,
+        max_movement_clearance_snap_world=(
+            args.execution_max_movement_snap_world),
         turn_pixels=args.turn_pixels,
         turn_duration_ms=args.turn_duration_ms,
         turn_substeps=args.turn_substeps,

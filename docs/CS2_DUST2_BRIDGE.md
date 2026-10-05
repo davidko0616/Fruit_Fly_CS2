@@ -425,6 +425,17 @@ failure, shutdown, or expiry releases the key. Legacy pulse mode remains the
 default. See the
 [sustained-movement preflight](../experiments/cs2_dust2_bridge/SUSTAINED_MOVEMENT_PREFLIGHT_RESULT.json).
 
+The live sustained-movement check localized all 116 frames and converted 39
+movement decisions into seven bounded holds with 32 renewals. Estimated key-down
+time was 5.19 seconds, 2.22 times the equivalent 60 ms pulses, and every hold
+released on an action change or shutdown. The run also exposed 33 frames in a
+poorly registered NAV-mask region, with pose snapping as high as 79 world units.
+The executor now blocks movement above 30 world units and releases any active
+key, while still allowing turns that can recover orientation. This guard is
+covered by the full test suite. Another movement-only capture is unnecessary;
+the next target-tracking run will exercise it in context. See the
+[live sustained-movement result](../experiments/cs2_dust2_bridge/SUSTAINED_MOVEMENT_LIVE_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with

@@ -2,6 +2,7 @@
 from dataclasses import asdict, dataclass
 import ctypes
 from ctypes import wintypes
+import math
 import threading
 import sys
 import time
@@ -17,6 +18,7 @@ class InputSafetyConfig:
     max_gsi_age_ms: float = 1_000.0
     key_hold_ms: float = 60.0
     sustain_movement: bool = False
+    max_movement_clearance_snap_world: float = 30.0
     turn_pixels: int = 32
     turn_duration_ms: float = 110.0
     turn_substeps: int = 8
@@ -30,6 +32,9 @@ class InputSafetyConfig:
             raise ValueError('max_gsi_age_ms must be in (0, 5000]')
         if not 0 < float(self.key_hold_ms) <= 250:
             raise ValueError('key_hold_ms must be in (0, 250]')
+        if not 0 < float(self.max_movement_clearance_snap_world) <= 90:
+            raise ValueError(
+                'max_movement_clearance_snap_world must be in (0, 90]')
         if not 0 < int(self.turn_pixels) <= 200:
             raise ValueError('turn_pixels must be in (0, 200]')
         if not 0 < float(self.turn_duration_ms) <= 250:
@@ -523,6 +528,16 @@ class GuardedActionExecutor:
             return self._blocked_result(
                 'fire_disabled', action_name, frame_age_ms=frame_age_ms,
                 gsi_age_ms=gsi_age_ms)
+        if action_name in self.KEY_ACTIONS:
+            clearance_snap_world = record.get('clearance_snap_world')
+            if (not isinstance(clearance_snap_world, (int, float)) or
+                    not math.isfinite(float(clearance_snap_world)) or
+                    float(clearance_snap_world) >
+                    self.config.max_movement_clearance_snap_world):
+                return self._blocked_result(
+                    'movement_pose_uncertain', action_name,
+                    frame_age_ms=frame_age_ms, gsi_age_ms=gsi_age_ms,
+                    clearance_snap_world=clearance_snap_world)
 
         movement_dispatch = None
         if action_name in self.KEY_ACTIONS:

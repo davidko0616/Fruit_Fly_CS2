@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-05",
+  "status": "pass_actuator_fail_geometry_gate_remediated_offline",
+  "execution": "live_controller_guarded",
+  "source_artifact": "artifacts/cs2_bridge/dust2_guarded_controller_sustained_movement_20261005_02",
+  "source_shadow_sha256": "e1ae15850aad51491b3ec5f879b7c3b102b082877aa3a3be9d21c3a68f508b3f",
+  "conditions": {
+    "duration_seconds": 15.031,
+    "requested_hz": 8.0,
+    "effective_hz": 7.717384072914599,
+    "movement_expiry_ms": 220.0,
+    "sustain_movement": true,
+    "turn_pixels": 200,
+    "fire_enabled": false,
+    "saved_images": 0
+  },
+  "capture": {
+    "attempted_frames": 116,
+    "accepted_frames": 116,
+    "gsi_rows": 78,
+    "executed_actions": 116,
+    "masked_action_violations": 0,
+    "fire_actions_emitted": 0
+  },
+  "action_counts": {
+    "forward": 33,
+    "strafe_left": 6,
+    "turn_left": 77
+  },
+  "sustained_movement": {
+    "movement_commands_received": 39,
+    "movement_commands_renewed": 32,
+    "movement_holds_started": 7,
+    "movement_holds_superseded": 7,
+    "movement_active_at_shutdown": false,
+    "estimated_active_seconds": 5.1895,
+    "estimated_active_fraction": 0.35109261890264526,
+    "equivalent_60_ms_pulse_upper_bound_seconds": 2.34,
+    "active_time_multiplier": 2.217735042735043,
+    "actuator_passed": true
+  },
+  "map_motion": {
+    "straight_line_displacement_world": 20.237740926901637,
+    "cumulative_pose_distance_world": 40.09806031501125
+  },
+  "geometry_diagnostic": {
+    "clearance_snap_world_maximum": 78.99944514660052,
+    "clearance_snap_over_30_frames": 33,
+    "affected_frame_range": [
+      13,
+      51
+    ],
+    "high_snap_actions_were_mostly_turns": true,
+    "geometry_gate_passed": false
+  },
+  "remediation": {
+    "max_movement_clearance_snap_world": 30.0,
+    "movement_above_limit": "blocked with movement_pose_uncertain and any active movement key released",
+    "turning_above_limit": "allowed so orientation can recover",
+    "full_suite_tests": 76,
+    "passed": 75,
+    "expected_cuda_skips": 1,
+    "offline_test_passed": true
+  },
+  "safety_assessment": {
+    "bounded_key_expiry": true,
+    "all_holds_released": true,
+    "no_fire_mode_passed": true,
+    "no_screenshots_retained": true,
+    "live_geometry_gate_passed": false,
+    "post_run_guard_added": true
+  },
+  "interpretation": "Sustained movement more than doubled actual key-down time without a stuck key or safety interruption. The run also encountered a poorly registered NAV-mask region, so movement now fails closed above 30 world units of pose snapping while turns remain available.",
+  "next_gate": "Use the new geometry guard during the meaningful no-fire target-tracking and aiming evaluation; another movement-only capture is unnecessary."
+}
