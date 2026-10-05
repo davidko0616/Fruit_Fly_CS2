@@ -67,7 +67,8 @@ class RadarMapCalibration:
 
 
 def detect_site_anchor_candidates(
-        image, origin=(0, 0), search_bounds=(170, 90, 510, 260)):
+        image, origin=(0, 0), search_bounds=(170, 90, 510, 260),
+        blue_max=90):
     """Detect orange A/B site-letter components in the fixed radar."""
     rgb = np.asarray(image.convert('RGB'))
     min_x, min_y, max_x, max_y = search_bounds
@@ -79,7 +80,8 @@ def detect_site_anchor_candidates(
         raise ValueError('Radar anchor bounds do not overlap the image')
     crop = rgb[y0:y1, x0:x1]
     red, green, blue = (crop[:, :, index].astype(int) for index in range(3))
-    orange = ((red > 115) & (green > 75) & (green < 190) & (blue < 90) &
+    orange = ((red > 115) & (green > 75) & (green < 190) &
+              (blue < int(blue_max)) &
               (red > green * 1.1) & ((green - blue) > 30))
     orange = ndimage.binary_dilation(orange, iterations=1)
     labels, count = ndimage.label(orange)
@@ -230,8 +232,44 @@ class Dust2RadarMapLocalizer:
             self.anchor_ns = int(timestamp_ns)
         return self.site_b_screen, source
 
+    def _site_candidates(self, image, origin):
+        """Add weak-color anchors only when a strict anchor validates the pair."""
+        strict = detect_site_anchor_candidates(image, origin)
+        relaxed = detect_site_anchor_candidates(
+            image, origin, blue_max=125)
+        calibration = self.calibration
+        weak_match_radius = min(6.0, calibration.anchor_match_radius)
+        candidates = list(strict)
+        for candidate in relaxed:
+            if any(math.dist(candidate, value) < 2 for value in candidates):
+                continue
+            for trusted in strict:
+                delta_x = candidate[0] - trusted[0]
+                delta_y = candidate[1] - trusted[1]
+                forward_error = math.hypot(
+                    delta_x - calibration.site_separation_screen_x,
+                    delta_y - calibration.site_separation_screen_y)
+                reverse_error = math.hypot(
+                    delta_x + calibration.site_separation_screen_x,
+                    delta_y + calibration.site_separation_screen_y)
+                if forward_error <= weak_match_radius:
+                    derived = (
+                        trusted[0] + calibration.site_separation_screen_x,
+                        trusted[1] + calibration.site_separation_screen_y)
+                elif reverse_error <= weak_match_radius:
+                    derived = (
+                        trusted[0] - calibration.site_separation_screen_x,
+                        trusted[1] - calibration.site_separation_screen_y)
+                else:
+                    continue
+                if not any(math.dist(derived, value) < 2
+                           for value in candidates):
+                    candidates.append(derived)
+                    break
+        return tuple(candidates)
+
     def localize(self, raw_pose, image, timestamp_ns, origin=(0, 0)):
-        candidates = detect_site_anchor_candidates(image, origin)
+        candidates = self._site_candidates(image, origin)
         current_crop = _radar_tracking_crop(image, origin)
         tracked_shift = None
         if self.previous_radar_crop is not None:

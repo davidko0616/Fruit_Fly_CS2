@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-05",
+  "status": "pass",
+  "trigger": "The visible Dust II B-site radar label was anti-aliased over a light map surface and exceeded the strict blue-channel cutoff.",
+  "method": {
+    "strict_anchor_color_unchanged": true,
+    "weak_blue_channel_maximum": 125,
+    "weak_pair_match_radius_pixels": 6.0,
+    "weak_candidate_centroid_used_for_localization": false,
+    "description": "A weak-color component is admitted only when it validates the calibrated A/B separation from a strict-color component. The second anchor position is derived from calibration, so weak-pixel centroid error cannot move the pose."
+  },
+  "diagnostic_frame": {
+    "source": "artifacts/cs2_bridge/dust2_radar_anchor_diagnostic_20261004_02/0000000.png",
+    "strict_anchor_candidates": 1,
+    "validated_anchor_candidates": 2,
+    "localization_source": "site_pair",
+    "policy_grid_pose": {
+      "x": 46.985111982750226,
+      "y": 109.4384726750721,
+      "yaw_degrees": -105.87753346451014
+    },
+    "clearance_snap_world": 28.57056853405474,
+    "accepted": true
+  },
+  "dense_route_regression": {
+    "source": "artifacts/cs2_bridge/dust2_dense_route_20260929_02",
+    "frames": 600,
+    "accepted_frames": 598,
+    "ambiguous_player_marker_frames": 2,
+    "radar_map_failure_frames": 0,
+    "clearance_failure_frames": 0,
+    "source_counts": {
+      "site_pair": 457,
+      "single_site": 86,
+      "tracked_map_pan": 54,
+      "recent_site": 1
+    },
+    "clearance_snap_world_maximum": 72.42108275313728,
+    "clearance_snap_over_30_frames": 23,
+    "previous_clearance_snap_over_30_frames": 24,
+    "changed_pose_over_one_grid_cell_frames": 11,
+    "changed_pose_maximum_grid_cells": 3.572896429719156,
+    "changed_pose_maximum_world_units": 28.58317143775325,
+    "interpretation": "Acceptance is unchanged. Newly validated direct pairs replace history-based single-site estimates on some frames; every pose change stays below 30 world units and the NAV correction tail improves by one frame."
+  },
+  "tests": {
+    "full_suite_tests": 71,
+    "passed": 70,
+    "expected_cuda_skips": 1,
+    "weak_color_pair_regression": true,
+    "smooth_turn_tests": true
+  },
+  "next_gate": "Repeat the separately approved 10-second 8 Hz guarded no-fire patrol run and evaluate smooth-turn actuation telemetry."
+}

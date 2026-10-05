@@ -509,10 +509,11 @@ class CS2BridgeTests(unittest.TestCase):
     def test_radar_map_anchor_removes_pan_and_converts_local_geometry(self):
         image = Image.new('RGB', (600, 450), (40, 40, 40))
         draw = ImageDraw.Draw(image)
-        draw.rectangle((200, 140, 217, 159), fill=(165, 135, 60))
+        # The B label can be anti-aliased over a light radar-map surface.
+        draw.rectangle((200, 140, 217, 159), fill=(206, 162, 94))
         draw.rectangle((405, 153, 422, 172), fill=(165, 135, 60))
         candidates = detect_site_anchor_candidates(image)
-        self.assertEqual(len(candidates), 2)
+        self.assertEqual(len(candidates), 1)
         calibration = RadarMapCalibration(
             map_name='de_dust2', screen_scale_x=.5, screen_scale_y=.25,
             site_b_overview_x=100, site_b_overview_y=200,

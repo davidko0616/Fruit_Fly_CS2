@@ -308,6 +308,16 @@ anchor loss; it does not yet provide global anchorless startup. Short trials mus
 therefore begin after a local round restart where a site anchor is visible. See
 the [bootstrap result](../experiments/cs2_dust2_bridge/RADAR_TRACKING_LIVE_BOOTSTRAP_RESULT.json).
 
+A later diagnostic exposed a separate startup edge case: both A/B labels were
+visible, but the B label was anti-aliased over a light radar surface and missed
+the strict color cutoff. The localizer now accepts a lighter component only when
+it validates the calibrated A/B separation from a strict-color marker, then
+derives the second position from calibration rather than trusting the lighter
+component's centroid. The diagnostic frame localizes with 28.6 world units of
+NAV correction. The 600-frame regression remains at 598 accepted frames with
+zero localization or clearance failures. See the
+[weak-anchor regression](../experiments/cs2_dust2_bridge/WEAK_RADAR_ANCHOR_REGRESSION_RESULT.json).
+
 After a one-frame diagnostic confirmed both site labels and the player marker,
 the final 8 Hz retry accepted and executed all 79 captured frames with zero
 localization or safety failures. Direct anchors remained visible throughout, so
