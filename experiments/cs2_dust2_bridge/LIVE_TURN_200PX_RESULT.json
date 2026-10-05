@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-05",
+  "status": "pass_provisional_motion",
+  "execution": "live_controller_guarded",
+  "source_artifact": "artifacts/cs2_bridge/dust2_guarded_controller_turn_200px_20261005_02",
+  "conditions": {
+    "duration_seconds": 10.0,
+    "requested_hz": 8.0,
+    "effective_hz": 6.7,
+    "turn_pixels": 200,
+    "turn_duration_ms": 110.0,
+    "turn_substeps": 8,
+    "fire_enabled": false,
+    "saved_images": 0
+  },
+  "capture": {
+    "attempted_frames": 67,
+    "accepted_frames": 67,
+    "gsi_rows": 64,
+    "executed_actions": 66,
+    "stale_frame_actions": 1,
+    "masked_action_violations": 0,
+    "fire_actions_emitted": 0
+  },
+  "actuation": {
+    "turn_commands_received": 66,
+    "turn_curves_started": 46,
+    "turn_curves_completed": 45,
+    "turn_curves_superseded": 1,
+    "turn_substeps_emitted": 361,
+    "signed_mouse_counts_emitted": -9009,
+    "absolute_mouse_counts_emitted": 9009
+  },
+  "yaw_measurement": {
+    "corrected_first_five_median_degrees": -65.41319978812251,
+    "corrected_last_five_median_degrees": -171.51613174181395,
+    "corrected_median_change_degrees": -106.10293195369144,
+    "raw_median_change_degrees": -112.1262172949678,
+    "corrected_degrees_per_mouse_count": 0.011777018087433615,
+    "corrected_degrees_per_200_pixel_curve": 2.355403617486723,
+    "corrected_degrees_per_second": 10.610293195369144
+  },
+  "safety_assessment": {
+    "continuous_localization": true,
+    "bounded_input_only": true,
+    "no_fire_mode_passed": true,
+    "no_screenshots_retained": true,
+    "passed": true
+  },
+  "player_feedback": "not the most natural looking turn, but we can work with it for now",
+  "motion_quality": "accepted_provisionally",
+  "behavioral_quality_claimed": false,
+  "interpretation": "The 200-pixel curve produces a usable bounded yaw rate and remains consistent with the prior calibration. Subjective naturalness still needs later tuning, but it does not block the first longer no-fire patrol evaluation.",
+  "next_gate": "Run one explicitly approved longer no-fire Dust II patrol and measure route progress, action diversity, localization continuity, and safety."
+}

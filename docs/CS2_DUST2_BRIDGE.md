@@ -390,6 +390,16 @@ trial stays within that existing limit and uses a 200-pixel smooth curve,
 predicted to turn about 2.27 degrees. See the
 [live turn calibration](../experiments/cs2_dust2_bridge/LIVE_TURN_CALIBRATION_RESULT.json).
 
+The 200-pixel validation retry localized all 67 frames and emitted 9,009
+leftward mouse counts with no fire, mask violations, or saved images. Corrected
+radar yaw changed by 106.1 degrees in ten seconds, giving about 2.36 degrees per
+completed 200-pixel curve and 10.6 degrees per second over the run. The user
+reported that the turn was not especially natural but was workable for the
+current stage. The scale is therefore accepted provisionally; later actuator
+tuning remains useful, but the next gate is a longer no-fire patrol rather than
+another short motion capture. See the
+[200-pixel result](../experiments/cs2_dust2_bridge/LIVE_TURN_200PX_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with
