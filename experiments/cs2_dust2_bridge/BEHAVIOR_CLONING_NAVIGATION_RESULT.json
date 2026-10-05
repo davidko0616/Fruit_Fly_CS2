@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-05",
+  "status": "training_pass_live_deployment_gate_fail",
+  "source_demonstration": "artifacts/cs2_bridge/dust2_human_demo_navigation_10min_20261005_01/demonstration.jsonl",
+  "source_demonstration_sha256": "5845b04f049f7b0d84293cf2be54f9180ec883c4d275ac43a0874b74094437cb",
+  "source_policy_run_id": "10a40610-4f86-4fad-9872-f9b55072da84",
+  "source_policy_version": 80,
+  "output_artifact": "artifacts/cs2_bridge/dust2_flywire_human_bc_nav_20261005_01",
+  "model_sha256": "9487b4433501f4d8cf454725dec6e3b20d1a55afacfbf9472d6a5db675eef4e6",
+  "configuration": {
+    "architecture": "flywire_multi_head_behavior_cloning",
+    "train_rows": 3691,
+    "validation_rows": 923,
+    "validation_split": "chronological final 20 percent, provisional",
+    "epochs": 60,
+    "batch_size": 256,
+    "learning_rate": 0.001,
+    "yaw_scale_degrees": 90.0,
+    "cpu_training_seconds": 11.809923000000708,
+    "topology_and_signs_preserved": true
+  },
+  "validation": {
+    "direction_mae": 0.3412052392959595,
+    "direction_mean_baseline_mae": 0.3485637903213501,
+    "direction_relative_improvement_percent": 2.111105981090745,
+    "button_mae": 0.02014366164803505,
+    "button_mean_baseline_mae": 0.01895792968571186,
+    "button_relative_improvement_percent": -6.254543518097584,
+    "yaw_mae_degrees": 6.190754413604736,
+    "yaw_mean_baseline_mae_degrees": 6.118856430053711,
+    "yaw_relative_improvement_percent": -1.1750232150878277,
+    "yaw_sign_accuracy_on_turns": 0.5062189102172852,
+    "yaw_mean_baseline_sign_accuracy_on_turns": 0.45771142840385437
+  },
+  "assessment": {
+    "training_completed": true,
+    "connectome_structure_preserved": true,
+    "multi_head_output_supported": true,
+    "beats_direction_baseline_materially": false,
+    "beats_yaw_baseline": false,
+    "approved_for_live_control": false
+  },
+  "interpretation": "The multi-head FlyWire trunk can optimize the human labels, but the current single-frame observation does not identify the player's intended route or recent turn momentum. The chronological holdout improvement is too small for movement and absent for yaw and buttons, so this checkpoint must not control CS2.",
+  "next_gate": "Add goal-conditioned or hindsight-waypoint navigation context and temporal state, then require a material holdout improvement before another live controller trial. Keep the future mixed demonstration session untouched as the final held-out evaluation."
+}

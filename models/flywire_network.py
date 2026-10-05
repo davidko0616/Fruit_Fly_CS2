@@ -38,6 +38,13 @@ class FlyWireNetwork(nn.Module):
 
     def forward_with_state(self, x, previous_state=None, temporal_decay=1.0):
         """Run connectome steps from an optional cross-decision neuron state."""
+        motor_activations, state = self.motor_features(
+            x, previous_state, temporal_decay)
+        out = self.output_proj(motor_activations)
+        return out, state
+
+    def motor_features(self, x, previous_state=None, temporal_decay=1.0):
+        """Return motor-neuron activity for alternate task-specific heads."""
         batch_size = x.size(0)
         if previous_state is None:
             state = torch.zeros(batch_size, self.num_neurons, device=x.device, dtype=x.dtype)
@@ -58,8 +65,6 @@ class FlyWireNetwork(nn.Module):
             next_state = self.connectome_layer(state)
             state = self.activation(next_state)
             
-        # 3. Read out motor actions
+        # 3. Expose motor activity to the task-specific readout.
         motor_activations = state[:, self.output_idx]
-        out = self.output_proj(motor_activations)
-        
-        return out, state
+        return motor_activations, state

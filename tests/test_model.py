@@ -5,10 +5,31 @@ import scipy.sparse as sp
 import torch
 
 from models.flywire_network import FlyWireNetwork
+from models.flywire_behavior import FlyWireBehaviorCloner
 from models.sparse_layer import ConnectomeSparseLinear
 
 
 class ModelTests(unittest.TestCase):
+    def test_behavior_cloner_preserves_simultaneous_multi_head_outputs(self):
+        adjacency = sp.csr_matrix(np.asarray([
+            [0, 1, 0], [0, 0, 1], [1, 0, 0]], dtype=np.float32))
+        backbone = FlyWireNetwork(
+            adjacency, np.asarray([1, -1, 1]), [0], [1, 2],
+            input_dim=14, output_dim=8)
+        model = FlyWireBehaviorCloner(backbone, yaw_scale_degrees=90)
+        prediction = model.predict_controls(torch.zeros(4, 14))
+        self.assertEqual(prediction['direction_duties'].shape, (4, 4))
+        self.assertEqual(prediction['yaw_delta_degrees'].shape, (4,))
+        self.assertEqual(prediction['button_duties'].shape, (4, 5))
+        self.assertTrue(torch.all(
+            (prediction['direction_duties'] >= 0) &
+            (prediction['direction_duties'] <= 1)))
+        self.assertTrue(torch.all(
+            prediction['yaw_delta_degrees'].abs() <= 90))
+        self.assertFalse(any(
+            parameter.requires_grad
+            for parameter in model.backbone.output_proj.parameters()))
+
     def setUp(self):
         torch.manual_seed(7)
         self.adjacency = sp.csr_matrix(([3., 1., 2.], ([0, 1, 2], [2, 2, 0])), shape=(3, 3))

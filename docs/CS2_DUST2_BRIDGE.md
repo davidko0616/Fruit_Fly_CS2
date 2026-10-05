@@ -461,6 +461,17 @@ four long frame gaps were excluded. The compact artifact used 77.1 MiB and
 retained no images. See the
 [navigation demonstration result](../experiments/cs2_dust2_bridge/NAVIGATION_DEMONSTRATION_10MIN_RESULT.json).
 
+A first CPU behavior-cloning run replaced the discrete action readout with
+simultaneous directional-duty, yaw, and button heads while retaining the
+FlyWire connectome trunk, fixed topology, and neurotransmitter signs. Training
+completed in 11.8 seconds, but the chronological holdout failed the deployment
+gate: directional MAE improved only 2.1% over a mean predictor, yaw MAE was 1.2%
+worse, and turn-sign accuracy was 50.6%. The model remains offline. The current
+single-frame observation does not reliably express the human's intended route
+or recent turn momentum; the next iteration needs goal conditioning or temporal
+state before more live control. See the
+[behavior-cloning result](../experiments/cs2_dust2_bridge/BEHAVIOR_CLONING_NAVIGATION_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with
