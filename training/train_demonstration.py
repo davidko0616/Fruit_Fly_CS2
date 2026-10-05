@@ -1,7 +1,10 @@
 """CPU behavior cloning from compact Dust II human demonstrations."""
 import argparse
+from bisect import bisect_left
+from collections import defaultdict
 import hashlib
 import json
+import math
 from pathlib import Path
 import shutil
 import sys
@@ -19,7 +22,62 @@ from models.flywire_behavior import (
 from tools.evaluate_toy_combat import load_policy
 
 
-def load_demonstration(path):
+def hindsight_goal_observations(rows, horizon_seconds=1.0,
+                                distance_scale=127.0,
+                                maximum_slack_seconds=.5):
+    """Replace target channels with a causal-at-inference future-route goal.
+
+    Training derives intent from a later human pose. Live inference supplies the
+    same channels from the waypoint planner; future state is never used live.
+    """
+    if horizon_seconds <= 0 or distance_scale <= 0:
+        raise ValueError('Hindsight horizon and distance scale must be positive')
+    groups = defaultdict(list)
+    for index, row in enumerate(rows):
+        groups[row['round_id']].append(index)
+    observations, selected = [], []
+    target_delta_ns = int(horizon_seconds * 1e9)
+    maximum_ns = int((horizon_seconds + maximum_slack_seconds) * 1e9)
+    for indices in groups.values():
+        timestamps = [int(rows[index]['observation_monotonic_ns'])
+                      for index in indices]
+        for local_index, row_index in enumerate(indices):
+            start_ns = timestamps[local_index]
+            future_local = bisect_left(
+                timestamps, start_ns + target_delta_ns,
+                lo=local_index + 1)
+            if future_local >= len(indices):
+                continue
+            if timestamps[future_local] - start_ns > maximum_ns:
+                continue
+            row, future = rows[row_index], rows[indices[future_local]]
+            x, y = float(row['pose']['x']), float(row['pose']['y'])
+            target_x = float(future['pose']['x'])
+            target_y = float(future['pose']['y'])
+            delta_x, delta_y = target_x - x, target_y - y
+            distance = math.hypot(delta_x, delta_y)
+            if distance < 1.0:
+                future_yaw = math.radians(float(future['pose']['yaw_degrees']))
+                delta_x = math.cos(future_yaw) * 8.0
+                delta_y = math.sin(future_yaw) * 8.0
+                distance = 8.0
+            yaw = math.radians(float(row['pose']['yaw_degrees']))
+            forward_x, forward_y = math.cos(yaw), math.sin(yaw)
+            right_x, right_y = -forward_y, forward_x
+            local_forward = delta_x * forward_x + delta_y * forward_y
+            local_right = delta_x * right_x + delta_y * right_y
+            observation = list(row['observation'])
+            observation[4] = local_forward / distance_scale
+            observation[5] = local_right / distance_scale
+            observation[6] = distance / (math.sqrt(2) * distance_scale)
+            observation[7] = local_forward / distance
+            observation[8] = 0.0
+            observations.append(observation)
+            selected.append(row_index)
+    return selected, np.asarray(observations, dtype=np.float32)
+
+
+def load_demonstration(path, hindsight_goal_seconds=None):
     rows = []
     with Path(path).open(encoding='utf-8') as source:
         for line in source:
@@ -28,7 +86,14 @@ def load_demonstration(path):
                 rows.append(row)
     if len(rows) < 10:
         raise ValueError('At least ten valid demonstration rows are required')
-    observations = np.asarray([row['observation'] for row in rows], dtype=np.float32)
+    if hindsight_goal_seconds is None:
+        selected = list(range(len(rows)))
+        observations = np.asarray(
+            [row['observation'] for row in rows], dtype=np.float32)
+    else:
+        selected, observations = hindsight_goal_observations(
+            rows, hindsight_goal_seconds)
+        rows = [rows[index] for index in selected]
     directions = np.asarray([[
         row['controls']['forward_duty'], row['controls']['backward_duty'],
         row['controls']['strafe_left_duty'],
@@ -89,14 +154,15 @@ def _baseline_metrics(train_directions, train_yaw, train_buttons,
 
 def train(demonstration, policy_run, output, policy_version=80, seed=20261005,
           epochs=60, batch_size=256, learning_rate=1e-3,
-          validation_fraction=.2, yaw_scale_degrees=90.0):
+          validation_fraction=.2, yaw_scale_degrees=90.0,
+          hindsight_goal_seconds=None):
     demonstration, policy_run, output = map(Path, (demonstration, policy_run, output))
     if output.exists():
         raise FileExistsError(f'Refusing to overwrite {output}')
     if not 0 < validation_fraction < .5 or epochs < 1 or batch_size < 1:
         raise ValueError('Invalid split or training configuration')
     rows, observations_np, directions_np, yaw_np, buttons_np = \
-        load_demonstration(demonstration)
+        load_demonstration(demonstration, hindsight_goal_seconds)
     split = int(len(rows) * (1 - validation_fraction))
     if split < 1 or split >= len(rows):
         raise ValueError('Validation split leaves an empty partition')
@@ -168,6 +234,7 @@ def train(demonstration, policy_run, output, policy_version=80, seed=20261005,
         'batch_size': batch_size,
         'learning_rate': learning_rate,
         'yaw_scale_degrees': yaw_scale_degrees,
+        'hindsight_goal_seconds': hindsight_goal_seconds,
         'elapsed_seconds': time.perf_counter() - started,
         'topology_and_signs_preserved': True,
         'train': _metrics(
@@ -188,7 +255,7 @@ def train(demonstration, policy_run, output, policy_version=80, seed=20261005,
         'model_state_dict': model.state_dict(),
         'config': {key: metrics[key] for key in (
             'architecture', 'source_policy_run_id', 'source_policy_version',
-            'seed', 'yaw_scale_degrees')},
+            'seed', 'yaw_scale_degrees', 'hindsight_goal_seconds')},
     }, output / 'model.pt')
     shutil.copyfile(policy_run / 'graph.npz', output / 'graph.npz')
     shutil.copyfile(policy_run / 'adjacency.npz', output / 'adjacency.npz')
@@ -213,12 +280,13 @@ def main():
     parser.add_argument('--learning-rate', type=float, default=1e-3)
     parser.add_argument('--validation-fraction', type=float, default=.2)
     parser.add_argument('--yaw-scale-degrees', type=float, default=90)
+    parser.add_argument('--hindsight-goal-seconds', type=float)
     args = parser.parse_args()
     print(json.dumps(train(
         args.demonstration, args.policy_run, args.output,
         args.policy_version, args.seed, args.epochs, args.batch_size,
         args.learning_rate, args.validation_fraction,
-        args.yaw_scale_degrees), indent=2))
+        args.yaw_scale_degrees, args.hindsight_goal_seconds), indent=2))
 
 
 if __name__ == '__main__':

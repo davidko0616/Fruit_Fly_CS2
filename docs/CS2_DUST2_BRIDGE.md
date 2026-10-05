@@ -472,6 +472,15 @@ or recent turn momentum; the next iteration needs goal conditioning or temporal
 state before more live control. See the
 [behavior-cloning result](../experiments/cs2_dust2_bridge/BEHAVIOR_CLONING_NAVIGATION_RESULT.json).
 
+Goal-conditioned retraining derives a one-second future route waypoint from the
+recorded trajectory, then writes it into the same local waypoint channels the
+live planner can supply without future information. This improved chronological
+holdout directional MAE by 8.6% over baseline and raised turn-sign accuracy from
+45.6% to 55.4%. Yaw magnitude remained 2.6% worse than baseline, so the model is
+still offline. Bounded cross-decision connectome state is the next gate because
+turn speed depends on recent momentum that one frame cannot express. See the
+[goal-conditioned result](../experiments/cs2_dust2_bridge/GOAL_CONDITIONED_BEHAVIOR_CLONING_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with

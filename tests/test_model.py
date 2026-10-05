@@ -7,9 +7,28 @@ import torch
 from models.flywire_network import FlyWireNetwork
 from models.flywire_behavior import FlyWireBehaviorCloner
 from models.sparse_layer import ConnectomeSparseLinear
+from training.train_demonstration import hindsight_goal_observations
 
 
 class ModelTests(unittest.TestCase):
+    def test_hindsight_goal_uses_future_route_in_live_waypoint_channels(self):
+        rows = []
+        for index, (x, y, yaw) in enumerate(((0, 0, 0), (0, 5, 0), (10, 0, 0))):
+            rows.append({
+                'round_id': 'round:1',
+                'observation_monotonic_ns': index * 1_000_000_000,
+                'pose': {'x': x, 'y': y, 'yaw_degrees': yaw},
+                'observation': [0.0] * 14,
+            })
+        selected, observations = hindsight_goal_observations(
+            rows, horizon_seconds=1.0, distance_scale=10.0)
+        self.assertEqual(selected, [0, 1])
+        self.assertAlmostEqual(observations[0, 4], 0.0)
+        self.assertAlmostEqual(observations[0, 5], .5)
+        self.assertAlmostEqual(observations[0, 6], 5 / np.sqrt(2) / 10)
+        self.assertAlmostEqual(observations[0, 7], 0.0)
+        self.assertEqual(observations[0, 8], 0.0)
+
     def test_behavior_cloner_preserves_simultaneous_multi_head_outputs(self):
         adjacency = sp.csr_matrix(np.asarray([
             [0, 1, 0], [0, 0, 1], [1, 0, 0]], dtype=np.float32))

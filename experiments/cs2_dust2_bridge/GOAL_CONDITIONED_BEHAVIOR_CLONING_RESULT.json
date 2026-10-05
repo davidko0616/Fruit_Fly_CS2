@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-05",
+  "status": "movement_improved_yaw_gate_fail",
+  "source_demonstration_sha256": "5845b04f049f7b0d84293cf2be54f9180ec883c4d275ac43a0874b74094437cb",
+  "output_artifact": "artifacts/cs2_bridge/dust2_flywire_human_bc_nav_goal_1s_20261005_01",
+  "model_sha256": "c590836211d81a79f1d026ecc245f45af3f255690cdefc8207a9083717adcbc8",
+  "method": {
+    "architecture": "flywire_multi_head_behavior_cloning",
+    "hindsight_goal_seconds": 1.0,
+    "live_equivalent": "Dust II waypoint planner target channels",
+    "future_information_used_at_live_inference": false,
+    "rows": 4594,
+    "train_rows": 3675,
+    "validation_rows": 919,
+    "validation_split": "chronological final 20 percent, provisional",
+    "epochs": 60,
+    "cpu_training_seconds": 11.98099760000332,
+    "topology_and_signs_preserved": true
+  },
+  "validation": {
+    "direction_mae": 0.31900784373283386,
+    "direction_mean_baseline_mae": 0.349039763212204,
+    "direction_relative_improvement_percent": 8.604154209533931,
+    "button_mae": 0.0201591607183218,
+    "button_mean_baseline_mae": 0.018929913640022278,
+    "yaw_mae_degrees": 6.350061416625977,
+    "yaw_mean_baseline_mae_degrees": 6.188838958740234,
+    "yaw_relative_improvement_percent": -2.605051754627652,
+    "yaw_sign_accuracy_on_turns": 0.5537499785423279,
+    "yaw_mean_baseline_sign_accuracy_on_turns": 0.45625001192092896
+  },
+  "assessment": {
+    "goal_conditioning_improves_movement": true,
+    "yaw_magnitude_beats_baseline": false,
+    "approved_for_live_control": false
+  },
+  "interpretation": "A one-second hindsight waypoint makes human movement substantially more predictable through the same observation channels used by the live planner. Turn direction also improves, but a single frame still cannot represent turn momentum well enough to predict yaw magnitude.",
+  "next_gate": "Train the goal-conditioned multi-head FlyWire model with bounded cross-decision connectome state, then require movement and yaw to beat their chronological baselines before any live controller integration."
+}
