@@ -169,7 +169,12 @@ class GuardedActionExecutor:
         self._turn_lock = threading.Lock()
         self._turn_thread = None
         self._turn_stop = None
+        self._turn_direction = None
+        self._turn_pending_direction = None
         self.last_turn_stop_reason = None
+        self._turn_commands_received = 0
+        self._turn_commands_queued = 0
+        self._turn_commands_replaced = 0
         self._turns_started = 0
         self._turn_substeps_emitted = 0
         self._turn_stop_counts = {}
@@ -207,11 +212,23 @@ class GuardedActionExecutor:
         return tuple(deltas)
 
     def _run_turn(self, direction, stop_event):
-        deltas = self._turn_deltas(direction)
-        interval = (0.0 if len(deltas) <= 1 else
-                    self.config.turn_duration_ms / 1_000 / (len(deltas) - 1))
-        reason = 'completed'
         try:
+            self._run_turn_loop(direction, stop_event)
+        finally:
+            with self._turn_lock:
+                if self._turn_thread is threading.current_thread():
+                    self._turn_thread = None
+                    self._turn_stop = None
+                    self._turn_direction = None
+                    self._turn_pending_direction = None
+
+    def _run_turn_loop(self, direction, stop_event):
+        while True:
+            deltas = self._turn_deltas(direction)
+            interval = (0.0 if len(deltas) <= 1 else
+                        self.config.turn_duration_ms / 1_000 /
+                        (len(deltas) - 1))
+            reason = 'completed'
             for index, delta in enumerate(deltas):
                 if stop_event.is_set():
                     reason = 'superseded'
@@ -233,14 +250,24 @@ class GuardedActionExecutor:
                         self.turn_wait(stop_event, interval)):
                     reason = 'superseded'
                     break
-        finally:
             self.last_turn_stop_reason = reason
             with self._turn_lock:
                 self._turn_stop_counts[reason] = (
                     self._turn_stop_counts.get(reason, 0) + 1)
+                pending = self._turn_pending_direction
+                if (reason == 'completed' and not stop_event.is_set() and
+                        pending is not None):
+                    direction = pending
+                    self._turn_pending_direction = None
+                    self._turn_direction = direction
+                    self._turns_started += 1
+                    continue
                 if self._turn_thread is threading.current_thread():
                     self._turn_thread = None
                     self._turn_stop = None
+                    self._turn_direction = None
+                    self._turn_pending_direction = None
+                return
 
     def _stop_turn(self):
         with self._turn_lock:
@@ -254,8 +281,24 @@ class GuardedActionExecutor:
             if self._turn_thread is thread:
                 self._turn_thread = None
                 self._turn_stop = None
+                self._turn_direction = None
+                self._turn_pending_direction = None
 
     def _start_turn(self, direction):
+        with self._turn_lock:
+            self._turn_commands_received += 1
+            active = (self._turn_thread is not None and
+                      self._turn_thread.is_alive() and
+                      self._turn_stop is not None and
+                      not self._turn_stop.is_set())
+            if active and direction == self._turn_direction:
+                dispatch = ('replaced' if self._turn_pending_direction is not None
+                            else 'queued')
+                if dispatch == 'replaced':
+                    self._turn_commands_replaced += 1
+                self._turn_pending_direction = direction
+                self._turn_commands_queued += 1
+                return dispatch
         self._stop_turn()
         stop_event = threading.Event()
         thread = threading.Thread(
@@ -264,8 +307,10 @@ class GuardedActionExecutor:
         with self._turn_lock:
             self._turn_stop = stop_event
             self._turn_thread = thread
+            self._turn_direction = direction
             self._turns_started += 1
         thread.start()
+        return 'started'
 
     def wait_for_turn(self, timeout=None):
         with self._turn_lock:
@@ -277,6 +322,9 @@ class GuardedActionExecutor:
     def actuation_summary(self):
         with self._turn_lock:
             return {
+                'smooth_turn_commands_received': self._turn_commands_received,
+                'smooth_turn_commands_queued': self._turn_commands_queued,
+                'smooth_turn_commands_replaced': self._turn_commands_replaced,
                 'smooth_turns_started': self._turns_started,
                 'smooth_turn_substeps_emitted': self._turn_substeps_emitted,
                 'smooth_turn_stop_counts': dict(sorted(
@@ -361,7 +409,7 @@ class GuardedActionExecutor:
                 self.held_keys.discard(key)
         elif action_name in ('turn_left', 'turn_right'):
             direction = -1 if action_name == 'turn_left' else 1
-            self._start_turn(direction)
+            turn_dispatch = self._start_turn(direction)
         elif action_name == 'fire':
             self._stop_turn()
             self.backend.click_left()
@@ -377,6 +425,7 @@ class GuardedActionExecutor:
                                 'duration_ms': self.config.turn_duration_ms,
                                 'substeps': self.config.turn_substeps,
                                 'curve': 'smoothstep',
+                                'dispatch': turn_dispatch,
                             }))
 
     def release_all(self):

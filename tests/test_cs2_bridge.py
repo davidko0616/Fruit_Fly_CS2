@@ -134,12 +134,47 @@ class GuardedExecutorTests(unittest.TestCase):
         self.assertTrue(all(abs(wait - .015) < 1e-9 for wait in waits))
         self.assertEqual(result['turn_actuation'], {
             'pixels': 16, 'duration_ms': 105, 'substeps': 8,
-            'curve': 'smoothstep'})
+            'curve': 'smoothstep', 'dispatch': 'started'})
         self.assertEqual(executor.actuation_summary(), {
+            'smooth_turn_commands_received': 1,
+            'smooth_turn_commands_queued': 0,
+            'smooth_turn_commands_replaced': 0,
             'smooth_turns_started': 1,
             'smooth_turn_substeps_emitted': 8,
             'smooth_turn_stop_counts': {'completed': 1},
             'smooth_turn_active': False})
+        executor.close()
+
+    def test_repeated_turn_queues_one_curve_without_cancelling_active_curve(self):
+        backend = FakeInputBackend()
+        entered_wait = threading.Event()
+        release_wait = threading.Event()
+
+        def controlled_wait(stop_event, seconds):
+            entered_wait.set()
+            while not release_wait.is_set():
+                if stop_event.wait(.001):
+                    return True
+            return False
+
+        executor = GuardedActionExecutor(
+            backend, enabled=True,
+            config=InputSafetyConfig(turn_pixels=16, turn_substeps=8),
+            turn_wait=controlled_wait)
+        first = executor.execute(executor_record(5), now_ns=1_000_000_000)
+        self.assertTrue(entered_wait.wait(1))
+        second = executor.execute(executor_record(5), now_ns=1_000_000_000)
+        release_wait.set()
+        self.assertTrue(executor.wait_for_turn(1))
+        self.assertEqual(first['turn_actuation']['dispatch'], 'started')
+        self.assertEqual(second['turn_actuation']['dispatch'], 'queued')
+        self.assertEqual(sum(event[1] for event in backend.events
+                             if event[0] == 'move_mouse'), -32)
+        summary = executor.actuation_summary()
+        self.assertEqual(summary['smooth_turn_commands_received'], 2)
+        self.assertEqual(summary['smooth_turn_commands_queued'], 1)
+        self.assertEqual(summary['smooth_turns_started'], 2)
+        self.assertEqual(summary['smooth_turn_stop_counts'], {'completed': 2})
         executor.close()
 
     def test_smooth_turn_stops_if_focus_changes_between_substeps(self):

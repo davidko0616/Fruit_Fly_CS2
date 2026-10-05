@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-05",
+  "status": "fail_repeated_turn_supersession",
+  "execution": "live_controller_guarded",
+  "source_artifact": "artifacts/cs2_bridge/dust2_guarded_controller_nofire_8hz_patrol_smooth_20261005_02",
+  "conditions": {
+    "requested_duration_seconds": 10.0,
+    "recorded_duration_seconds": 10.015,
+    "requested_hz": 8.0,
+    "effective_hz": 6.390414378432723,
+    "turn_pixels": 16,
+    "turn_duration_ms": 110.0,
+    "turn_substeps": 8,
+    "weak_anchor_validation": "bootstrap_only",
+    "fire_enabled": false,
+    "saved_images": 0
+  },
+  "capture": {
+    "attempted_frames": 64,
+    "accepted_frames": 64,
+    "gsi_rows": 65,
+    "stale_execution_frames": 1
+  },
+  "execution_result": {
+    "executed_actions": 63,
+    "action_counts": {
+      "turn_left": 64
+    },
+    "masked_action_violations": 0,
+    "fire_actions_emitted": 0
+  },
+  "smooth_turn_actuation": {
+    "turns_started": 63,
+    "planned_substeps": 504,
+    "emitted_substeps": 363,
+    "emitted_fraction": 0.7202380952380952,
+    "completed_turns": 1,
+    "superseded_turns": 62,
+    "passed": false
+  },
+  "perception_and_behavior": {
+    "target_memory_frames": 0,
+    "waypoint_frames": 64,
+    "patrol_frames": 64,
+    "clearance_snap_world_maximum": 0.0
+  },
+  "latency_ms": {
+    "capture_p95": 31.168225,
+    "processing_mean": 120.165590625,
+    "processing_p95": 130.76575,
+    "processing_maximum": 228.9259
+  },
+  "safety_assessment": {
+    "continuous_localization": true,
+    "bounded_input_only": true,
+    "no_fire_mode_passed": true,
+    "no_screenshots_retained": true,
+    "passed": true
+  },
+  "player_feedback": "The preceding smooth-turn run looked smoother than single-step turning.",
+  "interpretation": "Bootstrap-only anchor validation improved throughput, but every new same-direction decision still cancelled the active curve. Repeated turn decisions need a bounded continuation queue.",
+  "correction": "Keep the active same-direction curve and queue at most one follow-on curve. Further repeated commands replace the single pending curve; movement, opposite turns, focus loss, F12, and shutdown still cancel immediately.",
+  "behavioral_quality_claimed": false,
+  "next_gate": "Repeat the separately approved guarded patrol run and require completed curves with bounded queue depth and no safety regression."
+}

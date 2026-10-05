@@ -350,6 +350,15 @@ validation is now bootstrap-only; the 600-frame route then exactly reproduces
 the established localization output. See the
 [smooth-turn preflight](../experiments/cs2_dust2_bridge/SMOOTH_TURN_PATROL_PREFLIGHT_RESULT.json).
 
+The bootstrap-only retry improved effective throughput to 6.39 Hz and kept all
+64 frames localized, but 62 of 63 turn curves were still cancelled by the next
+identical turn decision. The actuator now preserves an active same-direction
+curve and keeps at most one follow-on curve; further repeated commands replace
+that single pending curve. Movement, opposite turns, focus loss, F12, and
+shutdown still cancel immediately. The player reported that the substep motion
+already looked smoother than single-step turning. See the
+[bootstrap-optimized result](../experiments/cs2_dust2_bridge/SMOOTH_TURN_PATROL_BOOTSTRAP_OPTIMIZED_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with
