@@ -481,6 +481,16 @@ still offline. Bounded cross-decision connectome state is the next gate because
 turn speed depends on recent momentum that one frame cannot express. See the
 [goal-conditioned result](../experiments/cs2_dust2_bridge/GOAL_CONDITIONED_BEHAVIOR_CLONING_RESULT.json).
 
+The temporal iteration carries bounded FlyWire neuron state through 16 decisions
+(about two seconds) with 0.8 decay. It improved directional MAE by 11.2% and
+button MAE by 2.5% over their chronological baselines while preserving topology
+and signs. Yaw MAE remained 4.1% worse than baseline. Raising the robust yaw-loss
+weight eightfold worsened yaw MAE to 7.15 degrees and removed the turn-sign
+advantage, ruling out simple loss imbalance. The movement heads pass this stage,
+but live deployment remains blocked until a higher-rate read-only turn label
+replaces the noisy 8 Hz radar-heading difference. See the
+[temporal behavior-cloning result](../experiments/cs2_dust2_bridge/TEMPORAL_BEHAVIOR_CLONING_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with

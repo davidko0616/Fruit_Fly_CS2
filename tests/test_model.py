@@ -48,6 +48,12 @@ class ModelTests(unittest.TestCase):
         self.assertFalse(any(
             parameter.requires_grad
             for parameter in model.backbone.output_proj.parameters()))
+        first, state = model.forward_with_state(
+            torch.zeros(4, 14), temporal_decay=.8)
+        second, next_state = model.forward_with_state(
+            torch.zeros(4, 14), state, temporal_decay=.8)
+        self.assertEqual(first['yaw_normalized'].shape, (4,))
+        self.assertEqual(state.shape, next_state.shape)
 
     def setUp(self):
         torch.manual_seed(7)

@@ -152,15 +152,45 @@ def _baseline_metrics(train_directions, train_yaw, train_buttons,
     }
 
 
+def _loss(prediction, directions, yaw, buttons, yaw_scale_degrees,
+          yaw_loss_weight=1.0):
+    return (F.binary_cross_entropy_with_logits(
+                prediction['direction_logits'], directions) +
+            .25 * F.binary_cross_entropy_with_logits(
+                prediction['button_logits'], buttons) +
+            yaw_loss_weight * F.smooth_l1_loss(
+                prediction['yaw_normalized'], yaw / yaw_scale_degrees,
+                beta=.1))
+
+
+def _temporal_prediction(model, observations, temporal_decay):
+    collected = defaultdict(list)
+    state = None
+    for observation in observations:
+        prediction, state = model.forward_with_state(
+            observation[None], state, temporal_decay)
+        for key, value in prediction.items():
+            collected[key].append(value)
+    return {key: torch.cat(values) for key, values in collected.items()}
+
+
 def train(demonstration, policy_run, output, policy_version=80, seed=20261005,
           epochs=60, batch_size=256, learning_rate=1e-3,
           validation_fraction=.2, yaw_scale_degrees=90.0,
-          hindsight_goal_seconds=None):
+          hindsight_goal_seconds=None, temporal_decay=None,
+          sequence_length=16, sequence_batch_size=16,
+          yaw_loss_weight=1.0):
     demonstration, policy_run, output = map(Path, (demonstration, policy_run, output))
     if output.exists():
         raise FileExistsError(f'Refusing to overwrite {output}')
     if not 0 < validation_fraction < .5 or epochs < 1 or batch_size < 1:
         raise ValueError('Invalid split or training configuration')
+    if temporal_decay is not None and not 0 <= temporal_decay <= 1:
+        raise ValueError('temporal_decay must be in [0, 1]')
+    if sequence_length < 2 or sequence_batch_size < 1:
+        raise ValueError('Invalid temporal sequence configuration')
+    if yaw_loss_weight <= 0:
+        raise ValueError('yaw_loss_weight must be positive')
     rows, observations_np, directions_np, yaw_np, buttons_np = \
         load_demonstration(demonstration, hindsight_goal_seconds)
     split = int(len(rows) * (1 - validation_fraction))
@@ -191,17 +221,39 @@ def train(demonstration, policy_run, output, policy_version=80, seed=20261005,
     model.train()
     for epoch in range(1, epochs + 1):
         losses = []
-        order = train_indices[torch.randperm(len(train_indices), generator=generator)]
-        for indices in order.split(batch_size):
-            prediction = model(observations[indices])
-            direction_loss = F.binary_cross_entropy_with_logits(
-                prediction['direction_logits'], directions[indices])
-            button_loss = F.binary_cross_entropy_with_logits(
-                prediction['button_logits'], buttons[indices])
-            yaw_target = yaw[indices] / yaw_scale_degrees
-            yaw_loss = F.smooth_l1_loss(
-                prediction['yaw_normalized'], yaw_target, beta=.1)
-            loss = direction_loss + .25 * button_loss + yaw_loss
+        if temporal_decay is None:
+            order = train_indices[
+                torch.randperm(len(train_indices), generator=generator)]
+            batches = [(indices, None) for indices in order.split(batch_size)]
+        else:
+            starts = torch.arange(
+                0, split - sequence_length + 1, sequence_length)
+            starts = starts[
+                torch.randperm(len(starts), generator=generator)]
+            batches = [(None, starts_batch) for starts_batch in
+                       starts.split(sequence_batch_size)]
+        for indices, starts_batch in batches:
+            if temporal_decay is None:
+                prediction = model(observations[indices])
+                flat = indices
+            else:
+                matrix = (starts_batch[:, None] +
+                          torch.arange(sequence_length)[None])
+                state = None
+                collected = defaultdict(list)
+                for step in range(sequence_length):
+                    prediction_step, state = model.forward_with_state(
+                        observations[matrix[:, step]], state, temporal_decay)
+                    for key, value in prediction_step.items():
+                        collected[key].append(value)
+                prediction = {
+                    key: torch.stack(values, dim=1).reshape(
+                        -1, *values[0].shape[1:])
+                    for key, values in collected.items()}
+                flat = matrix.reshape(-1)
+            loss = _loss(
+                prediction, directions[flat], yaw[flat], buttons[flat],
+                yaw_scale_degrees, yaw_loss_weight)
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             gradient_norm = torch.nn.utils.clip_grad_norm_(
@@ -217,8 +269,14 @@ def train(demonstration, policy_run, output, policy_version=80, seed=20261005,
         raise RuntimeError('Connectome topology or neurotransmitter signs changed')
     model.eval()
     with torch.no_grad():
-        train_prediction = model(observations[train_indices])
-        validation_prediction = model(observations[validation_indices])
+        if temporal_decay is None:
+            train_prediction = model(observations[train_indices])
+            validation_prediction = model(observations[validation_indices])
+        else:
+            train_prediction = _temporal_prediction(
+                model, observations[train_indices], temporal_decay)
+            validation_prediction = _temporal_prediction(
+                model, observations[validation_indices], temporal_decay)
     metrics = {
         'schema_version': 1,
         'status': 'complete',
@@ -235,6 +293,11 @@ def train(demonstration, policy_run, output, policy_version=80, seed=20261005,
         'learning_rate': learning_rate,
         'yaw_scale_degrees': yaw_scale_degrees,
         'hindsight_goal_seconds': hindsight_goal_seconds,
+        'temporal_decay': temporal_decay,
+        'sequence_length': (sequence_length if temporal_decay is not None else None),
+        'sequence_batch_size': (sequence_batch_size
+                                if temporal_decay is not None else None),
+        'yaw_loss_weight': yaw_loss_weight,
         'elapsed_seconds': time.perf_counter() - started,
         'topology_and_signs_preserved': True,
         'train': _metrics(
@@ -255,7 +318,8 @@ def train(demonstration, policy_run, output, policy_version=80, seed=20261005,
         'model_state_dict': model.state_dict(),
         'config': {key: metrics[key] for key in (
             'architecture', 'source_policy_run_id', 'source_policy_version',
-            'seed', 'yaw_scale_degrees', 'hindsight_goal_seconds')},
+            'seed', 'yaw_scale_degrees', 'hindsight_goal_seconds',
+            'temporal_decay', 'sequence_length', 'yaw_loss_weight')},
     }, output / 'model.pt')
     shutil.copyfile(policy_run / 'graph.npz', output / 'graph.npz')
     shutil.copyfile(policy_run / 'adjacency.npz', output / 'adjacency.npz')
@@ -281,12 +345,18 @@ def main():
     parser.add_argument('--validation-fraction', type=float, default=.2)
     parser.add_argument('--yaw-scale-degrees', type=float, default=90)
     parser.add_argument('--hindsight-goal-seconds', type=float)
+    parser.add_argument('--temporal-decay', type=float)
+    parser.add_argument('--sequence-length', type=int, default=16)
+    parser.add_argument('--sequence-batch-size', type=int, default=16)
+    parser.add_argument('--yaw-loss-weight', type=float, default=1)
     args = parser.parse_args()
     print(json.dumps(train(
         args.demonstration, args.policy_run, args.output,
         args.policy_version, args.seed, args.epochs, args.batch_size,
         args.learning_rate, args.validation_fraction,
-        args.yaw_scale_degrees, args.hindsight_goal_seconds), indent=2))
+        args.yaw_scale_degrees, args.hindsight_goal_seconds,
+        args.temporal_decay, args.sequence_length,
+        args.sequence_batch_size, args.yaw_loss_weight), indent=2))
 
 
 if __name__ == '__main__':

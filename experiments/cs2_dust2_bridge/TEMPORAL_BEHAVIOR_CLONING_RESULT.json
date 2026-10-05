@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-05",
+  "status": "movement_pass_yaw_gate_fail",
+  "source_demonstration_sha256": "5845b04f049f7b0d84293cf2be54f9180ec883c4d275ac43a0874b74094437cb",
+  "output_artifact": "artifacts/cs2_bridge/dust2_flywire_human_bc_nav_goal_temporal_08_20261005_01",
+  "model_sha256": "d8dfc878916a210d4fd34633cb775012e4245007da80d38bc98a7877b22ab94e",
+  "method": {
+    "architecture": "flywire_multi_head_behavior_cloning",
+    "hindsight_goal_seconds": 1.0,
+    "temporal_decay": 0.8,
+    "sequence_length_decisions": 16,
+    "sequence_duration_seconds": 2.0,
+    "epochs": 60,
+    "train_rows": 3675,
+    "validation_rows": 919,
+    "cpu_training_seconds": 96.36031099999673,
+    "topology_and_signs_preserved": true
+  },
+  "validation": {
+    "direction_mae": 0.31002870202064514,
+    "direction_mean_baseline_mae": 0.349039763212204,
+    "direction_relative_improvement_percent": 11.176681084281356,
+    "button_mae": 0.018449625000357628,
+    "button_mean_baseline_mae": 0.018929913640022278,
+    "button_relative_improvement_percent": 2.537194034785278,
+    "yaw_mae_degrees": 6.439590930938721,
+    "yaw_mean_baseline_mae_degrees": 6.188838958740234,
+    "yaw_relative_improvement_percent": -4.051680353458866,
+    "yaw_sign_accuracy_on_turns": 0.5575000047683716,
+    "yaw_mean_baseline_sign_accuracy_on_turns": 0.45625001192092896
+  },
+  "yaw_weight_stress_test": {
+    "yaw_loss_weight": 8.0,
+    "epochs": 40,
+    "validation_yaw_mae_degrees": 7.147214889526367,
+    "validation_yaw_sign_accuracy": 0.45625001192092896,
+    "interpretation": "Increasing yaw loss weight worsened holdout error and removed the sign advantage, so loss imbalance is not the root problem."
+  },
+  "assessment": {
+    "temporal_state_improves_movement": true,
+    "temporal_state_improves_buttons": true,
+    "yaw_magnitude_beats_baseline": false,
+    "approved_for_live_control": false
+  },
+  "interpretation": "Two seconds of bounded FlyWire state improves simultaneous navigation prediction beyond the frame-only and goal-only models. It does not recover natural turn magnitude from 8 Hz radar-heading differences. Rare heading jumps and the lack of direct high-rate mouse displacement make the current yaw labels unsuitable for a live turn controller.",
+  "next_gate": "Implement a high-rate read-only turn-label sensor and validate it on a short capture before recording additional demonstrations. Preserve the passing goal-conditioned temporal movement heads."
+}

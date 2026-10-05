@@ -24,12 +24,19 @@ class FlyWireBehaviorCloner(nn.Module):
             parameter.requires_grad_(False)
 
     def forward(self, observation):
-        motor, _ = self.backbone.motor_features(observation)
-        return {
+        output, _ = self.forward_with_state(observation)
+        return output
+
+    def forward_with_state(self, observation, previous_state=None,
+                           temporal_decay=1.0):
+        motor, state = self.backbone.motor_features(
+            observation, previous_state, temporal_decay)
+        output = {
             'direction_logits': self.direction_head(motor),
             'yaw_normalized': torch.tanh(self.yaw_head(motor)).squeeze(-1),
             'button_logits': self.button_head(motor),
         }
+        return output, state
 
     def predict_controls(self, observation):
         output = self(observation)
