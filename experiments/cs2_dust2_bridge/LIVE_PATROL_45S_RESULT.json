@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-05",
+  "status": "pass_no_fire_patrol_behavior_gate",
+  "execution": "live_controller_guarded",
+  "source_artifact": "artifacts/cs2_bridge/dust2_guarded_controller_patrol_45s_200px_20261005_02",
+  "source_shadow_sha256": "468372b74f22367e52b467ebe680cfec8189ea70f00dffc6b9a4739eacb2adfb",
+  "conditions": {
+    "duration_seconds": 45.172,
+    "requested_hz": 8.0,
+    "effective_hz": 6.043566811299214,
+    "turn_pixels": 200,
+    "turn_duration_ms": 110.0,
+    "turn_substeps": 8,
+    "policy_mode": "greedy",
+    "fire_enabled": false,
+    "saved_images": 0
+  },
+  "capture": {
+    "attempted_frames": 273,
+    "accepted_frames": 273,
+    "gsi_rows": 167,
+    "continuous_localization": true,
+    "radar_map_source_counts": {
+      "site_pair": 273
+    },
+    "processing_latency_ms_p95": 122.0328,
+    "clearance_snap_world_maximum": 0.0
+  },
+  "execution_result": {
+    "executed_actions": 272,
+    "stale_frame_actions": 1,
+    "proposed_action_counts": {
+      "forward": 144,
+      "strafe_left": 24,
+      "turn_left": 105
+    },
+    "masked_action_violations": 0,
+    "fire_actions_emitted": 0
+  },
+  "smooth_turn_actuation": {
+    "commands_received": 104,
+    "curves_started": 79,
+    "curves_completed": 53,
+    "curves_superseded": 26,
+    "substeps_emitted": 537,
+    "signed_mouse_counts_emitted": -13493,
+    "absolute_mouse_counts_emitted": 13493
+  },
+  "map_motion": {
+    "start_pose": {
+      "x": 81.0111712676206,
+      "y": 95.35355097444486,
+      "yaw_degrees": -86.04774882758232
+    },
+    "end_pose": {
+      "x": 53.780597543259034,
+      "y": 81.5278748843269,
+      "yaw_degrees": 113.6145845356753
+    },
+    "straight_line_displacement_world": 30.539375643695625,
+    "cumulative_pose_distance_world": 44.99243607499104,
+    "unwrapped_yaw_change_degrees": -160.3376666367424
+  },
+  "patrol_behavior": {
+    "patrol_frames": 210,
+    "visible_target_frames": 14,
+    "target_memory_frames": 49,
+    "main_goal_index": 2,
+    "main_goal_world": [
+      56.0,
+      84.0
+    ],
+    "main_goal_path_remaining_start_cells": 24.0,
+    "main_goal_path_remaining_minimum_cells": 4.0,
+    "advanced_to_goal_index": 3,
+    "advanced_to_goal_world": [
+      36.0,
+      121.0
+    ],
+    "completed_patrol_goals": 1,
+    "passed": true
+  },
+  "safety_assessment": {
+    "bounded_input_only": true,
+    "no_fire_mode_passed": true,
+    "no_screenshots_retained": true,
+    "passed": true
+  },
+  "behavioral_claim": "The guarded FlyWire controller completed one Dust II patrol goal transition while maintaining continuous localization, responding to visible and remembered target state, and emitting no fire.",
+  "limitations": "This run does not validate firing, target elimination, round-level play, human-like motion, or robust coverage across spawn positions and rounds.",
+  "next_gate": "Collect player-observed behavior feedback, then prepare a guarded target-tracking and aiming evaluation before enabling any firing."
+}

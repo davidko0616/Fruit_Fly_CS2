@@ -400,6 +400,19 @@ tuning remains useful, but the next gate is a longer no-fire patrol rather than
 another short motion capture. See the
 [200-pixel result](../experiments/cs2_dust2_bridge/LIVE_TURN_200PX_RESULT.json).
 
+The first 45-second 200-pixel patrol evaluation passed the no-fire behavior
+gate. All 273 frames localized continuously from direct site anchors and 272
+bounded actions executed with no fire or mask violation. The action distribution
+expanded to 144 forward steps, 24 left strafes, and 105 left turns. The measured
+pose traveled 45.0 world units and ended 30.5 units from its start. During the
+main patrol segment, route distance to goal index 2 fell from 24 cells to four;
+the planner then advanced to goal index 3, recording one completed patrol goal.
+The same run included 14 live-target frames and 49 remembered-target frames
+before patrol resumed. This establishes guarded Dust II navigation with target
+interruptions, but does not yet establish aiming, firing, eliminations, or
+round-level play. See the
+[45-second patrol result](../experiments/cs2_dust2_bridge/LIVE_PATROL_45S_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with
