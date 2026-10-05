@@ -8,7 +8,8 @@
     "weak_blue_channel_maximum": 125,
     "weak_pair_match_radius_pixels": 6.0,
     "weak_candidate_centroid_used_for_localization": false,
-    "description": "A weak-color component is admitted only when it validates the calibrated A/B separation from a strict-color component. The second anchor position is derived from calibration, so weak-pixel centroid error cannot move the pose."
+    "bootstrap_only": true,
+    "description": "A weak-color component is considered only when no map anchor exists and it validates the calibrated A/B separation from a strict-color component. The second anchor position is derived from calibration, so weak-pixel centroid error cannot move the pose. Established localization uses the original strict single-site and texture-tracking paths."
   },
   "diagnostic_frame": {
     "source": "artifacts/cs2_bridge/dust2_radar_anchor_diagnostic_20261004_02/0000000.png",
@@ -31,18 +32,18 @@
     "radar_map_failure_frames": 0,
     "clearance_failure_frames": 0,
     "source_counts": {
-      "site_pair": 457,
-      "single_site": 86,
+      "site_pair": 433,
+      "single_site": 110,
       "tracked_map_pan": 54,
       "recent_site": 1
     },
     "clearance_snap_world_maximum": 72.42108275313728,
-    "clearance_snap_over_30_frames": 23,
+    "clearance_snap_over_30_frames": 24,
     "previous_clearance_snap_over_30_frames": 24,
-    "changed_pose_over_one_grid_cell_frames": 11,
-    "changed_pose_maximum_grid_cells": 3.572896429719156,
-    "changed_pose_maximum_world_units": 28.58317143775325,
-    "interpretation": "Acceptance is unchanged. Newly validated direct pairs replace history-based single-site estimates on some frames; every pose change stays below 30 world units and the NAV correction tail improves by one frame."
+    "changed_pose_over_one_grid_cell_frames": 0,
+    "changed_pose_maximum_grid_cells": 0.0,
+    "changed_pose_maximum_world_units": 0.0,
+    "interpretation": "Acceptance, source selection, poses, and clearance results exactly reproduce the prior tracking reanalysis after the first anchor has initialized the localizer."
   },
   "tests": {
     "full_suite_tests": 71,

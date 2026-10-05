@@ -235,9 +235,20 @@ class Dust2RadarMapLocalizer:
     def _site_candidates(self, image, origin):
         """Add weak-color anchors only when a strict anchor validates the pair."""
         strict = detect_site_anchor_candidates(image, origin)
+        calibration = self.calibration
+        if self.site_b_screen is not None:
+            return strict
+        for site_b in strict:
+            for site_a in strict:
+                error = math.hypot(
+                    site_a[0] - site_b[0] -
+                    calibration.site_separation_screen_x,
+                    site_a[1] - site_b[1] -
+                    calibration.site_separation_screen_y)
+                if error <= calibration.anchor_match_radius:
+                    return strict
         relaxed = detect_site_anchor_candidates(
             image, origin, blue_max=125)
-        calibration = self.calibration
         weak_match_radius = min(6.0, calibration.anchor_match_radius)
         candidates = list(strict)
         for candidate in relaxed:

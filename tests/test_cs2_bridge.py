@@ -527,6 +527,9 @@ class CS2BridgeTests(unittest.TestCase):
         pose, details = localizer.localize(
             raw_pose, image, timestamp_ns=1_000_000_000)
         self.assertEqual(details['source'], 'site_pair')
+        _, continued = localizer.localize(
+            raw_pose, image, timestamp_ns=1_100_000_000)
+        self.assertEqual(continued['source'], 'single_site')
         self.assertAlmostEqual(pose.x, 24.5)
         self.assertAlmostEqual(pose.y, 37.0)
         self.assertAlmostEqual(pose.yaw_degrees, 63.43494882)

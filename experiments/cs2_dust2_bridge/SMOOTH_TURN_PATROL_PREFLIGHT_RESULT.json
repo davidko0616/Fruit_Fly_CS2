@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-05",
+  "status": "fail_actuation_continuity",
+  "execution": "live_controller_guarded",
+  "source_artifact": "artifacts/cs2_bridge/dust2_guarded_controller_nofire_8hz_patrol_smooth_20261005_01",
+  "conditions": {
+    "map": "de_dust2",
+    "requested_duration_seconds": 10.0,
+    "recorded_duration_seconds": 10.078,
+    "requested_hz": 8.0,
+    "effective_hz": 5.755110140901246,
+    "turn_pixels": 16,
+    "turn_duration_ms": 110.0,
+    "turn_substeps": 8,
+    "turn_curve": "smoothstep",
+    "fire_enabled": false,
+    "saved_images": 0
+  },
+  "capture": {
+    "attempted_frames": 58,
+    "accepted_frames": 58,
+    "gsi_rows": 62,
+    "radar_map_source_counts": {
+      "site_pair": 58
+    }
+  },
+  "execution_result": {
+    "executed_actions": 57,
+    "stale_frame_actions": 1,
+    "action_counts": {
+      "forward": 1,
+      "turn_left": 57
+    },
+    "masked_action_violations": 0,
+    "fire_actions_emitted": 0
+  },
+  "smooth_turn_actuation": {
+    "turns_started": 56,
+    "planned_substeps": 448,
+    "emitted_substeps": 354,
+    "emitted_fraction": 0.7901785714285714,
+    "stop_counts": {
+      "superseded": 56
+    },
+    "completed_turns": 0,
+    "passed": false
+  },
+  "perception_and_behavior": {
+    "live_target_frames": 9,
+    "target_memory_frames": 1,
+    "waypoint_frames": 49,
+    "patrol_frames": 48,
+    "clearance_snap_world_maximum": 8.060155606493367
+  },
+  "latency_ms": {
+    "capture_p95": 31.201945,
+    "processing_mean": 136.70217068965516,
+    "processing_p95": 149.15022,
+    "processing_maximum": 186.474
+  },
+  "safety_assessment": {
+    "continuous_localization": true,
+    "bounded_input_only": true,
+    "no_fire_mode_passed": true,
+    "no_screenshots_retained": true,
+    "passed": true
+  },
+  "interpretation": "The weak-color anchor scan ran on every frame, increasing CPU latency and starving the Python turn thread. The actuator emitted smaller mouse steps but every curve was superseded before completion, so natural turning is not yet accepted.",
+  "correction": "Restrict weak-color anchor validation to initial map bootstrap. Established frames return to the original strict single-site and texture-tracking paths, which exactly reproduce the prior 600-frame route.",
+  "behavioral_quality_claimed": false,
+  "next_gate": "Repeat the separately approved 10-second 8 Hz guarded no-fire patrol run and require restored throughput plus completed smooth-turn curves."
+}

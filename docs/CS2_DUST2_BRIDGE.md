@@ -310,12 +310,14 @@ the [bootstrap result](../experiments/cs2_dust2_bridge/RADAR_TRACKING_LIVE_BOOTS
 
 A later diagnostic exposed a separate startup edge case: both A/B labels were
 visible, but the B label was anti-aliased over a light radar surface and missed
-the strict color cutoff. The localizer now accepts a lighter component only when
-it validates the calibrated A/B separation from a strict-color marker, then
-derives the second position from calibration rather than trusting the lighter
-component's centroid. The diagnostic frame localizes with 28.6 world units of
-NAV correction. The 600-frame regression remains at 598 accepted frames with
-zero localization or clearance failures. See the
+the strict color cutoff. During bootstrap only, the localizer now accepts a
+lighter component when it validates the calibrated A/B separation from a
+strict-color marker, then derives the second position from calibration rather
+than trusting the lighter component's centroid. Established localization uses
+the original strict single-site and texture-tracking paths. The diagnostic frame
+localizes with 28.6 world units of NAV correction. The 600-frame regression
+exactly reproduces the prior 598 accepted poses with zero localization or
+clearance failures. See the
 [weak-anchor regression](../experiments/cs2_dust2_bridge/WEAK_RADAR_ANCHOR_REGRESSION_RESULT.json).
 
 After a one-frame diagnostic confirmed both site labels and the player marker,
@@ -338,6 +340,15 @@ frozen FlyWire policy changed from 78 left turns and one forward step to 48
 forward steps and 31 right strafes. This verifies integration, not closed-loop
 gameplay quality. See the
 [offline patrol replay](../experiments/cs2_dust2_bridge/PATROL_OFFLINE_REPLAY_RESULT.json).
+
+The first live patrol run after smooth-turn integration localized all 58 frames
+and emitted only bounded no-fire input, but it failed the actuation-continuity
+gate. Repeating weak-color anchor validation on every frame raised processing
+p95 to 149.2 ms, reduced throughput to 5.76 Hz, and allowed only 354 of 448
+planned turn substeps to execute. All 56 turn curves were superseded. Weak-color
+validation is now bootstrap-only; the 600-frame route then exactly reproduces
+the established localization output. See the
+[smooth-turn preflight](../experiments/cs2_dust2_bridge/SMOOTH_TURN_PATROL_PREFLIGHT_RESULT.json).
 
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
