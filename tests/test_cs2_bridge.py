@@ -115,6 +115,28 @@ class DemonstrationAssemblyTests(unittest.TestCase):
         self.assertFalse(rows[0]['training_valid'])
         self.assertEqual(rows[0]['invalid_reasons'], ['round_discontinuity'])
 
+    def test_preserves_counter_strafe_overlap_as_separate_duties(self):
+        shadow = [
+            demonstration_shadow(0, 4_000_000_000, 10),
+            demonstration_shadow(1, 4_125_000_000, 10),
+        ]
+        left = CONTROL_BITS['strafe_left']
+        right = CONTROL_BITS['strafe_right']
+        samples = [
+            {'monotonic_ns': 4_000_000_000 + index * 10_000_000,
+             'foreground_cs2': True,
+             'control_bits': (left | right if index <= 4 else right)}
+            for index in range(1, 13)
+        ]
+        rows, summary = build_demonstration_rows(shadow, samples)
+        controls = rows[0]['controls']
+        self.assertTrue(rows[0]['training_valid'])
+        self.assertGreater(controls['strafe_left_duty'], 0)
+        self.assertEqual(controls['strafe_right_duty'], 1)
+        self.assertGreater(
+            rows[0]['input_quality']['opposing_strafe_fraction'], 0)
+        self.assertEqual(summary['training_valid_rows'], 1)
+
 
 FIXTURES = Path(__file__).parent / 'fixtures'
 

@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-05",
+  "status": "pass",
+  "execution": "live_shadow_read_only_human_demonstration",
+  "source_artifact": "artifacts/cs2_bridge/dust2_human_demo_navigation_10min_20261005_01",
+  "source_shadow_sha256": "3e5358934e58f053feae9faf8d60c9b9bef76a6d32d8a75fe0f39d6934c7baa9",
+  "conditions": {
+    "capture_duration_seconds": 600.0780000000013,
+    "perception_hz_requested": 8.0,
+    "perception_hz_effective": 7.848979632647739,
+    "input_hz_requested": 100.0,
+    "input_hz_measured": 99.99903054744986,
+    "session_kind": "navigation",
+    "saved_images": 0,
+    "input_emitted": false
+  },
+  "perception": {
+    "attempted_frames": 4710,
+    "accepted_frames": 4619,
+    "accepted_fraction": 0.9806794055201699,
+    "drop_counts": {
+      "clearance_pose_failure": 29,
+      "radar_map_failure": 16,
+      "radar_pose_failure": 10,
+      "radar_pose_out_of_calibration": 36
+    },
+    "processing_p95_ms": 120.44636999999999,
+    "clearance_snap_p95_world": 23.713839242682855
+  },
+  "demonstration": {
+    "candidate_rows": 4618,
+    "training_valid_rows": 4614,
+    "training_invalid_rows": 4,
+    "valid_fraction": 0.9991338241663058,
+    "invalid_reason_counts": {
+      "invalid_frame_interval": 4
+    },
+    "forward_rows": 2331,
+    "backward_rows": 211,
+    "strafe_left_rows": 1818,
+    "strafe_right_rows": 1648,
+    "turn_rows": 4003,
+    "fire_rows": 207,
+    "simultaneous_move_and_turn_rows": 3861,
+    "idle_rows": 88
+  },
+  "turn_labels": {
+    "mean_absolute_yaw_delta_degrees": 5.25508715955613,
+    "p50_absolute_yaw_delta_degrees": 1.6316334885654982,
+    "p95_absolute_yaw_delta_degrees": 22.785258450745946,
+    "p99_absolute_yaw_delta_degrees": 56.986585797589534,
+    "maximum_absolute_yaw_delta_degrees": 116.32768900663996,
+    "rows_above_45_degrees": 79,
+    "rows_above_90_degrees": 8,
+    "training_note": "Use a robust loss and report clipped and unclipped metrics so rare fast flicks cannot dominate optimization."
+  },
+  "coverage": {
+    "pose_min_x": 11.052667950544112,
+    "pose_max_x": 116.17275999419348,
+    "pose_min_y": 8.720994960648444,
+    "pose_max_y": 115.08930735299147,
+    "occupied_uniform_4_by_4_bins": 15,
+    "total_uniform_4_by_4_bins": 16,
+    "rounds": 1,
+    "visible_target_rows": 582,
+    "target_memory_rows": 3227
+  },
+  "input_trace": {
+    "samples": 61891,
+    "foreground_cs2_samples": 61631,
+    "overall_foreground_fraction": 0.9957990661000792,
+    "training_rows_rejected_for_foreground": 0,
+    "nonzero_control_samples": 57016,
+    "input_sha256": "0ad3f978f8c3dc9c1688ef7d32b0895c376e98b3251e342c2873ede9ccb0816d",
+    "demonstration_sha256": "5845b04f049f7b0d84293cf2be54f9180ec883c4d275ac43a0874b74094437cb"
+  },
+  "storage": {
+    "total_mebibytes": 77.105,
+    "full_resolution_images_retained": false
+  },
+  "interpretation": "The first ten-minute session covers almost the full calibrated map and supplies dense natural movement labels, including both strafe directions, backward recovery, fast and slow turns, and 3,861 simultaneous movement-and-turn intervals. Live or detected targets were present during part of the session, so it also supplies target-conditioned navigation examples. Four long accepted-frame gaps are excluded.",
+  "next_gate": "Implement and validate a multi-head FlyWire behavior-cloning trainer on this navigation session before requesting another ten-minute capture. Keep a future mixed session fully held out."
+}

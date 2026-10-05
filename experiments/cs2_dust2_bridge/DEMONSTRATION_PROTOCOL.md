@@ -20,10 +20,12 @@ both training and validation.
 3. **Mixed validation:** play naturally across the map. Hold this entire session
    out when judging imitation quality.
 
-The stored training target is multi-head: signed forward/backward duty, signed
-right/left strafe duty, yaw delta and yaw rate, plus fire, walk, crouch, jump,
-and secondary-fire duty. This retains combinations such as forward + right +
-turn that the current single-action controller cannot express.
+The stored training target is multi-head: separate forward, backward, left, and
+right duty plus signed longitudinal and strafe commands, yaw delta and yaw rate,
+and fire, walk, crouch, jump, and secondary-fire duty. Separate directional
+duties preserve brief opposing-key overlaps during counter-strafing. The format
+also retains combinations such as forward + right + turn that the current
+single-action controller cannot express.
 
 Before the first ten-minute session, run a short recorder validation and inspect
 its summary. The gate passes only when accepted bridge frames produce valid
@@ -41,6 +43,10 @@ Each output contains:
 - `shadow.jsonl`: synchronized perception and the exact 14-value observation.
 - `demonstration.jsonl`: causal observation/control pairs and quality flags.
 - `summary.json`: valid-row counts, invalid reasons, and file hashes.
+
+When the derived row schema changes, regenerate `demonstration.jsonl` and its
+summary from the unchanged raw traces with
+`tools/rebuild_cs2_demonstration.py --output <capture-directory>`.
 
 Demonstrations establish how the player acts within the situations recorded.
 They do not by themselves cover unseen routes or tactics, so more ten-minute

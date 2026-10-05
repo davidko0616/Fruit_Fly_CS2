@@ -151,11 +151,6 @@ def build_demonstration_rows(shadow_records, input_samples, sample_hz=100.0,
             reasons.append('insufficient_input_coverage')
         if foreground_fraction < minimum_foreground:
             reasons.append('foreground_interruption')
-        if opposing_longitudinal > 0:
-            reasons.append('opposing_longitudinal_controls')
-        if opposing_strafe > 0:
-            reasons.append('opposing_strafe_controls')
-
         previous_pose = previous.get('radar_pose') or {}
         current_pose = current.get('radar_pose') or {}
         try:
@@ -190,7 +185,11 @@ def build_demonstration_rows(shadow_records, input_samples, sample_hz=100.0,
                 decision.get('target_memory_in_observation')),
             'patrol_active': bool(decision.get('patrol_active')),
             'controls': {
+                'forward_duty': duties['forward'],
+                'backward_duty': duties['backward'],
                 'forward': duties['forward'] - duties['backward'],
+                'strafe_left_duty': duties['strafe_left'],
+                'strafe_right_duty': duties['strafe_right'],
                 'strafe': duties['strafe_right'] - duties['strafe_left'],
                 'turn_yaw_delta_degrees': yaw_delta,
                 'turn_yaw_rate_degrees_per_second': yaw_rate,

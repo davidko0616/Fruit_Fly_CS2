@@ -445,13 +445,21 @@ ten-minute navigation, combat, and mixed-validation sessions. See the
 [human demonstration protocol](../experiments/cs2_dust2_bridge/DEMONSTRATION_PROTOCOL.md).
 
 The approved 20-second recorder validation accepted all 143 perception frames
-and produced 140 valid causal training rows from 142 candidates. It captured
-118 turning rows and 106 simultaneous movement-and-turn rows; the only two
-excluded rows briefly held opposing strafe keys. Input sampling measured 100.01
-Hz, every sample remained in the CS2 foreground, and no image was retained. The
+and produced 142 valid causal training rows. It captured 120 turning rows and
+108 simultaneous movement-and-turn rows. Input sampling measured 100.01 Hz,
+every sample remained in the CS2 foreground, and no image was retained. The
 complete compact artifact used 2.57 MiB, projecting to roughly 75 MiB for a
 ten-minute session. See the
 [demonstration validation result](../experiments/cs2_dust2_bridge/DEMONSTRATION_VALIDATION_RESULT.json).
+
+The first ten-minute navigation session then accepted 4,619 of 4,710 perception
+frames and yielded 4,614 valid training rows from 4,618 candidates. It covered
+15 of 16 uniform map bins and recorded 4,003 turning rows, 1,818 left-strafe
+rows, 1,648 right-strafe rows, and 3,861 simultaneous movement-and-turn rows.
+Separate directional duty labels preserve natural counter-strafe overlaps; only
+four long frame gaps were excluded. The compact artifact used 77.1 MiB and
+retained no images. See the
+[navigation demonstration result](../experiments/cs2_dust2_bridge/NAVIGATION_DEMONSTRATION_10MIN_RESULT.json).
 
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
