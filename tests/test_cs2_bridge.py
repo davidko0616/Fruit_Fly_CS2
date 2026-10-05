@@ -141,6 +141,8 @@ class GuardedExecutorTests(unittest.TestCase):
             'smooth_turn_commands_replaced': 0,
             'smooth_turns_started': 1,
             'smooth_turn_substeps_emitted': 8,
+            'smooth_turn_pixels_emitted_signed': -16,
+            'smooth_turn_pixels_emitted_absolute': 16,
             'smooth_turn_stop_counts': {'completed': 1},
             'smooth_turn_active': False})
         executor.close()

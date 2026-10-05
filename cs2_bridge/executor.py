@@ -177,6 +177,8 @@ class GuardedActionExecutor:
         self._turn_commands_replaced = 0
         self._turns_started = 0
         self._turn_substeps_emitted = 0
+        self._turn_pixels_emitted_signed = 0
+        self._turn_pixels_emitted_absolute = 0
         self._turn_stop_counts = {}
 
     def _result(self, reason, action_name=None, input_emitted=False, **extra):
@@ -246,6 +248,8 @@ class GuardedActionExecutor:
                 self.backend.move_mouse(delta, 0)
                 with self._turn_lock:
                     self._turn_substeps_emitted += 1
+                    self._turn_pixels_emitted_signed += delta
+                    self._turn_pixels_emitted_absolute += abs(delta)
                 if (index + 1 < len(deltas) and
                         self.turn_wait(stop_event, interval)):
                     reason = 'superseded'
@@ -327,6 +331,10 @@ class GuardedActionExecutor:
                 'smooth_turn_commands_replaced': self._turn_commands_replaced,
                 'smooth_turns_started': self._turns_started,
                 'smooth_turn_substeps_emitted': self._turn_substeps_emitted,
+                'smooth_turn_pixels_emitted_signed': (
+                    self._turn_pixels_emitted_signed),
+                'smooth_turn_pixels_emitted_absolute': (
+                    self._turn_pixels_emitted_absolute),
                 'smooth_turn_stop_counts': dict(sorted(
                     self._turn_stop_counts.items())),
                 'smooth_turn_active': (

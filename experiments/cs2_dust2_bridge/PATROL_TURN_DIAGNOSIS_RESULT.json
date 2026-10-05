@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-05",
+  "status": "complete",
+  "execution": "offline_analysis_of_live_controller_trace",
+  "source_shadow": "artifacts/cs2_bridge/dust2_guarded_controller_nofire_8hz_patrol_smooth_queued_20261005_03/shadow.jsonl",
+  "source_sha256": "67bb01928c53feea75fd613ca38d615e5fb85fd9f82acfc7fe1a6c8a1c18c355",
+  "policy_run_id": "10a40610-4f86-4fad-9872-f9b55072da84",
+  "policy_version": 80,
+  "policy_mode": "greedy",
+  "policy_turn_step_degrees": 11.25,
+  "coordinate_check": {
+    "training_environment": "dust2_training.env.Dust2CombatEnv",
+    "training_action_5_yaw_delta_degrees": -11.25,
+    "training_action_6_yaw_delta_degrees": 11.25,
+    "live_action_5_mouse_direction": "left",
+    "live_action_6_mouse_direction": "right",
+    "encoder_axes_match_training": true,
+    "executor_turn_sign_matches_training": true,
+    "coordinate_or_executor_sign_bug_found": false
+  },
+  "waypoint_turn_analysis": {
+    "turn_frames": 70,
+    "selected_action_counts": {
+      "turn_left": 70,
+      "turn_right": 0
+    },
+    "shortest_heading_error_turn_counts": {
+      "turn_left": 3,
+      "turn_right": 67
+    },
+    "selected_turn_matches_shortest": 3,
+    "selected_turn_reduces_error_after_one_11_25_degree_step": 3,
+    "shortest_turn_probability": {
+      "mean": 0.027051304555860512,
+      "median": 1.3099386819703795e-07,
+      "p95": 3.4628106959644356e-07,
+      "maximum": 0.6769131422042847
+    }
+  },
+  "observed_actuation": {
+    "smooth_curves_completed": 44,
+    "configured_pixels_per_curve": 16,
+    "minimum_pixels_from_completed_curves": 704,
+    "start_yaw_degrees": -120.3713000670483,
+    "end_yaw_degrees": -128.43472001708332,
+    "wrapped_yaw_change_degrees": -8.06341995003504,
+    "exact_pixel_to_yaw_calibration_available": false
+  },
+  "interpretation": "The frozen greedy policy chooses a long-way-left strategy on this patrol state. That strategy can finish in the simulator because every turn advances 11.25 degrees, but the live 16-pixel curves advanced only about eight degrees over the entire run. Stochastic sampling is unlikely to correct this state because the median probability of the shortest turn is near zero.",
+  "change": "The guarded executor now records exact signed and absolute emitted mouse counts. No action mapping was changed.",
+  "next_gate": "Use one short explicitly approved no-fire run to measure degrees per emitted mouse count, then choose a bounded smooth-turn scale that better matches the training step."
+}

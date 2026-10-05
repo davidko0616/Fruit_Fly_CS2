@@ -364,9 +364,21 @@ frames, sustained 7.18 Hz, completed 44 turn curves, and emitted 360 of 368
 substeps from started curves. The two interrupted curves correspond to the
 turn-to-forward transition and run shutdown. The one-entry pending queue stayed
 bounded, replacing 21 redundant pending commands. No fire or masked action was
-emitted, and no screenshots were retained. Subjective feedback on this exact run
-is still required before accepting the motion quality. See the
+emitted, and no screenshots were retained. The user described the motion as
+acceptable but unremarkable. See the
 [queued-turn result](../experiments/cs2_dust2_bridge/SMOOTH_TURN_PATROL_QUEUED_RESULT.json).
+
+Offline inspection ruled out a yaw-sign mismatch: the Dust II training
+environment, live observation encoder, and native executor all agree that
+action 5 decreases yaw. Instead, the greedy checkpoint selected left on all 70
+turn frames even though the shortest heading-error correction was right on 67
+of them. This is a learned long-way rotation strategy. It is practical in
+training, where every turn is 11.25 degrees, but 44 completed 16-pixel live
+curves changed measured radar yaw by only about eight degrees during the whole
+run. The executor now records exact signed and absolute emitted mouse counts so
+the next short no-fire trial can calibrate a bounded curve to the training turn
+step. See the
+[turn diagnosis](../experiments/cs2_dust2_bridge/PATROL_TURN_DIAGNOSIS_RESULT.json).
 
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the

@@ -81,8 +81,8 @@
   },
   "player_feedback": {
     "previous_substep_turning_looked_smoother": true,
-    "this_exact_run": "pending"
+    "this_exact_run": "alright, nothing spectacular"
   },
   "behavioral_quality_claimed": false,
-  "next_gate": "Collect player feedback on this exact queued-turn run, then address the policy's persistent left-turn search before longer Dust II patrol evaluation."
+  "next_gate": "Measure signed mouse counts against radar-yaw change in a short no-fire run, then scale the smooth curve toward the policy environment's 11.25-degree turn step before longer Dust II patrol evaluation."
 }
