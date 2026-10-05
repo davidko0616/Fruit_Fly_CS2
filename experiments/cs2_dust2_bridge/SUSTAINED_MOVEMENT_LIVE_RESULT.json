@@ -72,5 +72,6 @@
     "post_run_guard_added": true
   },
   "interpretation": "Sustained movement more than doubled actual key-down time without a stuck key or safety interruption. The run also encountered a poorly registered NAV-mask region, so movement now fails closed above 30 world units of pose snapping while turns remain available.",
-  "next_gate": "Use the new geometry guard during the meaningful no-fire target-tracking and aiming evaluation; another movement-only capture is unnecessary."
+  "player_feedback": "Forward movement looked fast and natural, but turning remained very slow.",
+  "next_gate": "Record human Dust II demonstrations and train the FlyWire controller to imitate simultaneous movement and turning before further live control."
 }

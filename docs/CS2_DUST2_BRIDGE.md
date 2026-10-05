@@ -436,6 +436,14 @@ covered by the full test suite. Another movement-only capture is unnecessary;
 the next target-tracking run will exercise it in context. See the
 [live sustained-movement result](../experiments/cs2_dust2_bridge/SUSTAINED_MOVEMENT_LIVE_RESULT.json).
 
+The next controller stage uses human demonstrations to learn natural movement
+and turning rather than hand-tuning larger mouse curves. The read-only recorder
+samples controls at 100 Hz while reusing the 8 Hz bridge observation. It stores
+simultaneous movement, strafe, turn, and button targets for a later multi-head
+FlyWire policy and retains no screen images. Recording is divided into separate
+ten-minute navigation, combat, and mixed-validation sessions. See the
+[human demonstration protocol](../experiments/cs2_dust2_bridge/DEMONSTRATION_PROTOCOL.md).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with

@@ -16,6 +16,7 @@ from cs2_bridge.executor import GuardedActionExecutor, InputSafetyConfig
 from cs2_bridge.clearance import ClearanceCalibration, Dust2ClearanceEstimator
 from cs2_bridge.detector_dataset import export_dataset
 from cs2_bridge.detector import build_player_ssdlite, evaluate_detection_records
+from cs2_bridge.demonstration import CONTROL_BITS, build_demonstration_rows
 from cs2_bridge.gsi import parse_gsi_payload
 from cs2_bridge.labels import PlayerBox, validate_frame_label
 from cs2_bridge.radar import (
@@ -38,6 +39,81 @@ from tools.label_cs2_frames import LabelSet
 from http.server import ThreadingHTTPServer
 from tools.serve_cs2_gsi import GSIRecorder, make_handler
 from tools.run_cs2_shadow import ShadowProcessor
+
+
+def demonstration_shadow(frame_index, timestamp_ns, yaw, round_id='round:1',
+                         observation=None):
+    return {
+        'status': 'accepted', 'frame_index': frame_index,
+        'monotonic_ns': timestamp_ns,
+        'gsi_snapshot': {'round_id': round_id},
+        'radar_pose': {'x': 10 + frame_index, 'y': 20, 'yaw_degrees': yaw},
+        'primary_visible_target': None,
+        'decision': {
+            'observation': (list(range(14)) if observation is None else observation),
+            'action_mask': [True] * 8,
+            'target_memory_in_observation': False,
+            'patrol_active': True,
+        },
+    }
+
+
+class DemonstrationAssemblyTests(unittest.TestCase):
+    def test_pairs_previous_observation_with_simultaneous_controls_and_yaw(self):
+        previous_observation = [value / 10 for value in range(14)]
+        shadow = [
+            demonstration_shadow(0, 1_000_000_000, 355, observation=previous_observation),
+            demonstration_shadow(1, 1_125_000_000, 5),
+        ]
+        bits = CONTROL_BITS['forward'] | CONTROL_BITS['strafe_right']
+        samples = [
+            {'monotonic_ns': 1_000_000_000 + index * 10_000_000,
+             'foreground_cs2': True, 'control_bits': bits}
+            for index in range(1, 13)
+        ]
+        rows, summary = build_demonstration_rows(shadow, samples)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['observation'], previous_observation)
+        self.assertEqual(rows[0]['controls']['forward'], 1.0)
+        self.assertEqual(rows[0]['controls']['strafe'], 1.0)
+        self.assertAlmostEqual(
+            rows[0]['controls']['turn_yaw_delta_degrees'], 10.0)
+        self.assertAlmostEqual(
+            rows[0]['controls']['turn_yaw_rate_degrees_per_second'], 80.0)
+        self.assertTrue(rows[0]['training_valid'])
+        self.assertEqual(summary['training_valid_rows'], 1)
+        self.assertEqual(
+            summary['valid_label_activity']['simultaneous_move_and_turn_rows'], 1)
+        self.assertEqual(summary['valid_yaw_delta_degrees']['maximum_absolute'], 10)
+
+    def test_marks_insufficient_or_background_input_invalid(self):
+        shadow = [
+            demonstration_shadow(0, 2_000_000_000, 10),
+            demonstration_shadow(1, 2_125_000_000, 11),
+        ]
+        samples = [{
+            'monotonic_ns': 2_100_000_000,
+            'foreground_cs2': False, 'control_bits': 0,
+        }]
+        rows, summary = build_demonstration_rows(shadow, samples)
+        self.assertFalse(rows[0]['training_valid'])
+        self.assertIn('insufficient_input_coverage', rows[0]['invalid_reasons'])
+        self.assertIn('foreground_interruption', rows[0]['invalid_reasons'])
+        self.assertEqual(summary['training_invalid_rows'], 1)
+
+    def test_marks_round_discontinuity_invalid(self):
+        shadow = [
+            demonstration_shadow(0, 3_000_000_000, 10, 'round:1'),
+            demonstration_shadow(1, 3_125_000_000, 11, 'round:2'),
+        ]
+        samples = [
+            {'monotonic_ns': 3_000_000_000 + index * 10_000_000,
+             'foreground_cs2': True, 'control_bits': 0}
+            for index in range(1, 13)
+        ]
+        rows, _ = build_demonstration_rows(shadow, samples)
+        self.assertFalse(rows[0]['training_valid'])
+        self.assertEqual(rows[0]['invalid_reasons'], ['round_discontinuity'])
 
 
 FIXTURES = Path(__file__).parent / 'fixtures'
