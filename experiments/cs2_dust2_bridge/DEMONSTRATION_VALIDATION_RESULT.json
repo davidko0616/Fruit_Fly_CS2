@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-05",
+  "status": "pass",
+  "execution": "live_shadow_read_only_human_demonstration",
+  "source_artifact": "artifacts/cs2_bridge/dust2_human_demo_validation_20261005_01",
+  "source_shadow_sha256": "b1d7b8c37fe0e861a7c5002e041594e5177e01450b41af2534b80cc28cec7df2",
+  "conditions": {
+    "capture_duration_seconds": 20.0,
+    "perception_hz_requested": 8.0,
+    "perception_hz_effective": 7.15,
+    "input_hz_requested": 100.0,
+    "input_hz_measured": 100.0103476821192,
+    "session_kind": "navigation",
+    "saved_images": 0,
+    "input_emitted": false
+  },
+  "capture": {
+    "attempted_frames": 143,
+    "accepted_frames": 143,
+    "gsi_rows": 112,
+    "candidate_demonstration_rows": 142,
+    "training_valid_rows": 140,
+    "training_invalid_rows": 2,
+    "valid_fraction": 0.9859154929577465,
+    "invalid_reason_counts": {
+      "opposing_strafe_controls": 2
+    },
+    "observation_widths": [14]
+  },
+  "labels": {
+    "forward_rows": 104,
+    "backward_rows": 2,
+    "strafe_left_rows": 35,
+    "strafe_right_rows": 31,
+    "turn_rows": 118,
+    "fire_rows": 18,
+    "simultaneous_move_and_turn_rows": 106,
+    "mean_absolute_yaw_delta_degrees": 2.0281371553253673,
+    "maximum_absolute_yaw_delta_degrees": 31.54143576096675
+  },
+  "input_trace": {
+    "samples": 3867,
+    "foreground_cs2_samples": 3867,
+    "foreground_fraction": 1.0,
+    "nonzero_control_samples": 2292,
+    "input_sha256": "8dffcb28bd6d0c365b3bf4360e67c6f1e7fba182dc706acd87f0513dcdb818fc",
+    "demonstration_sha256": "8300ab00a30fddf50fae155342a38906c69579a8508c8e72c3cc1e10542f5d4a"
+  },
+  "storage": {
+    "total_mebibytes": 2.566,
+    "projected_ten_minute_mebibytes": 75,
+    "full_resolution_images_retained": false
+  },
+  "interpretation": "The recorder causally paired the previous 14-value observation with high-rate human controls and radar-derived yaw. Coverage included both strafe directions, turning, firing, and 106 simultaneous movement-and-turn intervals. Two brief opposing-strafe intervals were retained for audit but excluded from training.",
+  "next_gate": "Record the first independent ten-minute Dust II navigation demonstration, then inspect coverage before starting combat and held-out mixed sessions."
+}

@@ -444,6 +444,15 @@ FlyWire policy and retains no screen images. Recording is divided into separate
 ten-minute navigation, combat, and mixed-validation sessions. See the
 [human demonstration protocol](../experiments/cs2_dust2_bridge/DEMONSTRATION_PROTOCOL.md).
 
+The approved 20-second recorder validation accepted all 143 perception frames
+and produced 140 valid causal training rows from 142 candidates. It captured
+118 turning rows and 106 simultaneous movement-and-turn rows; the only two
+excluded rows briefly held opposing strafe keys. Input sampling measured 100.01
+Hz, every sample remained in the CS2 foreground, and no image was retained. The
+complete compact artifact used 2.57 MiB, projecting to roughly 75 MiB for a
+ten-minute session. See the
+[demonstration validation result](../experiments/cs2_dust2_bridge/DEMONSTRATION_VALIDATION_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with
