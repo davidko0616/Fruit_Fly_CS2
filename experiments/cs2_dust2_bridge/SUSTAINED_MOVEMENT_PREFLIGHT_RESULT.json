@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-05",
+  "status": "pass_offline_and_fake_backend",
+  "execution": "offline_trace_projection_and_fake_input_backend",
+  "source_shadow": "artifacts/cs2_bridge/dust2_guarded_controller_patrol_45s_200px_20261005_02/shadow.jsonl",
+  "source_shadow_sha256": "468372b74f22367e52b467ebe680cfec8189ea70f00dffc6b9a4739eacb2adfb",
+  "problem": {
+    "movement_decisions": 168,
+    "trace_span_seconds": 44.8515,
+    "existing_pulse_ms": 60.0,
+    "existing_maximum_movement_active_seconds": 10.08,
+    "existing_maximum_movement_duty_fraction": 0.22474164743654057,
+    "player_feedback": "The controller wandered somewhat and moved too cautiously for an encounter with active bots."
+  },
+  "change": {
+    "mode": "bounded_sustained_movement",
+    "proposed_expiry_ms": 220.0,
+    "same_direction_behavior": "Renew one active key hold from the latest fresh decision.",
+    "direction_change_behavior": "Release the previous movement key before pressing the new key.",
+    "automatic_release_conditions": [
+      "expiry",
+      "stale or rejected frame",
+      "action-mask rejection",
+      "turn, wait, fire, or direction change",
+      "foreground-window loss",
+      "F12 emergency stop",
+      "capture failure or shutdown"
+    ],
+    "policy_action_override": false
+  },
+  "projection_on_source_trace": {
+    "projected_movement_active_seconds": 32.506,
+    "projected_movement_duty_fraction": 0.7247472213861298,
+    "projected_active_time_multiplier": 3.224801587301587
+  },
+  "tests": {
+    "full_suite_tests": 75,
+    "passed": 74,
+    "expected_cuda_skips": 1,
+    "same_direction_renewal": true,
+    "stale_frame_release": true,
+    "foreground_loss_release": true,
+    "legacy_pulse_mode_preserved": true
+  },
+  "safety_assessment": {
+    "maximum_unrenewed_hold_ms": 220.0,
+    "fresh_decision_required_for_renewal": true,
+    "F12_and_focus_checked_during_hold": true,
+    "passed": true
+  },
+  "interpretation": "The source trace spent at most 22.5% of its time moving because each decision was an isolated 60 ms pulse. Renewing a bounded 220 ms hold from fresh repeated decisions would raise projected movement time to 72.5% without changing the FlyWire policy's selected direction.",
+  "next_gate": "Run one explicitly approved short no-fire sustained-movement validation before returning to longer target-tracking work."
+}

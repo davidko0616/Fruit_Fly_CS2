@@ -144,7 +144,78 @@ class GuardedExecutorTests(unittest.TestCase):
             'smooth_turn_pixels_emitted_signed': -16,
             'smooth_turn_pixels_emitted_absolute': 16,
             'smooth_turn_stop_counts': {'completed': 1},
-            'smooth_turn_active': False})
+            'smooth_turn_active': False,
+            'sustained_movement_commands_received': 0,
+            'sustained_movement_commands_renewed': 0,
+            'sustained_movement_holds_started': 0,
+            'sustained_movement_stop_counts': {},
+            'sustained_movement_active': False})
+        executor.close()
+
+    def test_repeated_sustained_movement_renews_one_bounded_hold(self):
+        backend = FakeInputBackend()
+        executor = GuardedActionExecutor(
+            backend, enabled=True,
+            config=InputSafetyConfig(
+                key_hold_ms=80, sustain_movement=True))
+        first = executor.execute(
+            executor_record(1), now_ns=1_000_000_000)
+        deadline = time.monotonic() + 1
+        while ('key_down', 'w') not in backend.events and time.monotonic() < deadline:
+            time.sleep(.001)
+        second = executor.execute(
+            executor_record(1), now_ns=1_000_000_000)
+        self.assertTrue(executor.wait_for_movement(1))
+        self.assertEqual(backend.events, [('key_down', 'w'), ('key_up', 'w')])
+        self.assertEqual(first['movement_actuation'], {
+            'key': 'w', 'hold_ms': 80, 'mode': 'sustained',
+            'dispatch': 'started'})
+        self.assertEqual(second['movement_actuation']['dispatch'], 'renewed')
+        summary = executor.actuation_summary()
+        self.assertEqual(summary['sustained_movement_commands_received'], 2)
+        self.assertEqual(summary['sustained_movement_commands_renewed'], 1)
+        self.assertEqual(summary['sustained_movement_holds_started'], 1)
+        self.assertEqual(
+            summary['sustained_movement_stop_counts'], {'expired': 1})
+        self.assertFalse(summary['sustained_movement_active'])
+        executor.close()
+
+    def test_stale_frame_cancels_sustained_movement(self):
+        backend = FakeInputBackend()
+        executor = GuardedActionExecutor(
+            backend, enabled=True,
+            config=InputSafetyConfig(
+                key_hold_ms=200, sustain_movement=True))
+        executor.execute(executor_record(1), now_ns=1_000_000_000)
+        deadline = time.monotonic() + 1
+        while ('key_down', 'w') not in backend.events and time.monotonic() < deadline:
+            time.sleep(.001)
+        stale = executor.execute(
+            executor_record(1), now_ns=1_200_000_000)
+        self.assertTrue(executor.wait_for_movement(1))
+        self.assertEqual(stale['reason'], 'stale_frame')
+        self.assertEqual(backend.events, [('key_down', 'w'), ('key_up', 'w')])
+        self.assertEqual(
+            executor.last_movement_stop_reason, 'superseded')
+        executor.close()
+
+    def test_sustained_movement_releases_on_focus_loss(self):
+        backend = FakeInputBackend()
+        executor = GuardedActionExecutor(
+            backend, enabled=True,
+            config=InputSafetyConfig(
+                key_hold_ms=200, sustain_movement=True))
+        executor.execute(executor_record(4), now_ns=1_000_000_000)
+        deadline = time.monotonic() + 1
+        while ('key_down', 'd') not in backend.events and time.monotonic() < deadline:
+            time.sleep(.001)
+        backend.title = 'Codex'
+        self.assertTrue(executor.wait_for_movement(1))
+        self.assertEqual(backend.events, [('key_down', 'd'), ('key_up', 'd')])
+        self.assertEqual(
+            executor.last_movement_stop_reason,
+            'foreground_window_mismatch')
+        self.assertFalse(executor.held_keys)
         executor.close()
 
     def test_repeated_turn_queues_one_curve_without_cancelling_active_curve(self):

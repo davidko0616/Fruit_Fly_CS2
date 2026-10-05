@@ -16,6 +16,7 @@ class InputSafetyConfig:
     max_frame_age_ms: float = 250.0
     max_gsi_age_ms: float = 1_000.0
     key_hold_ms: float = 60.0
+    sustain_movement: bool = False
     turn_pixels: int = 32
     turn_duration_ms: float = 110.0
     turn_substeps: int = 8
@@ -180,6 +181,16 @@ class GuardedActionExecutor:
         self._turn_pixels_emitted_signed = 0
         self._turn_pixels_emitted_absolute = 0
         self._turn_stop_counts = {}
+        self._movement_lock = threading.Lock()
+        self._movement_thread = None
+        self._movement_stop = None
+        self._movement_key = None
+        self._movement_deadline = None
+        self.last_movement_stop_reason = None
+        self._movement_commands_received = 0
+        self._movement_commands_renewed = 0
+        self._movement_holds_started = 0
+        self._movement_stop_counts = {}
 
     def _result(self, reason, action_name=None, input_emitted=False, **extra):
         result = {
@@ -196,8 +207,100 @@ class GuardedActionExecutor:
         if self.backend.emergency_stop_pressed():
             self.emergency_stop_latched = True
             self._stop_turn()
+            self._stop_movement()
             self.release_all()
         return self.emergency_stop_latched
+
+    def _run_movement(self, key, stop_event):
+        reason = 'expired'
+        try:
+            self.backend.key_down(key)
+            self.held_keys.add(key)
+            while True:
+                if stop_event.is_set():
+                    reason = 'superseded'
+                    break
+                if self.backend.emergency_stop_pressed():
+                    self.emergency_stop_latched = True
+                    reason = 'emergency_stop'
+                    break
+                title = self.backend.foreground_title()
+                if self.config.required_window_title.casefold() not in title.casefold():
+                    reason = 'foreground_window_mismatch'
+                    break
+                with self._movement_lock:
+                    deadline = self._movement_deadline
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                stop_event.wait(min(.01, remaining))
+        finally:
+            try:
+                self.backend.key_up(key)
+            finally:
+                self.held_keys.discard(key)
+            self.last_movement_stop_reason = reason
+            with self._movement_lock:
+                self._movement_stop_counts[reason] = (
+                    self._movement_stop_counts.get(reason, 0) + 1)
+                if self._movement_thread is threading.current_thread():
+                    self._movement_thread = None
+                    self._movement_stop = None
+                    self._movement_key = None
+                    self._movement_deadline = None
+
+    def _stop_movement(self):
+        with self._movement_lock:
+            thread = self._movement_thread
+            stop_event = self._movement_stop
+        if stop_event is not None:
+            stop_event.set()
+        if thread is not None and thread is not threading.current_thread():
+            thread.join(timeout=.5)
+        with self._movement_lock:
+            if self._movement_thread is thread:
+                self._movement_thread = None
+                self._movement_stop = None
+                self._movement_key = None
+                self._movement_deadline = None
+
+    def _start_movement(self, key):
+        deadline = time.monotonic() + self.config.key_hold_ms / 1_000
+        with self._movement_lock:
+            self._movement_commands_received += 1
+            active = (self._movement_thread is not None and
+                      self._movement_thread.is_alive() and
+                      self._movement_stop is not None and
+                      not self._movement_stop.is_set())
+            if active and key == self._movement_key:
+                self._movement_deadline = deadline
+                self._movement_commands_renewed += 1
+                return 'renewed'
+        self._stop_movement()
+        stop_event = threading.Event()
+        thread = threading.Thread(
+            target=self._run_movement, args=(key, stop_event),
+            name='cs2-sustained-movement', daemon=True)
+        with self._movement_lock:
+            self._movement_stop = stop_event
+            self._movement_thread = thread
+            self._movement_key = key
+            self._movement_deadline = deadline
+            self._movement_holds_started += 1
+        thread.start()
+        return 'started'
+
+    def wait_for_movement(self, timeout=None):
+        with self._movement_lock:
+            thread = self._movement_thread
+        if thread is not None:
+            thread.join(timeout)
+        return thread is None or not thread.is_alive()
+
+    def _blocked_result(self, reason, action_name=None, **extra):
+        self._stop_turn()
+        self._stop_movement()
+        return self._result(reason, action_name, **extra)
 
     def _turn_deltas(self, direction):
         """Return integer mouse deltas following a smoothstep curve."""
@@ -325,7 +428,7 @@ class GuardedActionExecutor:
 
     def actuation_summary(self):
         with self._turn_lock:
-            return {
+            result = {
                 'smooth_turn_commands_received': self._turn_commands_received,
                 'smooth_turn_commands_queued': self._turn_commands_queued,
                 'smooth_turn_commands_replaced': self._turn_commands_replaced,
@@ -341,43 +444,58 @@ class GuardedActionExecutor:
                     self._turn_thread is not None and
                     self._turn_thread.is_alive()),
             }
+        with self._movement_lock:
+            result.update({
+                'sustained_movement_commands_received': (
+                    self._movement_commands_received),
+                'sustained_movement_commands_renewed': (
+                    self._movement_commands_renewed),
+                'sustained_movement_holds_started': (
+                    self._movement_holds_started),
+                'sustained_movement_stop_counts': dict(sorted(
+                    self._movement_stop_counts.items())),
+                'sustained_movement_active': (
+                    self._movement_thread is not None and
+                    self._movement_thread.is_alive()),
+            })
+        return result
 
     def execute(self, record, now_ns=None):
         """Execute one accepted record after every safety condition passes."""
         if not self.enabled:
-            return self._result('executor_disabled')
+            return self._blocked_result('executor_disabled')
         if self.poll_emergency_stop():
             return self._result('emergency_stop')
         if record.get('status') != 'accepted':
-            return self._result('record_not_accepted')
+            return self._blocked_result('record_not_accepted')
 
         decision = record.get('decision')
         if not isinstance(decision, dict):
-            return self._result('missing_decision')
+            return self._blocked_result('missing_decision')
         action = decision.get('action')
         action_name = decision.get('action_name')
         mask = decision.get('action_mask')
         if (not isinstance(action, int) or not 0 <= action < len(ACTION_NAMES) or
                 action_name != ACTION_NAMES[action]):
-            return self._result('invalid_action', action_name)
+            return self._blocked_result('invalid_action', action_name)
         if (not isinstance(mask, (list, tuple)) or len(mask) != len(ACTION_NAMES)
                 or not bool(mask[action])):
-            return self._result('action_mask_blocked', action_name)
+            return self._blocked_result('action_mask_blocked', action_name)
 
         now_ns = time.monotonic_ns() if now_ns is None else int(now_ns)
         frame_ns = int(record.get('monotonic_ns', -1))
         frame_age_ms = (now_ns - frame_ns) / 1e6
         if (frame_ns < 0 or frame_age_ms < 0 or
                 frame_age_ms > self.config.max_frame_age_ms):
-            return self._result(
+            return self._blocked_result(
                 'stale_frame', action_name, frame_age_ms=frame_age_ms)
 
         gsi_delta_ns = record.get('gsi_delta_ns')
         if gsi_delta_ns is None or int(gsi_delta_ns) > 0:
-            return self._result('invalid_gsi_time', action_name)
+            return self._blocked_result('invalid_gsi_time', action_name)
         gsi_age_ms = (now_ns - (frame_ns + int(gsi_delta_ns))) / 1e6
         if gsi_age_ms < 0 or gsi_age_ms > self.config.max_gsi_age_ms:
-            return self._result(
+            return self._blocked_result(
                 'stale_gsi', action_name, frame_age_ms=frame_age_ms,
                 gsi_age_ms=gsi_age_ms)
 
@@ -386,47 +504,61 @@ class GuardedActionExecutor:
                 snapshot.get('player_activity') != 'playing' or
                 snapshot.get('round_id') is None or
                 snapshot.get('health') is None or int(snapshot['health']) <= 0):
-            return self._result('inactive_gsi', action_name)
+            return self._blocked_result('inactive_gsi', action_name)
 
         title = self.backend.foreground_title()
         if self.config.required_window_title.casefold() not in title.casefold():
             self.release_all()
-            return self._result(
+            return self._blocked_result(
                 'foreground_window_mismatch', action_name,
                 foreground_title=title)
 
         if action_name == 'wait':
             self._stop_turn()
+            self._stop_movement()
             return self._result(
                 'wait', action_name, frame_age_ms=frame_age_ms,
                 gsi_age_ms=gsi_age_ms)
         if action_name == 'fire' and not self.config.fire_enabled:
-            return self._result(
+            return self._blocked_result(
                 'fire_disabled', action_name, frame_age_ms=frame_age_ms,
                 gsi_age_ms=gsi_age_ms)
 
+        movement_dispatch = None
         if action_name in self.KEY_ACTIONS:
             self._stop_turn()
             key = self.KEY_ACTIONS[action_name]
-            self.backend.key_down(key)
-            self.held_keys.add(key)
-            try:
-                self.sleep(self.config.key_hold_ms / 1_000)
-            finally:
-                self.backend.key_up(key)
-                self.held_keys.discard(key)
+            if self.config.sustain_movement:
+                movement_dispatch = self._start_movement(key)
+            else:
+                self.backend.key_down(key)
+                self.held_keys.add(key)
+                try:
+                    self.sleep(self.config.key_hold_ms / 1_000)
+                finally:
+                    self.backend.key_up(key)
+                    self.held_keys.discard(key)
         elif action_name in ('turn_left', 'turn_right'):
+            self._stop_movement()
             direction = -1 if action_name == 'turn_left' else 1
             turn_dispatch = self._start_turn(direction)
         elif action_name == 'fire':
             self._stop_turn()
+            self._stop_movement()
             self.backend.click_left()
         else:
-            return self._result('unsupported_action', action_name)
+            return self._blocked_result('unsupported_action', action_name)
 
         return self._result(
             'executed', action_name, input_emitted=True,
             frame_age_ms=frame_age_ms, gsi_age_ms=gsi_age_ms,
+            movement_actuation=(None if action_name not in self.KEY_ACTIONS else {
+                'key': self.KEY_ACTIONS[action_name],
+                'hold_ms': self.config.key_hold_ms,
+                'mode': ('sustained' if self.config.sustain_movement
+                         else 'pulse'),
+                'dispatch': movement_dispatch,
+            }),
             turn_actuation=(None if action_name not in
                             ('turn_left', 'turn_right') else {
                                 'pixels': self.config.turn_pixels,
@@ -446,4 +578,5 @@ class GuardedActionExecutor:
 
     def close(self):
         self._stop_turn()
+        self._stop_movement()
         self.release_all()

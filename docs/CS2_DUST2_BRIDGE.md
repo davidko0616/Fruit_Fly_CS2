@@ -413,6 +413,18 @@ interruptions, but does not yet establish aiming, firing, eliminations, or
 round-level play. See the
 [45-second patrol result](../experiments/cs2_dust2_bridge/LIVE_PATROL_45S_RESULT.json).
 
+The user judged that patrol as somewhat wandering and too cautious to survive
+against active bots. The trace confirms that limitation: 168 movement decisions
+produced at most 10.08 seconds of key-down time across 44.85 seconds because
+each decision was an isolated 60 ms pulse. An optional sustained mode now keeps
+the selected movement key down while fresh repeated decisions renew a bounded
+expiry. A 220 ms expiry projects 32.51 seconds of movement on the same trace,
+or 72.5% rather than 22.5%, without changing the FlyWire policy's chosen
+direction. A stale or rejected frame, action change, focus loss, F12, capture
+failure, shutdown, or expiry releases the key. Legacy pulse mode remains the
+default. See the
+[sustained-movement preflight](../experiments/cs2_dust2_bridge/SUSTAINED_MOVEMENT_PREFLIGHT_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with

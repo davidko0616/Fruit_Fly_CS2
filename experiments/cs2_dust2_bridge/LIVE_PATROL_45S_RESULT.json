@@ -88,6 +88,7 @@
     "passed": true
   },
   "behavioral_claim": "The guarded FlyWire controller completed one Dust II patrol goal transition while maintaining continuous localization, responding to visible and remembered target state, and emitting no fire.",
+  "player_feedback": "The controller appeared to wander somewhat and its movement was too cautious for survival against active bots.",
   "limitations": "This run does not validate firing, target elimination, round-level play, human-like motion, or robust coverage across spawn positions and rounds.",
-  "next_gate": "Collect player-observed behavior feedback, then prepare a guarded target-tracking and aiming evaluation before enabling any firing."
+  "next_gate": "Validate bounded sustained movement so repeated FlyWire movement decisions produce decisive locomotion before target-tracking and aiming evaluation."
 }

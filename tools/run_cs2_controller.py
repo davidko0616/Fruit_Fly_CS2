@@ -30,6 +30,10 @@ def main():
     parser.add_argument('--execution-max-frame-age-ms', type=float, default=250)
     parser.add_argument('--execution-max-gsi-age-ms', type=float, default=1000)
     parser.add_argument('--key-hold-ms', type=float, default=60)
+    parser.add_argument(
+        '--sustain-movement', action='store_true',
+        help=('Renew repeated movement decisions without releasing the key; '
+              'the key still expires after --key-hold-ms.'))
     parser.add_argument('--turn-pixels', type=int, default=32)
     parser.add_argument('--turn-duration-ms', type=float, default=110)
     parser.add_argument('--turn-substeps', type=int, default=8)
@@ -47,6 +51,7 @@ def main():
         max_frame_age_ms=args.execution_max_frame_age_ms,
         max_gsi_age_ms=args.execution_max_gsi_age_ms,
         key_hold_ms=args.key_hold_ms,
+        sustain_movement=args.sustain_movement,
         turn_pixels=args.turn_pixels,
         turn_duration_ms=args.turn_duration_ms,
         turn_substeps=args.turn_substeps,
