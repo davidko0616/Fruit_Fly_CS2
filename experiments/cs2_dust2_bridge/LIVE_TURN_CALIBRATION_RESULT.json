@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "recorded_date": "2026-10-05",
+  "status": "pass",
+  "execution": "live_controller_guarded",
+  "source_artifact": "artifacts/cs2_bridge/dust2_guarded_controller_turn_calibration_20261005_01",
+  "conditions": {
+    "duration_seconds": 10.093,
+    "requested_hz": 8.0,
+    "effective_hz": 6.539185574162176,
+    "turn_pixels": 16,
+    "turn_duration_ms": 110.0,
+    "turn_substeps": 8,
+    "fire_enabled": false,
+    "saved_images": 0
+  },
+  "capture": {
+    "attempted_frames": 66,
+    "accepted_frames": 66,
+    "gsi_rows": 65,
+    "executed_actions": 65,
+    "stale_frame_actions": 1,
+    "masked_action_violations": 0,
+    "fire_actions_emitted": 0
+  },
+  "actuation": {
+    "turn_commands_received": 63,
+    "turn_curves_started": 47,
+    "turn_curves_completed": 45,
+    "turn_curves_superseded": 2,
+    "turn_substeps_emitted": 368,
+    "signed_mouse_counts_emitted": -736,
+    "absolute_mouse_counts_emitted": 736
+  },
+  "yaw_measurement": {
+    "corrected_first_five_median_degrees": -128.43472001708332,
+    "corrected_last_five_median_degrees": -136.8055275298959,
+    "corrected_median_change_degrees": -8.370807512812576,
+    "raw_median_change_degrees": -8.347938150747979,
+    "degrees_per_mouse_count": 0.011373379772843173
+  },
+  "scale_assessment": {
+    "policy_turn_step_degrees": 11.25,
+    "measured_degrees_per_16_pixel_curve": 0.18197407636549076,
+    "estimated_pixels_for_policy_step": 989.1518813837754,
+    "configured_safety_maximum_pixels": 200,
+    "estimated_degrees_per_200_pixel_curve": 2.2746759545686346,
+    "next_trial_pixels": 200
+  },
+  "safety_assessment": {
+    "continuous_localization": true,
+    "bounded_input_only": true,
+    "no_fire_mode_passed": true,
+    "no_screenshots_retained": true,
+    "passed": true
+  },
+  "interpretation": "The smooth actuator was approximately 61.8 times smaller than the policy environment's 11.25-degree turn transition. A literal match exceeds the existing safety bound, so the next trial remains capped at 200 pixels and validates the faster motion before any bound is reconsidered.",
+  "next_gate": "Run one separately approved 10-second no-fire patrol trial at the existing 200-pixel hard limit, then compare measured yaw rate and player-observed motion quality."
+}

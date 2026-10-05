@@ -380,6 +380,16 @@ the next short no-fire trial can calibrate a bounded curve to the training turn
 step. See the
 [turn diagnosis](../experiments/cs2_dust2_bridge/PATROL_TURN_DIAGNOSIS_RESULT.json).
 
+That calibration localized all 66 frames, emitted no fire, retained no images,
+and recorded exactly 736 signed mouse counts in the left direction. Median
+corrected radar yaw changed by 8.37 degrees, or about 0.01137 degrees per mouse
+count. The 16-pixel curve therefore represented only about 0.18 degrees rather
+than the policy environment's 11.25-degree transition. A literal match would
+require about 989 pixels, above the executor's 200-pixel hard limit. The next
+trial stays within that existing limit and uses a 200-pixel smooth curve,
+predicted to turn about 2.27 degrees. See the
+[live turn calibration](../experiments/cs2_dust2_bridge/LIVE_TURN_CALIBRATION_RESULT.json).
+
 Short no-fire trials should use an empty local Practice with Bots session and
 `--audit-every 0` so they retain no screenshots. Use the same arguments as the
 passing v2 preflight, replace `run_cs2_shadow.py` with
